@@ -3,8 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { CalendarDays, FileText, LayoutDashboard, LogOut, Users } from "lucide-react";
+import { ArrowRight, CalendarDays, CheckCircle2, Eye, EyeOff, FileText, LayoutDashboard, LockKeyhole, LogOut, Mail, UserRound, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { type AuthMode, validateAuthInput } from "@/lib/auth-validation";
 
 type View = "inicio" | "agenda" | "facturacion" | "clientes";
 type Visit = { id: string; scheduled_for: string; status: string; installations: { name: string; address: string; clients: { legal_name: string } } | null };
@@ -29,4 +30,94 @@ function Stat({ label,value,foot }:{label:string;value:string;foot:string}) { re
 function Agenda({ visits, complete }:{visits:Visit[];complete:(v:Visit)=>void}) { return <><section className="intro"><div><h2>Agenda desde Supabase</h2><p>Tabla <code>visits</code>, unida a instalaciones y clientes.</p></div></section><section className="agenda-list">{visits.map((v) => <VisitRow key={v.id} visit={v} complete={complete} />)}</section></>; }
 function Billing({ invoices,pay }:{invoices:Invoice[];pay:(i:Invoice)=>void}) { return <><section className="intro"><div><h2>Facturación persistente</h2><p>Estados e importes desde <code>invoices</code>.</p></div></section><div className="invoice-list">{invoices.map((i) => <div className="invoice" key={i.id}><div><strong>{i.clients?.legal_name ?? "Cliente"}</strong><span>{i.number ?? "Borrador"} · {i.issued_on ?? "Sin emitir"}</span></div><span className="invoice-total">{money.format(Number(i.total))}</span>{i.status === "paid" ? <span className="badge ok">Cobrada</span> : <button className="badge progress" onClick={() => pay(i)}>Marcar cobrada</button>}</div>)}</div></>; }
 function Clients({ clients }:{clients:Client[]}) { return <><section className="intro"><div><h2>Clientes reales</h2><p>Consulta <code>clients</code> e <code>installations</code>.</p></div></section><div className="card"><table className="table"><thead><tr><th>Cliente</th><th>Instalaciones</th><th>Cobro</th></tr></thead><tbody>{clients.map((c) => <tr key={c.id}><td><strong>{c.legal_name}</strong></td><td>{c.installations.length}</td><td>{c.payment_method ?? "Sin definir"}</td></tr>)}</tbody></table></div></>; }
-function AuthScreen() { const [email,setEmail]=useState(""); const [password,setPassword]=useState(""); const [name,setName]=useState(""); const [message,setMessage]=useState<string | null>(null); const submit=async(mode:"signup"|"login")=>{const s=createClient(); const r=mode === "signup" ? await s.auth.signUp({email,password,options:{data:{full_name:name}}}) : await s.auth.signInWithPassword({email,password}); setMessage(r.error?.message ?? (mode === "signup" ? "Cuenta creada. Confirma tu email si se solicita." : "Sesión iniciada."));}; return <main className="empty-state"><section className="card"><h2>Acceso a Concepte Blau</h2><p>La primera cuenta creada recibirá el rol administrador.</p><label className="field"><span>Nombre</span><input value={name} onChange={(e)=>setName(e.target.value)} /></label><label className="field"><span>Email</span><input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} /></label><label className="field"><span>Contraseña</span><input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} /></label><div className="modal-foot"><button className="button secondary" onClick={()=>void submit("signup")}>Crear cuenta</button><button className="button" onClick={()=>void submit("login")}>Entrar</button></div>{message && <p role="status">{message}</p>}</section></main>; }
+function AuthScreen() {
+  const [mode, setMode] = useState<AuthMode>("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [feedback, setFeedback] = useState<{ kind: "error" | "success"; text: string } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isRegister = mode === "register";
+
+  const changeMode = (nextMode: AuthMode) => {
+    setMode(nextMode);
+    setFeedback(null);
+  };
+
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const validationError = validateAuthInput({ email, password, name, mode });
+    if (validationError) {
+      setFeedback({ kind: "error", text: validationError });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFeedback(null);
+    const supabase = createClient();
+    const result = isRegister
+      ? await supabase.auth.signUp({ email: email.trim(), password, options: { data: { full_name: name.trim() } } })
+      : await supabase.auth.signInWithPassword({ email: email.trim(), password });
+
+    setIsSubmitting(false);
+    if (result.error) {
+      setFeedback({ kind: "error", text: result.error.message });
+      return;
+    }
+
+    if (isRegister && !result.data.session) {
+      setFeedback({ kind: "success", text: "Cuenta creada. Revisa tu correo para confirmarla y después inicia sesión." });
+      return;
+    }
+    setFeedback({ kind: "success", text: isRegister ? "Cuenta creada. Ya puedes acceder al panel." : "Sesión iniciada. Cargando el panel…" });
+  };
+
+  return <main className="auth-page">
+    <section className="auth-brand-panel" aria-label="Concepte Blau">
+      <Image className="auth-logo" src="/concepte-blau-logo.png" alt="Concepte Blau" width={450} height={111} priority />
+      <div className="auth-brand-copy">
+        <span className="auth-kicker">Gestión de mantenimiento</span>
+        <h1>Todo el control de tus piscinas, en un solo lugar.</h1>
+        <p>Centraliza visitas, clientes y facturación con datos protegidos y siempre actualizados.</p>
+      </div>
+      <ul className="auth-benefits">
+        <li><CheckCircle2 size={18} aria-hidden="true" />Agenda y partes de trabajo</li>
+        <li><CheckCircle2 size={18} aria-hidden="true" />Clientes e instalaciones conectados</li>
+        <li><CheckCircle2 size={18} aria-hidden="true" />Facturación y cobros al día</li>
+      </ul>
+    </section>
+    <section className="auth-form-panel">
+      <div className="auth-card">
+        <div className="auth-mobile-logo"><Image src="/concepte-blau-logo.png" alt="Concepte Blau" width={450} height={111} priority /></div>
+        <div className="auth-heading">
+          <span className="auth-eyebrow"><LockKeyhole size={15} aria-hidden="true" />Área privada</span>
+          <h2>{isRegister ? "Crea tu cuenta" : "Bienvenido de nuevo"}</h2>
+          <p>{isRegister ? "Regístrate para empezar a gestionar tu operativa." : "Accede para continuar con tu operativa diaria."}</p>
+        </div>
+        <div className="auth-tabs" role="tablist" aria-label="Opciones de acceso">
+          <button type="button" className={!isRegister ? "active" : ""} role="tab" aria-selected={!isRegister} onClick={() => changeMode("login")}>Iniciar sesión</button>
+          <button type="button" className={isRegister ? "active" : ""} role="tab" aria-selected={isRegister} onClick={() => changeMode("register")}>Crear cuenta</button>
+        </div>
+        <form className="auth-form" onSubmit={submit} noValidate>
+          {isRegister && <label className="auth-field">
+            <span>Nombre completo</span>
+            <div className="auth-input"><UserRound size={18} aria-hidden="true" /><input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" placeholder="Tu nombre" /></div>
+          </label>}
+          <label className="auth-field">
+            <span>Correo electrónico</span>
+            <div className="auth-input"><Mail size={18} aria-hidden="true" /><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" inputMode="email" placeholder="nombre@empresa.com" /></div>
+          </label>
+          <label className="auth-field">
+            <span>Contraseña</span>
+            <div className="auth-input"><LockKeyhole size={18} aria-hidden="true" /><input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={isRegister ? "new-password" : "current-password"} placeholder="Mínimo 8 caracteres" /><button className="auth-password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>
+            {isRegister && <small>Usa al menos 8 caracteres.</small>}
+          </label>
+          {feedback && <p className={`auth-feedback ${feedback.kind}`} role={feedback.kind === "error" ? "alert" : "status"}>{feedback.text}</p>}
+          <button className="auth-submit" type="submit" disabled={isSubmitting}>{isSubmitting ? "Comprobando…" : isRegister ? "Crear cuenta" : "Entrar al panel"}<ArrowRight size={18} aria-hidden="true" /></button>
+        </form>
+        <p className="auth-switch">{isRegister ? "¿Ya tienes cuenta?" : "¿Aún no tienes cuenta?"}<button type="button" onClick={() => changeMode(isRegister ? "login" : "register")}>{isRegister ? "Inicia sesión" : "Crea una ahora"}</button></p>
+      </div>
+    </section>
+  </main>;
+}
