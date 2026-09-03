@@ -68,6 +68,10 @@ import {
 import { usePersistentSearchParams } from '@/lib/use-persistent-search-params'
 import { getVisitStartWarning } from '@/lib/visit-start-validation'
 import {
+  getStoredInstallationLocation,
+  isUsableVisitLocation,
+} from '@/lib/visit-start-location'
+import {
   normalizeWorkPlanningNotes,
   type PendingWorkInput,
   type WorkInstallation,
@@ -173,6 +177,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   const [startingVisit, setStartingVisit] = useState(false)
   const [startError, setStartError] = useState<string | null>(null)
   const [startPosition, setStartPosition] = useState<TrackingCoordinates | null>(null)
+  const [usingStoredInstallationLocation, setUsingStoredInstallationLocation] = useState(false)
   const [startExceptions, setStartExceptions] = useState<StartException[]>([])
   const [requiresExceptionReason, setRequiresExceptionReason] = useState(false)
   const [exceptionReason, setExceptionReason] = useState('')
@@ -356,12 +361,17 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     setMessage(null)
     setStartError(null)
     setStartPosition(null)
+    setUsingStoredInstallationLocation(false)
     setStartExceptions([])
     setRequiresExceptionReason(false)
     setExceptionReason('')
     setVisitToStart(visit)
   }
-  const recordVisitStart = async (visit: Visit, position: TrackingCoordinates) => {
+  const recordVisitStart = async (
+    visit: Visit,
+    position: TrackingCoordinates,
+    usedStoredInstallationLocation = false,
+  ) => {
     const { error } = await createClient().rpc('start_visit', {
       p_visit_id: visit.id,
       p_start_latitude: position.latitude,
@@ -370,7 +380,11 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       p_start_outside_schedule_confirmed: startExceptions.some((exception) =>
         ['different_day', 'too_early', 'too_late'].includes(exception),
       ),
-      p_exception_reason: exceptionReason.trim() || null,
+      p_exception_reason:
+        exceptionReason.trim() ||
+        (usedStoredInstallationLocation
+          ? 'Ubicació registrada des de les coordenades de la instal·lació.'
+          : null),
     })
     setStartingVisit(false)
     if (error) {
@@ -384,6 +398,21 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     }
     setVisitToStart(null)
     router.push(`/agenda/${visit.id}`)
+  }
+  const recordStartWithStoredInstallationLocation = (visit: Visit) => {
+    const storedLocation = getStoredInstallationLocation(visit.installations)
+    if (!storedLocation) {
+      setStartingVisit(false)
+      setStartError(
+        "No s'ha pogut obtenir la ubicació del dispositiu i la instal·lació no té coordenades desades.",
+      )
+      return
+    }
+    setStartPosition(storedLocation)
+    setUsingStoredInstallationLocation(true)
+    setStartExceptions([])
+    setRequiresExceptionReason(false)
+    void recordVisitStart(visit, storedLocation, true)
   }
   const confirmVisitStart = () => {
     if (!visitToStart || startingVisit) return
@@ -401,7 +430,8 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       return
     }
     if (!navigator.geolocation) {
-      setStartError('Aquest dispositiu no permet obtenir la ubicació necessària per iniciar.')
+      setStartingVisit(true)
+      recordStartWithStoredInstallationLocation(visitToStart)
       return
     }
     setStartingVisit(true)
@@ -412,6 +442,10 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           accuracy: position.coords.accuracy,
+        }
+        if (!isUsableVisitLocation(currentPosition, timeTrackingPolicy)) {
+          recordStartWithStoredInstallationLocation(visitToStart)
+          return
         }
         const exceptions = getStartExceptions({
           scheduledFor: visitToStart.scheduled_for,
@@ -441,9 +475,8 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
         }
         void recordVisitStart(visitToStart, currentPosition)
       },
-      (error) => {
-        setStartingVisit(false)
-        setStartError(geolocationErrorMessage(error))
+      () => {
+        recordStartWithStoredInstallationLocation(visitToStart)
       },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 20_000 },
     )
@@ -856,6 +889,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             if (!open && !startingVisit) {
               setVisitToStart(null)
               setStartPosition(null)
+              setUsingStoredInstallationLocation(false)
             }
           }}
           title={
@@ -870,6 +904,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
                 warning={getVisitStartWarning(visitToStart.scheduled_for)}
                 error={startError}
                 position={startPosition}
+                usingStoredInstallationLocation={usingStoredInstallationLocation}
                 exceptions={startExceptions}
                 requiresExceptionReason={requiresExceptionReason}
                 exceptionReason={exceptionReason}
@@ -897,6 +932,7 @@ function StartVisitConfirmation({
   warning,
   error,
   position,
+  usingStoredInstallationLocation,
   exceptions,
   requiresExceptionReason,
   exceptionReason,
@@ -906,6 +942,7 @@ function StartVisitConfirmation({
   warning: ReturnType<typeof getVisitStartWarning>
   error: string | null
   position: TrackingCoordinates | null
+  usingStoredInstallationLocation: boolean
   exceptions: StartException[]
   requiresExceptionReason: boolean
   exceptionReason: string
@@ -934,7 +971,9 @@ function StartVisitConfirmation({
         </p>
       )}
       <p className="start-confirmation-location">
-        {position
+        {usingStoredInstallationLocation
+          ? "No s'ha pogut obtenir la ubicació del dispositiu. S'han fet servir les coordenades desades de la instal·lació."
+          : position
           ? `Ubicació obtinguda amb una precisió aproximada de ±${Math.round(position.accuracy)} m.`
           : "En confirmar, el navegador demanarà permís per registrar la teva ubicació precisa i l'hora oficial d'inici."}
       </p>
@@ -962,15 +1001,6 @@ function StartVisitConfirmation({
       {error && <p className="start-confirmation-error">{error}</p>}
     </div>
   )
-}
-function geolocationErrorMessage(error: GeolocationPositionError) {
-  if (error.code === error.PERMISSION_DENIED) {
-    return "Necessitem el permís d'ubicació per registrar l'inici de la visita."
-  }
-  if (error.code === error.TIMEOUT) {
-    return 'La ubicació ha trigat massa. Comprova la cobertura i torna-ho a provar.'
-  }
-  return "No s'ha pogut obtenir una ubicació precisa. Activa la ubicació i torna-ho a provar."
 }
 function formatDateTime(value: Date) {
   return new Intl.DateTimeFormat('ca-ES', {
