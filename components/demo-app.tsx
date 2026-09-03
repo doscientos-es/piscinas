@@ -118,6 +118,8 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   const [inventorySchemaReady, setInventorySchemaReady] = useState(true)
   const [statisticsReload, setStatisticsReload] = useState(0)
   const [message, setMessage] = useState<string | null>(null)
+  const [isSigningOut, setIsSigningOut] = useState(false)
+  const [signOutError, setSignOutError] = useState<string | null>(null)
   const [visitToStart, setVisitToStart] = useState<Visit | null>(null)
   const [editingClient, setEditingClient] = useState<Client | null | 'new'>(null)
   const [startingVisit, setStartingVisit] = useState(false)
@@ -214,6 +216,23 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   }, [load])
   if (!ready) return <main className="empty-state">Cargando tu operativa…</main>
   if (!signedIn) return <AuthScreen />
+  const signOut = async () => {
+    if (isSigningOut) return
+
+    setIsSigningOut(true)
+    setSignOutError(null)
+    const { error } = await createClient().auth.signOut()
+
+    if (error) {
+      setSignOutError('No se ha podido cerrar la sesión. Inténtalo de nuevo.')
+      setIsSigningOut(false)
+      return
+    }
+
+    setSignedIn(false)
+    router.replace('/')
+    router.refresh()
+  }
   const requestStart = (visit: Visit) => {
     setMessage(null)
     setStartError(null)
@@ -421,11 +440,13 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
               <button
                 className="profile-sign-out"
                 type="button"
-                onClick={() => void createClient().auth.signOut()}
+                onClick={() => void signOut()}
+                disabled={isSigningOut}
               >
                 <LogOut size={16} aria-hidden="true" />
-                Cerrar sesión
+                {isSigningOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
               </button>
+              {signOutError && <p className="profile-sign-out-error">{signOutError}</p>}
             </PopoverContent>
           </PopoverTrigger>
         </div>
