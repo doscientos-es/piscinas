@@ -5980,10 +5980,10 @@ textarea:focus-visible {
   font-style: normal;
   font-weight: 800;
 }
-.calendar-event.scheduled {
+.calendar-event.scheduled.operational {
   cursor: pointer;
 }
-.calendar-event.scheduled:hover {
+.calendar-event.scheduled.operational:hover {
   border-color: #6dccdf;
   background: #e1f7fc;
 }
@@ -6073,6 +6073,9 @@ textarea:focus-visible {
 .calendar-event.compact span {
   display: none;
 }
+.calendar-event.compact .event-assignee {
+  display: block;
+}
 .calendar-event.compact em {
   display: block;
   margin-top: 1px;
@@ -6148,6 +6151,9 @@ textarea:focus-visible {
 }
 .month-events .calendar-event em {
   display: none;
+}
+.month-events .calendar-event .event-assignee {
+  display: block;
 }
 .more-events {
   padding-left: 4px;

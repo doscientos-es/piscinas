@@ -46,7 +46,13 @@ type VisitDetail = {
 const money = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' })
 const quantityFormat = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 3 })
 
-export function VisitReport({ visitId }: { visitId: string }) {
+export function VisitReport({
+  visitId,
+  readOnly = false,
+}: {
+  visitId: string
+  readOnly?: boolean
+}) {
   const router = useRouter()
   const [visit, setVisit] = useState<VisitDetail | null>(null)
   const [products, setProducts] = useState<Product[]>([])
@@ -206,6 +212,14 @@ export function VisitReport({ visitId }: { visitId: string }) {
 
       {isClosed ? (
         <ClosedReport notes={intervention.notes} usages={intervention.intervention_products} />
+      ) : readOnly ? (
+        <section className="closed-report">
+          <Clock3 size={22} />
+          <div>
+            <h3>Visita en curso</h3>
+            <p>El parte estará disponible para supervisión cuando el técnico cierre la faena.</p>
+          </div>
+        </section>
       ) : (
         <form className="report-form" onSubmit={submit}>
           <fieldset className="visit-checklist">

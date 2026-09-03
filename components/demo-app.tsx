@@ -35,6 +35,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 
 import { InvoicePreview } from '@/components/invoice-preview'
 import { VisitReport } from '@/components/visit-report'
+import { getAgendaVisitAction } from '@/lib/agenda-access'
 import { validateAuthInput, type AuthMode } from '@/lib/auth-validation'
 import { downloadInvoice, formatDate, getInvoiceLines, type Invoice } from '@/lib/invoice-template'
 import { createClient } from '@/lib/supabase/client'
@@ -45,6 +46,7 @@ type Visit = {
   id: string
   scheduled_for: string
   status: string
+  technician: { full_name: string } | null
   installations: { name: string; address: string; clients: { legal_name: string } } | null
 }
 type Installation = {
@@ -108,7 +110,9 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     const [v, i, session] = await Promise.all([
       s
         .from('visits')
-        .select('id,scheduled_for,status,installations(name,address,clients(legal_name))')
+        .select(
+          'id,scheduled_for,status,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,clients(legal_name))',
+        )
         .order('scheduled_for'),
       s
         .from('invoices')
@@ -397,10 +401,16 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             </p>
           )}
           {view === 'inicio' && (
-            <Overview visits={visits} invoices={invoices} clients={clients} start={requestStart} />
+            <Overview
+              visits={visits}
+              invoices={invoices}
+              clients={clients}
+              isAdmin={isAdmin}
+              start={requestStart}
+            />
           )}
-          {view === 'agenda' && <Agenda visits={visits} start={requestStart} />}
-          {view === 'parte' && visitId && <VisitReport visitId={visitId} />}
+          {view === 'agenda' && <Agenda visits={visits} isAdmin={isAdmin} start={requestStart} />}
+          {view === 'parte' && visitId && <VisitReport visitId={visitId} readOnly={isAdmin} />}
           {view === 'facturacion' && <Billing invoices={invoices} pay={pay} />}
           {view === 'clientes' && (
             <Clients
@@ -415,26 +425,28 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           )}
         </div>
       </main>
-      <ConfirmDialog
-        open={Boolean(visitToStart)}
-        onOpenChange={(open) => {
-          if (!open && !startingVisit) setVisitToStart(null)
-        }}
-        title="Registrar inicio de visita"
-        description={
-          visitToStart ? (
-            <StartVisitConfirmation
-              visit={visitToStart}
-              warning={getVisitStartWarning(visitToStart.scheduled_for)}
-              error={startError}
-            />
-          ) : undefined
-        }
-        confirmLabel={startingVisit ? 'Obteniendo ubicación…' : 'Confirmar y registrar inicio'}
-        cancelLabel="Cancelar"
-        pending={startingVisit}
-        onConfirm={confirmVisitStart}
-      />
+      {!isAdmin && (
+        <ConfirmDialog
+          open={Boolean(visitToStart)}
+          onOpenChange={(open) => {
+            if (!open && !startingVisit) setVisitToStart(null)
+          }}
+          title="Registrar inicio de visita"
+          description={
+            visitToStart ? (
+              <StartVisitConfirmation
+                visit={visitToStart}
+                warning={getVisitStartWarning(visitToStart.scheduled_for)}
+                error={startError}
+              />
+            ) : undefined
+          }
+          confirmLabel={startingVisit ? 'Obteniendo ubicación…' : 'Confirmar y registrar inicio'}
+          cancelLabel="Cancelar"
+          pending={startingVisit}
+          onConfirm={confirmVisitStart}
+        />
+      )}
     </div>
   )
 }
@@ -511,7 +523,15 @@ function Nav({
     </Link>
   )
 }
-function VisitRow({ visit, start }: { visit: Visit; start: (v: Visit) => void }) {
+function VisitRow({
+  visit,
+  isAdmin,
+  start,
+}: {
+  visit: Visit
+  isAdmin: boolean
+  start: (v: Visit) => void
+}) {
   const x = visit.installations
   return (
     <div className="visit">
@@ -525,15 +545,27 @@ function VisitRow({ visit, start }: { visit: Visit; start: (v: Visit) => void })
         <div className="visit-meta">
           {x?.name ?? 'Instalación'} · {x?.address ?? ''}
         </div>
+        {isAdmin && (
+          <div className="visit-meta">
+            Responsable: {visit.technician?.full_name ?? 'Sin asignar'}
+          </div>
+        )}
       </div>
-      {visit.status === 'completed' ? <span className="badge ok">Completada</span> : null}
-      {visit.status === 'in_progress' ? (
+      {isAdmin ? (
+        <span className="badge">{getAgendaVisitAction(visit.status, true).label}</span>
+      ) : null}
+      {!isAdmin && visit.status === 'completed' ? (
+        <span className="badge ok">Completada</span>
+      ) : null}
+      {!isAdmin && visit.status === 'in_progress' ? (
         <Link className="badge progress" href={`/agenda/${visit.id}`}>
           Continuar
         </Link>
       ) : null}
-      {visit.status === 'cancelled' ? <span className="badge pending">Cancelada</span> : null}
-      {visit.status === 'scheduled' ? (
+      {!isAdmin && visit.status === 'cancelled' ? (
+        <span className="badge pending">Cancelada</span>
+      ) : null}
+      {!isAdmin && visit.status === 'scheduled' ? (
         <button className="badge progress" onClick={() => start(visit)}>
           Iniciar
         </button>
@@ -545,11 +577,13 @@ function Overview({
   visits,
   invoices,
   clients,
+  isAdmin,
   start,
 }: {
   visits: Visit[]
   invoices: Invoice[]
   clients: Client[]
+  isAdmin: boolean
   start: (v: Visit) => void
 }) {
   const due = invoices.filter((i) => i.status !== 'paid')
@@ -598,7 +632,7 @@ function Overview({
           <h3>Próximas visitas</h3>
         </div>
         {visits.map((v) => (
-          <VisitRow key={v.id} visit={v} start={start} />
+          <VisitRow key={v.id} visit={v} isAdmin={isAdmin} start={start} />
         ))}
       </section>
     </>
@@ -630,7 +664,15 @@ function Stat({
 }
 type CalendarView = 'day' | 'week' | 'month'
 
-function Agenda({ visits, start }: { visits: Visit[]; start: (v: Visit) => void }) {
+function Agenda({
+  visits,
+  isAdmin,
+  start,
+}: {
+  visits: Visit[]
+  isAdmin: boolean
+  start: (v: Visit) => void
+}) {
   const [calendarView, setCalendarView] = useState<CalendarView>('week')
   const [activeDate, setActiveDate] = useState(() => startOfDay(new Date()))
   useEffect(() => {
@@ -663,9 +705,10 @@ function Agenda({ visits, start }: { visits: Visit[]; start: (v: Visit) => void 
       <section className="agenda-intro">
         <div>
           <span className="eyebrow">Planificación operativa</span>
-          <h2>Tu agenda de mantenimiento</h2>
           <p>
-            Consulta las visitas por día, semana o mes y abre el parte cuando empieces la faena.
+            {isAdmin
+              ? 'Supervisa las visitas de todo el equipo y comprueba quién tiene asignada cada faena.'
+              : 'Consulta tus visitas por día, semana o mes y abre el parte cuando empieces la faena.'}
           </p>
         </div>
         <span className="agenda-count">
@@ -732,11 +775,24 @@ function Agenda({ visits, start }: { visits: Visit[]; start: (v: Visit) => void 
         </header>
 
         {calendarView === 'day' && (
-          <DayCalendar date={activeDate} visits={visitsForDay(visits, activeDate)} start={start} />
+          <DayCalendar
+            date={activeDate}
+            visits={visitsForDay(visits, activeDate)}
+            isAdmin={isAdmin}
+            start={start}
+          />
         )}
-        {calendarView === 'week' && <WeekCalendar days={days} visits={visits} start={start} />}
+        {calendarView === 'week' && (
+          <WeekCalendar days={days} visits={visits} isAdmin={isAdmin} start={start} />
+        )}
         {calendarView === 'month' && (
-          <MonthCalendar days={days} activeDate={activeDate} visits={visits} start={start} />
+          <MonthCalendar
+            days={days}
+            activeDate={activeDate}
+            visits={visits}
+            isAdmin={isAdmin}
+            start={start}
+          />
         )}
       </section>
     </>
@@ -746,10 +802,12 @@ function Agenda({ visits, start }: { visits: Visit[]; start: (v: Visit) => void 
 function DayCalendar({
   date,
   visits,
+  isAdmin,
   start,
 }: {
   date: Date
   visits: Visit[]
+  isAdmin: boolean
   start: (visit: Visit) => void
 }) {
   const hours = Array.from({ length: 13 }, (_, index) => index + 7)
@@ -770,7 +828,7 @@ function DayCalendar({
             <div className="day-hour" key={hour} />
           ))}
           {visits.map((visit) => (
-            <CalendarEvent key={visit.id} visit={visit} start={start} timed />
+            <CalendarEvent key={visit.id} visit={visit} isAdmin={isAdmin} start={start} timed />
           ))}
           {visits.length === 0 && (
             <p className="calendar-empty">No hay visitas previstas para este día.</p>
@@ -784,10 +842,12 @@ function DayCalendar({
 function WeekCalendar({
   days,
   visits,
+  isAdmin,
   start,
 }: {
   days: Date[]
   visits: Visit[]
+  isAdmin: boolean
   start: (visit: Visit) => void
 }) {
   return (
@@ -804,7 +864,7 @@ function WeekCalendar({
         {days.map((day) => (
           <div className={`week-day ${isToday(day) ? 'today' : ''}`} key={day.toISOString()}>
             {visitsForDay(visits, day).map((visit) => (
-              <CalendarEvent key={visit.id} visit={visit} start={start} compact />
+              <CalendarEvent key={visit.id} visit={visit} isAdmin={isAdmin} start={start} compact />
             ))}
             {visitsForDay(visits, day).length === 0 && <span className="calendar-free">Libre</span>}
           </div>
@@ -818,11 +878,13 @@ function MonthCalendar({
   days,
   activeDate,
   visits,
+  isAdmin,
   start,
 }: {
   days: Date[]
   activeDate: Date
   visits: Visit[]
+  isAdmin: boolean
   start: (visit: Visit) => void
 }) {
   return (
@@ -844,7 +906,13 @@ function MonthCalendar({
               <span className="month-date">{day.getDate()}</span>
               <div className="month-events">
                 {dayVisits.slice(0, 3).map((visit) => (
-                  <CalendarEvent key={visit.id} visit={visit} start={start} compact />
+                  <CalendarEvent
+                    key={visit.id}
+                    visit={visit}
+                    isAdmin={isAdmin}
+                    start={start}
+                    compact
+                  />
                 ))}
                 {dayVisits.length > 3 && (
                   <span className="more-events">+{dayVisits.length - 3} más</span>
@@ -860,11 +928,13 @@ function MonthCalendar({
 
 function CalendarEvent({
   visit,
+  isAdmin,
   start,
   compact,
   timed,
 }: {
   visit: Visit
+  isAdmin: boolean
   start: (visit: Visit) => void
   compact?: boolean
   timed?: boolean
@@ -872,12 +942,7 @@ function CalendarEvent({
   const scheduled = new Date(visit.scheduled_for)
   const minutes = scheduled.getHours() * 60 + scheduled.getMinutes()
   const top = Math.max(0, (minutes - 420) * 1.15)
-  const statusLabel =
-    visit.status === 'scheduled'
-      ? 'Iniciar'
-      : visit.status === 'in_progress'
-        ? 'Continuar'
-        : 'Ver parte'
+  const action = getAgendaVisitAction(visit.status, isAdmin)
   const content = (
     <>
       <time>
@@ -885,10 +950,15 @@ function CalendarEvent({
       </time>
       <strong>{visit.installations?.clients?.legal_name ?? 'Cliente'}</strong>
       {!compact && <span>{visit.installations?.name ?? 'Instalación'}</span>}
+      {isAdmin && (
+        <span className="event-assignee">
+          Responsable: {visit.technician?.full_name ?? 'Sin asignar'}
+        </span>
+      )}
     </>
   )
-  const className = `calendar-event ${visit.status} ${compact ? 'compact' : ''}`
-  if (visit.status === 'scheduled')
+  const className = `calendar-event ${visit.status} ${compact ? 'compact' : ''} ${action.isInteractive ? 'operational' : ''}`
+  if (action.isInteractive && visit.status === 'scheduled')
     return (
       <button
         type="button"
@@ -897,20 +967,20 @@ function CalendarEvent({
         onClick={() => start(visit)}
       >
         {content}
-        <em>{statusLabel}</em>
+        <em>{action.label}</em>
       </button>
     )
-  if (visit.status === 'in_progress' || visit.status === 'completed')
+  if (action.isInteractive && (visit.status === 'in_progress' || visit.status === 'completed'))
     return (
       <Link className={className} style={timed ? { top } : undefined} href={`/agenda/${visit.id}`}>
         {content}
-        <em>{statusLabel}</em>
+        <em>{action.label}</em>
       </Link>
     )
   return (
     <div className={className} style={timed ? { top } : undefined}>
       {content}
-      <em>{statusLabel}</em>
+      <em>{action.label}</em>
     </div>
   )
 }
@@ -976,7 +1046,6 @@ function Billing({ invoices, pay }: { invoices: Invoice[]; pay: (i: Invoice) => 
     <>
       <section className="intro">
         <div>
-          <h2>Facturación y cobros</h2>
           <p>Consulta cada factura, sus conceptos y el estado de cobro de un vistazo.</p>
         </div>
       </section>
@@ -1184,7 +1253,6 @@ function Clients({
     <>
       <section className="intro client-intro">
         <div>
-          <h2>Clientes e instalaciones</h2>
           <p>Ficha completa, contactos, condiciones de cobro e instalaciones por cliente.</p>
         </div>
         {isAdmin && (
