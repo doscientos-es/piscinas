@@ -8162,6 +8162,32 @@ textarea:focus-visible {
   color: #183d56;
 }
 
+.inventory-toolbar {
+  gap: 10px;
+}
+
+.inventory-toolbar .client-search {
+  flex: 1 1 320px;
+}
+
+.inventory-category select {
+  min-height: 38px;
+  max-width: 230px;
+  border: 1px solid #cfdde5;
+  border-radius: 3px;
+  background: #fff;
+  color: #183d56;
+  padding: 0 10px;
+}
+
+.inventory-row > div:first-child small,
+.inventory-row > div:nth-child(3) small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Reporting: read values first, decoration last. */
 .analytics-kpis {
   gap: 0;
@@ -8239,6 +8265,13 @@ textarea:focus-visible {
   .inventory-summary > div:first-child,
   .analytics-kpi:first-child {
     border-top: 0;
+  }
+  .inventory-toolbar {
+    align-items: stretch;
+  }
+  .inventory-category select {
+    width: 100%;
+    max-width: none;
   }
 }
 @media (max-width: 520px) {

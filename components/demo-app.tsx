@@ -226,7 +226,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       s
         .from('products')
         .select(
-          'id,name,reference,category,unit,sale_price,cost_price,stock_quantity,minimum_stock,active',
+          'id,name,reference,category,unit,sale_price,cost_price,stock_quantity,minimum_stock,active,barcode_ean,minimum_purchase_quantity,units_per_pallet,supplier',
         )
         .order('name'),
       s
@@ -268,9 +268,10 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           .order('legal_name')
       : (extendedClients ?? { data: [], error: null })
     setClientSchemaReady(!migrationPending)
-    const inventoryMigrationPending = p.error?.message.includes(
-      'column products.minimum_stock does not exist',
-    )
+    const inventoryMigrationPending =
+      /column products\.(minimum_stock|barcode_ean|minimum_purchase_quantity|units_per_pallet|supplier) does not exist/.test(
+        p.error?.message ?? '',
+      )
     if (visitResponse.error) {
       setMessage(visitResponse.error.message)
       return
@@ -484,7 +485,6 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           .from('visits')
           .update(payload)
           .eq('id', id)
-          .eq('status', 'scheduled')
           .select('id')
           .maybeSingle()
       : await createClient()
@@ -494,7 +494,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           .maybeSingle()
     if (result.error) throw new Error(result.error.message)
     if (!result.data)
-      throw new Error('La feina ja no està pendent o no tens permís per modificar-la.')
+      throw new Error('La feina ja no existeix o no tens permís per modificar-la.')
 
     setMessage(id ? 'Feina actualitzada.' : 'Feina programada.')
     await load()

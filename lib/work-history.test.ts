@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  canEditWork,
   canManagePendingWork,
   filterWorkHistory,
   groupWorkInstallationsByClient,
@@ -78,6 +79,8 @@ describe('work history', () => {
   })
 
   it('reserva la edición para administración y trabajos pendientes', () => {
+    expect(canEditWork(true)).toBe(true)
+    expect(canEditWork(false)).toBe(false)
     expect(canManagePendingWork(true, 'scheduled')).toBe(true)
     expect(canManagePendingWork(true, 'in_progress')).toBe(false)
     expect(canManagePendingWork(false, 'scheduled')).toBe(false)

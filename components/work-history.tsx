@@ -18,6 +18,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { SearchParamUpdates } from '@/lib/search-params'
 import { usePersistentSearchParams } from '@/lib/use-persistent-search-params'
 import {
+  canEditWork,
   canManagePendingWork,
   filterWorkHistory,
   groupWorkInstallationsByClient,
@@ -191,7 +192,7 @@ export function WorkHistory({
             >
               {statusLabel(visit.status)}
             </span>
-            {canManagePendingWork(isAdmin, visit.status) ? (
+            {canEditWork(isAdmin) ? (
               <div className="work-history-actions">
                 <button
                   className="action-link"
@@ -204,27 +205,29 @@ export function WorkHistory({
                   <Pencil size={15} aria-hidden="true" />
                   Edita
                 </button>
-                <button
-                  className="action-link danger"
-                  type="button"
-                  onClick={() => {
-                    if (
-                      !window.confirm(
-                        'Voleu eliminar aquesta feina programada? Aquesta acció no es pot desfer.',
+                {canManagePendingWork(isAdmin, visit.status) && (
+                  <button
+                    className="action-link danger"
+                    type="button"
+                    onClick={() => {
+                      if (
+                        !window.confirm(
+                          'Voleu eliminar aquesta feina programada? Aquesta acció no es pot desfer.',
+                        )
                       )
-                    )
-                      return
-                    setOperationError(null)
-                    void onDeletePendingWork(visit.id).catch((error: unknown) => {
-                      setOperationError(
-                        error instanceof Error ? error.message : "No s'ha pogut eliminar la feina.",
-                      )
-                    })
-                  }}
-                >
-                  <Trash2 size={15} aria-hidden="true" />
-                  Elimina
-                </button>
+                        return
+                      setOperationError(null)
+                      void onDeletePendingWork(visit.id).catch((error: unknown) => {
+                        setOperationError(
+                          error instanceof Error ? error.message : "No s'ha pogut eliminar la feina.",
+                        )
+                      })
+                    }}
+                  >
+                    <Trash2 size={15} aria-hidden="true" />
+                    Elimina
+                  </button>
+                )}
               </div>
             ) : visit.status !== 'scheduled' ? (
               <Link className="action-link" href={`/agenda/${visit.id}`}>
@@ -351,7 +354,7 @@ function WorkEditor({
         <DialogHeader className="work-editor-dialog-header">
           <DialogTitle>{visit === 'new' ? 'Feina nova' : 'Edita la feina'}</DialogTitle>
           <DialogDescription>
-            Assigna el client, la instal·lació i la persona responsable de la visita.
+            Actualitza la persona responsable i la data de la visita.
           </DialogDescription>
         </DialogHeader>
         <form className="record-form" onSubmit={(event) => void submit(event)}>

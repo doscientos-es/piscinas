@@ -34,6 +34,11 @@ export function canManagePendingWork(isAdmin: boolean, status: string) {
   return isAdmin && status === 'scheduled'
 }
 
+/** Administration may reassign or reschedule any visit without changing its status. */
+export function canEditWork(isAdmin: boolean) {
+  return isAdmin
+}
+
 export type WorkHistoryFilters = {
   query: string
   status: string
