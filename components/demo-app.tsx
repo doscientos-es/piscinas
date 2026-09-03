@@ -57,20 +57,7 @@ import {
 } from '@/lib/monthly-billing'
 import type { SearchParamUpdates } from '@/lib/search-params'
 import { createClient } from '@/lib/supabase/client'
-import {
-  defaultTimeTrackingPolicy,
-  getStartExceptions,
-  startExceptionLabel,
-  type StartException,
-  type TimeTrackingPolicy,
-  type TrackingCoordinates,
-} from '@/lib/time-tracking-policy'
 import { usePersistentSearchParams } from '@/lib/use-persistent-search-params'
-import { getVisitStartWarning } from '@/lib/visit-start-validation'
-import {
-  getStoredInstallationLocation,
-  isUsableVisitLocation,
-} from '@/lib/visit-start-location'
 import {
   normalizeWorkPlanningNotes,
   type PendingWorkInput,
@@ -176,13 +163,6 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   const [editingClient, setEditingClient] = useState<Client | null | 'new'>(null)
   const [startingVisit, setStartingVisit] = useState(false)
   const [startError, setStartError] = useState<string | null>(null)
-  const [startPosition, setStartPosition] = useState<TrackingCoordinates | null>(null)
-  const [usingStoredInstallationLocation, setUsingStoredInstallationLocation] = useState(false)
-  const [startExceptions, setStartExceptions] = useState<StartException[]>([])
-  const [requiresExceptionReason, setRequiresExceptionReason] = useState(false)
-  const [exceptionReason, setExceptionReason] = useState('')
-  const [timeTrackingPolicy, setTimeTrackingPolicy] =
-    useState<TimeTrackingPolicy>(defaultTimeTrackingPolicy)
   const load = useCallback(async () => {
     const s = createClient()
     const { data: userData, error: userError } = await s.auth.getUser()
@@ -220,7 +200,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       accountRole === 'admin'
         ? s.from('profiles').select('id,full_name').eq('role', 'technician').order('full_name')
         : Promise.resolve({ data: [] as WorkTechnician[], error: null })
-    const [v, i, p, settings, techniciansResult] = await Promise.all([
+    const [v, i, p, techniciansResult] = await Promise.all([
       s
         .from('visits')
         .select(
@@ -234,13 +214,6 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           'id,name,reference,category,unit,sale_price,cost_price,stock_quantity,minimum_stock,active,barcode_ean,minimum_purchase_quantity,units_per_pallet,supplier',
         )
         .order('name'),
-      s
-        .from('time_tracking_settings')
-        .select(
-          'early_start_tolerance_minutes,late_start_tolerance_minutes,geofence_radius_m,max_location_accuracy_m,require_exception_reason',
-        )
-        .eq('id', true)
-        .maybeSingle(),
       techniciansRequest,
     ])
     const locationSchemaPending = isLocationSchemaPending(v.error?.message)
@@ -287,11 +260,6 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     setTechnicians((techniciansResult.data ?? []) as WorkTechnician[])
     setProducts((p.data ?? []) as Product[])
     setInventorySchemaReady(!inventoryMigrationPending)
-    setTimeTrackingPolicy(
-      settings.data
-        ? { ...defaultTimeTrackingPolicy, ...(settings.data as Partial<TimeTrackingPolicy>) }
-        : defaultTimeTrackingPolicy,
-    )
     const secondaryError =
       i.error ||
       clientResponse.error ||
@@ -360,126 +328,30 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   const requestStart = (visit: Visit) => {
     setMessage(null)
     setStartError(null)
-    setStartPosition(null)
-    setUsingStoredInstallationLocation(false)
-    setStartExceptions([])
-    setRequiresExceptionReason(false)
-    setExceptionReason('')
     setVisitToStart(visit)
   }
-  const recordVisitStart = async (
-    visit: Visit,
-    position: TrackingCoordinates,
-    usedStoredInstallationLocation = false,
-  ) => {
+  const recordVisitStart = async (visit: Visit) => {
     const { error } = await createClient().rpc('start_visit', {
       p_visit_id: visit.id,
-      p_start_latitude: position.latitude,
-      p_start_longitude: position.longitude,
-      p_start_accuracy_m: position.accuracy,
-      p_start_outside_schedule_confirmed: startExceptions.some((exception) =>
-        ['different_day', 'too_early', 'too_late'].includes(exception),
-      ),
-      p_exception_reason:
-        exceptionReason.trim() ||
-        (usedStoredInstallationLocation
-          ? 'Ubicació registrada des de les coordenades de la instal·lació.'
-          : null),
+      p_start_latitude: null,
+      p_start_longitude: null,
+      p_start_accuracy_m: null,
+      p_start_outside_schedule_confirmed: false,
+      p_exception_reason: null,
     })
     setStartingVisit(false)
     if (error) {
-      if (error.message.startsWith('START_EXCEPTION:')) {
-        setRequiresExceptionReason(true)
-        setStartError(error.message.replace('START_EXCEPTION: ', ''))
-      } else {
-        setStartError(error.message)
-      }
+      setStartError(error.message)
       return
     }
     setVisitToStart(null)
     router.push(`/agenda/${visit.id}`)
   }
-  const recordStartWithStoredInstallationLocation = (visit: Visit) => {
-    const storedLocation = getStoredInstallationLocation(visit.installations)
-    if (!storedLocation) {
-      setStartingVisit(false)
-      setStartError(
-        "No s'ha pogut obtenir la ubicació del dispositiu i la instal·lació no té coordenades desades.",
-      )
-      return
-    }
-    setStartPosition(storedLocation)
-    setUsingStoredInstallationLocation(true)
-    setStartExceptions([])
-    setRequiresExceptionReason(false)
-    void recordVisitStart(visit, storedLocation, true)
-  }
   const confirmVisitStart = () => {
     if (!visitToStart || startingVisit) return
-    if (startPosition) {
-      if (
-        (startExceptions.length > 0 || requiresExceptionReason) &&
-        timeTrackingPolicy.require_exception_reason &&
-        !exceptionReason.trim()
-      ) {
-        setStartError('Indica breument el motiu per registrar aquest inici excepcional.')
-        return
-      }
-      setStartingVisit(true)
-      void recordVisitStart(visitToStart, startPosition)
-      return
-    }
-    if (!navigator.geolocation) {
-      setStartingVisit(true)
-      recordStartWithStoredInstallationLocation(visitToStart)
-      return
-    }
     setStartingVisit(true)
     setStartError(null)
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const currentPosition = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-        }
-        if (!isUsableVisitLocation(currentPosition, timeTrackingPolicy)) {
-          recordStartWithStoredInstallationLocation(visitToStart)
-          return
-        }
-        const exceptions = getStartExceptions({
-          scheduledFor: visitToStart.scheduled_for,
-          now: new Date(),
-          position: currentPosition,
-          installation: visitToStart.installations
-            ? {
-                latitude:
-                  visitToStart.installations.location_latitude === null ||
-                  visitToStart.installations.location_latitude === undefined
-                    ? null
-                    : Number(visitToStart.installations.location_latitude),
-                longitude:
-                  visitToStart.installations.location_longitude === null ||
-                  visitToStart.installations.location_longitude === undefined
-                    ? null
-                    : Number(visitToStart.installations.location_longitude),
-              }
-            : undefined,
-          policy: timeTrackingPolicy,
-        })
-        setStartPosition(currentPosition)
-        setStartExceptions(exceptions)
-        if (exceptions.length > 0 && timeTrackingPolicy.require_exception_reason) {
-          setStartingVisit(false)
-          return
-        }
-        void recordVisitStart(visitToStart, currentPosition)
-      },
-      () => {
-        recordStartWithStoredInstallationLocation(visitToStart)
-      },
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 20_000 },
-    )
+    void recordVisitStart(visitToStart)
   }
   const pay = async (invoice: Invoice) => {
     const { error } = await createClient()
@@ -888,36 +760,19 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           onOpenChange={(open) => {
             if (!open && !startingVisit) {
               setVisitToStart(null)
-              setStartPosition(null)
-              setUsingStoredInstallationLocation(false)
             }
           }}
-          title={
-            startExceptions.length || requiresExceptionReason
-              ? "Justifica l'inici excepcional"
-              : "Registra l'inici de la visita"
-          }
+          title="Registra l'inici de la visita"
           description={
             visitToStart ? (
               <StartVisitConfirmation
                 visit={visitToStart}
-                warning={getVisitStartWarning(visitToStart.scheduled_for)}
                 error={startError}
-                position={startPosition}
-                usingStoredInstallationLocation={usingStoredInstallationLocation}
-                exceptions={startExceptions}
-                requiresExceptionReason={requiresExceptionReason}
-                exceptionReason={exceptionReason}
-                onExceptionReasonChange={setExceptionReason}
               />
             ) : undefined
           }
           confirmLabel={
-            startingVisit
-              ? "S'està obtenint la ubicació…"
-              : startExceptions.length || requiresExceptionReason
-                ? "Registra l'inici excepcional"
-                : "Confirma i registra l'inici"
+            startingVisit ? "S'està registrant l'inici…" : "Confirma i registra l'inici"
           }
           cancelLabel="Cancel·la"
           pending={startingVisit}
@@ -929,27 +784,12 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
 }
 function StartVisitConfirmation({
   visit,
-  warning,
   error,
-  position,
-  usingStoredInstallationLocation,
-  exceptions,
-  requiresExceptionReason,
-  exceptionReason,
-  onExceptionReasonChange,
 }: {
   visit: Visit
-  warning: ReturnType<typeof getVisitStartWarning>
   error: string | null
-  position: TrackingCoordinates | null
-  usingStoredInstallationLocation: boolean
-  exceptions: StartException[]
-  requiresExceptionReason: boolean
-  exceptionReason: string
-  onExceptionReasonChange: (value: string) => void
 }) {
   const scheduledFor = new Date(visit.scheduled_for)
-  const mustExplain = exceptions.length > 0 || requiresExceptionReason
   return (
     <div className="start-confirmation">
       <p>
@@ -963,41 +803,9 @@ function StartVisitConfirmation({
           <p>{visit.planning_notes}</p>
         </aside>
       )}
-      {warning && (
-        <p className="start-confirmation-warning">
-          {warning === 'different_day'
-            ? 'Aquesta visita està programada per a un altre dia. Confirma que correspon iniciar-la ara.'
-            : "L'hora real difereix més de 90 minuts de la prevista. Confirma que correspon iniciar-la ara."}
-        </p>
-      )}
       <p className="start-confirmation-location">
-        {usingStoredInstallationLocation
-          ? "No s'ha pogut obtenir la ubicació del dispositiu. S'han fet servir les coordenades desades de la instal·lació."
-          : position
-          ? `Ubicació obtinguda amb una precisió aproximada de ±${Math.round(position.accuracy)} m.`
-          : "En confirmar, el navegador demanarà permís per registrar la teva ubicació precisa i l'hora oficial d'inici."}
+        En confirmar, es registrarà l'hora oficial d'inici de la visita.
       </p>
-      {mustExplain && (
-        <div className="start-exception">
-          <strong>Aquest inici necessita justificació</strong>
-          {exceptions.length > 0 && (
-            <ul>
-              {exceptions.map((exception) => (
-                <li key={exception}>{startExceptionLabel[exception]}</li>
-              ))}
-            </ul>
-          )}
-          <label>
-            Motiu de l'excepció
-            <textarea
-              rows={2}
-              value={exceptionReason}
-              onChange={(event) => onExceptionReasonChange(event.target.value)}
-              placeholder="P. ex. avaria urgent, accés restringit o imprecisió GPS"
-            />
-          </label>
-        </div>
-      )}
       {error && <p className="start-confirmation-error">{error}</p>}
     </div>
   )
