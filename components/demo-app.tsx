@@ -263,14 +263,8 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     const inventoryMigrationPending = p.error?.message.includes(
       'column products.minimum_stock does not exist',
     )
-    const error =
-      visitResponse.error ||
-      i.error ||
-      clientResponse.error ||
-      techniciansResult.error ||
-      (inventoryMigrationPending ? null : p.error)
-    if (error) {
-      setMessage(error.message)
+    if (visitResponse.error) {
+      setMessage(visitResponse.error.message)
       return
     }
     setVisits((visitResponse.data ?? []) as unknown as Visit[])
@@ -284,6 +278,12 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
         ? { ...defaultTimeTrackingPolicy, ...(settings.data as Partial<TimeTrackingPolicy>) }
         : defaultTimeTrackingPolicy,
     )
+    const secondaryError =
+      i.error ||
+      clientResponse.error ||
+      techniciansResult.error ||
+      (inventoryMigrationPending ? null : p.error)
+    if (secondaryError) setMessage(secondaryError.message)
   }, [])
   useEffect(() => {
     const s = createClient()
@@ -1051,10 +1051,17 @@ function Overview({
       <section className="card" style={{ marginTop: 18 }}>
         <div className="card-head">
           <h3>Próximas visitas</h3>
+          <Link className="card-link" href="/agenda">
+            Ver agenda <ArrowRight size={15} aria-hidden="true" />
+          </Link>
         </div>
-        {visits.map((v) => (
-          <VisitRow key={v.id} visit={v} isAdmin={isAdmin} start={start} />
-        ))}
+        {visits.length ? (
+          visits
+            .slice(0, 4)
+            .map((v) => <VisitRow key={v.id} visit={v} isAdmin={isAdmin} start={start} />)
+        ) : (
+          <p className="overview-visits-empty">No hay visitas asignadas o programadas.</p>
+        )}
       </section>
     </>
   )
