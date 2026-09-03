@@ -185,6 +185,84 @@ button {
   margin: 0 auto;
   padding: 34px 38px 56px;
 }
+.pwa-install-prompt {
+  position: fixed;
+  z-index: 100;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  width: min(440px, calc(100vw - 32px));
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px;
+  border: 1px solid #cddfe9;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 18px 45px rgb(7 57 100 / 18%);
+}
+.pwa-install-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 10px;
+  background: #d8f3fd;
+  color: var(--primary);
+}
+.pwa-install-content {
+  min-width: 0;
+  flex: 1;
+}
+.pwa-install-content strong {
+  display: block;
+  font-size: 14px;
+}
+.pwa-install-content p {
+  margin: 4px 0 0;
+  color: #5d7485;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.pwa-install-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.pwa-install-action,
+.pwa-install-dismiss {
+  min-height: 36px;
+  border: 0;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.pwa-install-action {
+  padding: 0 11px;
+  background: var(--primary);
+  color: #fff;
+}
+.pwa-install-action:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+.pwa-install-dismiss {
+  display: grid;
+  width: 36px;
+  padding: 0;
+  place-items: center;
+  background: transparent;
+  color: #5d7485;
+}
+.pwa-install-action:focus-visible,
+.pwa-install-dismiss:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.pwa-install-dismiss:hover {
+  background: #edf5f9;
+  color: var(--primary);
+}
 .intro {
   display: flex;
   justify-content: space-between;
@@ -5312,29 +5390,28 @@ button {
   width: 190px;
 }
 .nav {
-  gap: 7px;
+  gap: 2px;
 }
 .nav a {
+  position: relative;
   gap: 13px;
-  padding: 12px 13px;
-  border: 1px solid transparent;
-  border-radius: 12px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 0;
   color: #c9e2f0;
   font-weight: 650;
   transition:
     background 0.18s,
-    color 0.18s,
-    transform 0.18s;
+    color 0.18s;
 }
 .nav a:hover {
-  background: #ffffff14;
-  transform: translateX(2px);
+  background: #ffffff0a;
+  color: #fff;
 }
 .nav a[aria-current='page'] {
-  border-color: #7fdff633;
-  background: linear-gradient(100deg, #19b9e52b, #ffffff12);
+  background: linear-gradient(90deg, #19b9e522, transparent);
   color: #fff;
-  box-shadow: inset 3px 0 var(--accent);
+  box-shadow: inset 2px 0 var(--accent);
 }
 .profile {
   margin: 24px 5px 0;
@@ -6598,4 +6675,152 @@ textarea:focus-visible {
 }
 .profile-sign-out:hover {
   background: #fff1f1;
+}
+
+/* Compact surface system: white content planes, colour reserved for meaning. */
+.stats {
+  gap: 12px;
+}
+.stat {
+  padding: 16px;
+  border-color: #dce9ef;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: none;
+}
+.stat:after {
+  display: none;
+}
+.stat-value {
+  margin: 5px 0 3px;
+  font-size: 25px;
+}
+.card,
+.agenda-list,
+.calendar-shell,
+.client-card,
+.client-list,
+.billing-list-panel {
+  border-color: #dce9ef;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: none;
+}
+.card {
+  padding: 18px;
+}
+.card-head {
+  margin-bottom: 12px;
+}
+.visit {
+  gap: 12px;
+  padding: 12px 2px;
+}
+.client-card {
+  gap: 13px;
+  padding: 17px;
+}
+.client-search {
+  min-height: 40px;
+}
+.calendar-toolbar,
+.billing-list-header {
+  padding: 16px 18px;
+  background: #fff;
+}
+
+/* Billing summary: dense indicators instead of three oversized tinted cards. */
+.billing-summary {
+  gap: 10px;
+  margin: -2px 0 16px;
+}
+.billing-summary-card {
+  align-items: center;
+  gap: 10px;
+  min-height: 84px;
+  padding: 13px 14px;
+  border-color: #d5e6ee;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: none;
+}
+.billing-summary-card > div {
+  gap: 1px;
+}
+.billing-summary-card strong {
+  font-size: 22px;
+}
+.billing-summary-card.pending {
+  border-color: #eedba4;
+  background: #fff;
+}
+.billing-summary-card.paid {
+  border-color: #cce7d5;
+  background: #fff;
+}
+.invoice {
+  padding: 15px 18px;
+}
+
+@media (max-width: 700px) {
+  .billing-summary-card {
+    min-height: 72px;
+  }
+}
+
+/* Native-style navigation keeps primary destinations within thumb reach on mobile. */
+@media (max-width: 880px) {
+  .app-shell {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 30;
+    width: 100%;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    border-top: 1px solid #76b3d040;
+    box-shadow: 0 -8px 24px #03254126;
+  }
+
+  .sidebar .brand,
+  .sidebar .profile {
+    display: none;
+  }
+
+  .nav {
+    width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .nav a {
+    min-height: 58px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 4px;
+    border-radius: 0;
+    font-size: 10px;
+    line-height: 1.1;
+    text-align: center;
+  }
+
+  .nav a span {
+    display: block;
+  }
+
+  .nav a:hover {
+    transform: none;
+  }
+
+  .nav a[aria-current='page'] {
+    background: linear-gradient(180deg, transparent, #19b9e51c);
+    box-shadow: inset 0 -2px var(--accent);
+  }
+
+  .content {
+    padding-bottom: calc(108px + env(safe-area-inset-bottom));
+  }
 }

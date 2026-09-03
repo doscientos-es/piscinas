@@ -532,6 +532,9 @@ type CalendarView = 'day' | 'week' | 'month'
 function Agenda({ visits, start }: { visits: Visit[]; start: (v: Visit) => void }) {
   const [calendarView, setCalendarView] = useState<CalendarView>('week')
   const [activeDate, setActiveDate] = useState(() => startOfDay(new Date()))
+  useEffect(() => {
+    if (window.matchMedia('(max-width: 560px)').matches) setCalendarView('day')
+  }, [])
   const weekStart = startOfWeek(activeDate)
   const days =
     calendarView === 'month'
@@ -773,7 +776,7 @@ function CalendarEvent({
       ? 'Iniciar'
       : visit.status === 'in_progress'
         ? 'Continuar'
-        : 'Completada'
+        : 'Ver parte'
   const content = (
     <>
       <time>
@@ -796,7 +799,7 @@ function CalendarEvent({
         <em>{statusLabel}</em>
       </button>
     )
-  if (visit.status === 'in_progress')
+  if (visit.status === 'in_progress' || visit.status === 'completed')
     return (
       <Link className={className} style={timed ? { top } : undefined} href={`/agenda/${visit.id}`}>
         {content}

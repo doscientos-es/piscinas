@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@doscientos/pwa':
+        specifier: ^0.1.4
+        version: 0.1.4(react@19.2.8)
       '@doscientos/ui':
         specifier: 0.1.30
         version: 0.1.30(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -60,6 +63,15 @@ packages:
   '@alloc/quick-lru@5.3.0':
     resolution: {integrity: sha512-U4+70Pc5ZS9osnCBCE5Jha/ciHM+Yp+CNMNC/7HvYbNRk1Ldd+f7qO65W5qfhu/TCv+/ozljlXXe9Nj8419DMA==}
     engines: {node: '>=10'}
+
+  '@doscientos/pwa@0.1.4':
+    resolution: {integrity: sha512-tfMvlA8rO6/5GinOvf9GrxW3KRGOcFxgs3gnHKRt8JuAXM8zn85ChwmNN/K1L6Z+kP0o6aSkjJMUPcbCP/yjjw==}
+    engines: {node: '>=22.18.0'}
+    peerDependencies:
+      react: '>=18.0.0 <20'
+    peerDependenciesMeta:
+      react:
+        optional: true
 
   '@doscientos/ui@0.1.30':
     resolution: {integrity: sha512-xHf/6lUrJfCFqgDIG0hqorsNzRsxgaoso9UzRrlrhfwyRSscPOZY8RihbLd6HcNXVr3xuFADGEyQIUYQsCX62Q==}
@@ -1633,6 +1645,10 @@ packages:
 snapshots:
 
   '@alloc/quick-lru@5.3.0': {}
+
+  '@doscientos/pwa@0.1.4(react@19.2.8)':
+    optionalDependencies:
+      react: 19.2.8
 
   '@doscientos/ui@0.1.30(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
