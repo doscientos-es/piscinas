@@ -1,9 +1,11 @@
 'use client'
 
 import { AlertTriangle, History, PackagePlus, Pencil, Trash2, X } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { createClient } from '@/lib/supabase/client'
+import { usePersistentSearchParams } from '@/lib/use-persistent-search-params'
 
 export type Product = {
   id: string
@@ -57,7 +59,9 @@ export function Inventory({
   onRefresh: () => Promise<void>
   creationVersion: number
 }) {
-  const [query, setQuery] = useState('')
+  const searchParams = useSearchParams()
+  const updateSearchParams = usePersistentSearchParams()
+  const query = searchParams.get('q') ?? ''
   const [editing, setEditing] = useState<Product | 'new' | null>(null)
   const [movementProduct, setMovementProduct] = useState<Product | null>(null)
   const [historyProduct, setHistoryProduct] = useState<Product | null>(null)
@@ -163,7 +167,7 @@ export function Inventory({
           <span className="sr-only">Buscar materiales</span>
           <input
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => updateSearchParams({ q: event.target.value })}
             placeholder="Buscar por material o referencia"
           />
         </label>

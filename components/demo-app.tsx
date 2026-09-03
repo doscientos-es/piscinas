@@ -55,6 +55,7 @@ import {
   getPreviousBillingPeriod,
   toBillingPeriodValue,
 } from '@/lib/monthly-billing'
+import type { SearchParamUpdates } from '@/lib/search-params'
 import { createClient } from '@/lib/supabase/client'
 import {
   defaultTimeTrackingPolicy,
