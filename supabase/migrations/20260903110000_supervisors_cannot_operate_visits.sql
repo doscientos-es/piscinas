@@ -149,3 +149,13 @@ begin
   update public.visits set status = 'completed' where id = p_visit_id;
 end;
 $$;
+
+-- Administrators retain visibility over every visit and report, but only the
+-- assigned technician can change the operational records.
+drop policy "admins manage visits" on public.visits;
+create policy "admins read visits" on public.visits
+  for select to authenticated using ((select public.is_admin()));
+
+drop policy "admins manage interventions" on public.interventions;
+create policy "admins read interventions" on public.interventions
+  for select to authenticated using ((select public.is_admin()));

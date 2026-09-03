@@ -103,6 +103,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   const [clients, setClients] = useState<Client[]>([])
   const [message, setMessage] = useState<string | null>(null)
   const [visitToStart, setVisitToStart] = useState<Visit | null>(null)
+  const [editingClient, setEditingClient] = useState<Client | null | 'new'>(null)
   const [startingVisit, setStartingVisit] = useState(false)
   const [startError, setStartError] = useState<string | null>(null)
   const load = useCallback(async () => {
@@ -390,8 +391,20 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <span className="eyebrow">Concepte Blau · Operativa diaria</span>
             <h1>{titles[view]}</h1>
+          </div>
+          <div className="top-actions">
+            {view === 'inicio' && (
+              <Link className="button accent" href="/agenda">
+                Ver agenda
+              </Link>
+            )}
+            {view === 'clientes' && isAdmin && (
+              <button className="button" type="button" onClick={() => setEditingClient('new')}>
+                <Plus size={17} aria-hidden="true" />
+                Nuevo cliente
+              </button>
+            )}
           </div>
         </header>
         <div className="content">
@@ -417,6 +430,8 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
               clients={clients}
               isAdmin={isAdmin}
               clientSchemaReady={clientSchemaReady}
+              editingClient={editingClient}
+              setEditingClient={setEditingClient}
               onSaveClient={saveClient}
               onDeleteClient={deleteClient}
               onSaveInstallation={saveInstallation}
@@ -597,9 +612,6 @@ function Overview({
             pendientes.
           </p>
         </div>
-        <Link className="button accent" href="/agenda">
-          Ver agenda
-        </Link>
       </section>
       <section className="stats">
         <Stat
@@ -1185,6 +1197,8 @@ function Clients({
   clients,
   isAdmin,
   clientSchemaReady,
+  editingClient,
+  setEditingClient,
   onSaveClient,
   onDeleteClient,
   onSaveInstallation,
@@ -1193,6 +1207,8 @@ function Clients({
   clients: Client[]
   isAdmin: boolean
   clientSchemaReady: boolean
+  editingClient: Client | null | 'new'
+  setEditingClient: (client: Client | null | 'new') => void
   onSaveClient: (client: ClientInput, id?: string) => Promise<void>
   onDeleteClient: (client: Client) => Promise<void>
   onSaveInstallation: (
@@ -1209,7 +1225,6 @@ function Clients({
   const [remoteClients, setRemoteClients] = useState<Client[]>(clients)
   const [total, setTotal] = useState(clients.length)
   const pageSize = 10
-  const [editingClient, setEditingClient] = useState<Client | null | 'new'>(null)
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [editingInstallation, setEditingInstallation] = useState<Installation | 'new' | null>(null)
   useEffect(() => {
@@ -1255,12 +1270,6 @@ function Clients({
         <div>
           <p>Ficha completa, contactos, condiciones de cobro e instalaciones por cliente.</p>
         </div>
-        {isAdmin && (
-          <button className="button" type="button" onClick={() => setEditingClient('new')}>
-            <Plus size={17} aria-hidden="true" />
-            Nuevo cliente
-          </button>
-        )}
       </section>
       {!isAdmin && (
         <p className="access-note" role="status">
