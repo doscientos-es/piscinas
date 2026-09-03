@@ -753,7 +753,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             />
           )}
           {activeView === 'parte' && visitId && (
-            <VisitReport visitId={visitId} readOnly={isAdmin} />
+            <VisitReport visitId={visitId} readOnly={isAdmin} isAdmin={isAdmin} />
           )}
           {activeView === 'facturacion' && (
             <Billing

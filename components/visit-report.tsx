@@ -1,12 +1,12 @@
 'use client'
 
-import { ArrowLeft, CheckCircle2, Clock3, PackagePlus, Trash2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Clock3, MapPin, PackagePlus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 
 import { createClient } from '@/lib/supabase/client'
-import { buildVisitNotes, standardVisitChecks } from '@/lib/visit-checklist'
+import { buildVisitNotes, parseVisitNotes, standardVisitChecks } from '@/lib/visit-checklist'
 import { getInitialVisitReportState } from '@/lib/visit-report-state'
 import { validateVisitCompletion, type ProductUsageInput } from '@/lib/visit-validation'
 
@@ -41,6 +41,10 @@ type VisitDetail = {
     started_at: string | null
     completed_at: string | null
     notes: string | null
+    start_latitude: number | null
+    start_longitude: number | null
+    start_location_accuracy_m: number | null
+    start_location_recorded_at: string | null
     intervention_products: ExistingConsumption[]
   } | null
 }
@@ -51,9 +55,11 @@ const quantityFormat = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 3
 export function VisitReport({
   visitId,
   readOnly = false,
+  isAdmin = false,
 }: {
   visitId: string
   readOnly?: boolean
+  isAdmin?: boolean
 }) {
   const router = useRouter()
   const [visit, setVisit] = useState<VisitDetail | null>(null)
@@ -69,11 +75,14 @@ export function VisitReport({
   const load = useCallback(async () => {
     setLoading(true)
     const supabase = createClient()
+    const interventionFields = isAdmin
+      ? 'id,started_at,completed_at,notes,start_latitude,start_longitude,start_location_accuracy_m,start_location_recorded_at,intervention_products(id,product_id,quantity,unit_price,products(name,unit))'
+      : 'id,started_at,completed_at,notes,intervention_products(id,product_id,quantity,unit_price,products(name,unit))'
     const [visitResult, productsResult] = await Promise.all([
       supabase
         .from('visits')
         .select(
-          'id,status,scheduled_for,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,instructions,clients(legal_name)),interventions(id,started_at,completed_at,notes,intervention_products(id,product_id,quantity,unit_price,products(name,unit)))',
+          `id,status,scheduled_for,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,instructions,clients(legal_name)),interventions(${interventionFields})`,
         )
         .eq('id', visitId)
         .maybeSingle(),
@@ -98,7 +107,7 @@ export function VisitReport({
       setUsages(initialReportState.usages)
     }
     setLoading(false)
-  }, [visitId])
+  }, [isAdmin, visitId])
 
   useEffect(() => {
     void load()
@@ -213,7 +222,14 @@ export function VisitReport({
           notes={intervention.notes}
           usages={intervention.intervention_products}
           technicianName={visit.technician?.full_name ?? null}
+          startedAt={intervention.started_at}
           completedAt={intervention.completed_at}
+          isAdmin={isAdmin}
+          startLatitude={intervention.start_latitude}
+          startLongitude={intervention.start_longitude}
+          startAccuracy={intervention.start_location_accuracy_m}
+          startLocationRecordedAt={intervention.start_location_recorded_at}
+          installationName={installation?.name ?? 'Instalación'}
         />
       ) : readOnly ? (
         <section className="closed-report">
@@ -363,42 +379,146 @@ function ClosedReport({
   notes,
   usages,
   technicianName,
+  startedAt,
   completedAt,
+  isAdmin,
+  startLatitude,
+  startLongitude,
+  startAccuracy,
+  startLocationRecordedAt,
+  installationName,
 }: {
   notes: string | null
   usages: ExistingConsumption[]
   technicianName: string | null
+  startedAt: string | null
   completedAt: string | null
+  isAdmin: boolean
+  startLatitude: number | null
+  startLongitude: number | null
+  startAccuracy: number | null
+  startLocationRecordedAt: string | null
+  installationName: string
 }) {
+  const { completedCheckIds, details } = parseVisitNotes(notes)
+  const completedChecks = standardVisitChecks.filter((check) =>
+    completedCheckIds.includes(check.id),
+  )
+  const latitude = Number(startLatitude)
+  const longitude = Number(startLongitude)
+  const hasStartLocation =
+    startLatitude !== null &&
+    startLongitude !== null &&
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude >= -180 &&
+    longitude <= 180
+  const mapUrl = hasStartLocation
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${longitude - 0.004}%2C${latitude - 0.004}%2C${longitude + 0.004}%2C${latitude + 0.004}&layer=mapnik&marker=${latitude}%2C${longitude}`
+    : null
+  const mapLink = hasStartLocation
+    ? `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`
+    : null
+
   return (
-    <section className="closed-report">
-      <CheckCircle2 size={22} />
-      <div>
-        <h3>Parte cerrado</h3>
-        <p>
-          Cerrado por <strong>{technicianName ?? 'Técnico no disponible'}</strong>
-          {completedAt && (
-            <>
-              {' '}
-              el <strong>{formatDateTime(new Date(completedAt))}</strong>
-            </>
-          )}
-        </p>
-        <p>{notes}</p>
+    <section className="closed-report is-complete">
+      <header className="closed-report-heading">
+        <CheckCircle2 size={24} aria-hidden="true" />
+        <div>
+          <span className="eyebrow">Visita finalizada</span>
+          <h3>Parte cerrado</h3>
+          <p>
+            Cerrado por <strong>{technicianName ?? 'Técnico no disponible'}</strong>
+          </p>
+        </div>
+      </header>
+
+      <dl className="closed-report-summary">
+        <div>
+          <dt>Inicio</dt>
+          <dd>{startedAt ? formatDateTime(new Date(startedAt)) : 'No registrado'}</dd>
+        </div>
+        <div>
+          <dt>Fin</dt>
+          <dd>{completedAt ? formatDateTime(new Date(completedAt)) : 'No registrado'}</dd>
+        </div>
+        <div>
+          <dt>Duración</dt>
+          <dd>{formatDuration(startedAt, completedAt) ?? 'No disponible'}</dd>
+        </div>
+      </dl>
+
+      <section className="closed-report-section">
+        <h4>Tareas realizadas</h4>
+        {completedChecks.length ? (
+          <ul className="closed-report-checks">
+            {completedChecks.map((check) => (
+              <li key={check.id}>
+                <CheckCircle2 size={16} aria-hidden="true" /> {check.label}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No se han marcado tareas en este parte.</p>
+        )}
+      </section>
+
+      {details && (
+        <section className="closed-report-section">
+          <h4>Notas e incidencias</h4>
+          <p>{details}</p>
+        </section>
+      )}
+
+      <section className="closed-report-section">
+        <h4>Productos usados</h4>
         {usages.length ? (
-          <ul>
+          <ul className="closed-report-products">
             {usages.map((usage) => (
               <li key={usage.id}>
-                {quantityFormat.format(Number(usage.quantity))} {usage.products?.unit} de{' '}
-                {usage.products?.name} ·{' '}
-                {money.format(Number(usage.quantity) * Number(usage.unit_price))}
+                <span>
+                  {quantityFormat.format(Number(usage.quantity))} {usage.products?.unit} de{' '}
+                  {usage.products?.name}
+                </span>
+                <strong>{money.format(Number(usage.quantity) * Number(usage.unit_price))}</strong>
               </li>
             ))}
           </ul>
         ) : (
           <p>Sin productos adicionales facturables.</p>
         )}
-      </div>
+      </section>
+
+      {isAdmin && hasStartLocation && mapUrl && mapLink && (
+        <section className="closed-report-section closed-report-location">
+          <div className="closed-report-location-heading">
+            <div>
+              <h4>
+                <MapPin size={17} aria-hidden="true" /> Inicio registrado
+              </h4>
+              <p>
+                {startLocationRecordedAt
+                  ? `Registrado el ${formatDateTime(new Date(startLocationRecordedAt))}`
+                  : 'Ubicación comunicada por el dispositivo'}
+                {startAccuracy !== null &&
+                  ` · Precisión aproximada de ${Math.round(Number(startAccuracy))} m`}
+              </p>
+            </div>
+            <span>Solo administración</span>
+          </div>
+          <iframe
+            title={`Punto de inicio de ${installationName}`}
+            src={mapUrl}
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
+          <a href={mapLink} target="_blank" rel="noreferrer">
+            Abrir mapa completo
+          </a>
+        </section>
+      )}
     </section>
   )
 }
@@ -408,4 +528,17 @@ function formatDateTime(value: Date) {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(value)
+}
+
+function formatDuration(startedAt: string | null, completedAt: string | null) {
+  if (!startedAt || !completedAt) return null
+  const durationInMinutes = Math.round(
+    (new Date(completedAt).getTime() - new Date(startedAt).getTime()) / 60000,
+  )
+  if (!Number.isFinite(durationInMinutes) || durationInMinutes < 0) return null
+  if (durationInMinutes < 60) return `${durationInMinutes} min`
+
+  const hours = Math.floor(durationInMinutes / 60)
+  const minutes = durationInMinutes % 60
+  return minutes ? `${hours} h ${minutes} min` : `${hours} h`
 }
