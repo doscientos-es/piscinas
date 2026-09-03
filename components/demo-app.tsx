@@ -531,14 +531,18 @@ function Clients({
   onDeleteInstallation: (installation: Installation) => Promise<void>
 }) {
   const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | ClientType>('all')
+  const [page, setPage] = useState(0)
+  const [remoteClients, setRemoteClients] = useState<Client[]>(clients)
+  const [total, setTotal] = useState(clients.length)
+  const pageSize = 10
   const [editingClient, setEditingClient] = useState<Client | null | 'new'>(null)
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [editingInstallation, setEditingInstallation] = useState<Installation | 'new' | null>(null)
-  const visibleClients = clients.filter((client) =>
-    `${client.legal_name} ${client.trade_name ?? ''} ${client.contact_name ?? ''} ${client.billing_email ?? ''}`
-      .toLocaleLowerCase('es')
-      .includes(search.toLocaleLowerCase('es')),
-  )
+  useEffect(() => { const timer = window.setTimeout(async () => { const from = page * pageSize; let query = createClient().from('clients').select('id,legal_name,trade_name,tax_id,billing_email,phone,billing_address,payment_method,notes,contact_name,contact_role,contact_email,contact_phone,client_type,billing_frequency,payment_terms_days,active,installations(id,name,address,pool_type,instructions,notes)', { count: 'exact' }).order('legal_name').range(from, from + pageSize - 1); if (search.trim()) query = query.ilike('legal_name', `%${search.trim()}%`); if (statusFilter !== 'all') query = query.eq('active', statusFilter === 'active'); if (typeFilter !== 'all') query = query.eq('client_type', typeFilter); const result = await query; if (!result.error) { setRemoteClients((result.data ?? []).map((client) => normalizeClient(client))); setTotal(result.count ?? 0); } else if (!clientSchemaReady) { let fallback = createClient().from('clients').select('id,legal_name,tax_id,billing_email,phone,billing_address,payment_method,notes,installations(id,name,address,pool_type,instructions,notes)', { count: 'exact' }).order('legal_name').range(from, from + pageSize - 1); if (search.trim()) fallback = fallback.ilike('legal_name', `%${search.trim()}%`); const old = await fallback; setRemoteClients((old.data ?? []).map((client) => normalizeClient(client))); setTotal(old.count ?? 0); } }, 250); return () => window.clearTimeout(timer) }, [search, statusFilter, typeFilter, page, clients, clientSchemaReady])
+  const visibleClients = remoteClients
+  const pageCount = Math.max(1, Math.ceil(total / pageSize))
   return (
     <>
       <section className="intro client-intro">
@@ -570,17 +574,17 @@ function Clients({
           <span className="sr-only">Buscar clientes</span>
           <input
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar por nombre, contacto o email"
+            onChange={(event) => { setSearch(event.target.value); setPage(0) }}
+            placeholder="Buscar por nombre"
           />
         </label>
-        <span>
-          {visibleClients.length} de {clients.length} clientes
-        </span>
+        <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value as typeof statusFilter); setPage(0) }}><option value="all">Todos los estados</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select>
+        <select value={typeFilter} onChange={(event) => { setTypeFilter(event.target.value as typeof typeFilter); setPage(0) }}><option value="all">Todos los tipos</option><option value="residential">Particular</option><option value="community">Comunidad</option><option value="hotel">Hotel</option><option value="business">Empresa</option></select>
+        <span>{total} clientes</span>
       </div>
-      <div className="clients-grid">
+      <div className="client-list" role="list">
         {visibleClients.map((client) => (
-          <article className={`client-card ${client.active ? '' : 'is-inactive'}`} key={client.id}>
+          <article className={`client-row client-card ${client.active ? '' : 'is-inactive'}`} key={client.id} role="listitem">
             <div className="client-card-head">
               <div>
                 <div className="client-name-row">
@@ -657,6 +661,7 @@ function Clients({
           <p>No hay clientes que coincidan con la búsqueda.</p>
         </div>
       )}
+      <nav className="pagination" aria-label="Paginación de clientes"><button className="button secondary" type="button" disabled={page === 0} onClick={() => setPage((value) => value - 1)}>Anterior</button><span>Página {page + 1} de {pageCount}</span><button className="button secondary" type="button" disabled={page + 1 >= pageCount} onClick={() => setPage((value) => value + 1)}>Siguiente</button></nav>
       {editingClient && (
         <ClientForm
           client={editingClient === 'new' ? undefined : editingClient}
