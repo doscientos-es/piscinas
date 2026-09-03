@@ -315,7 +315,7 @@ function ProductForm({
           setError(null)
           onSave(form)
             .catch((reason: unknown) =>
-              setError(reason instanceof Error ? reason.message : 'No s'ha pogut desar.'),
+              setError(reason instanceof Error ? reason.message : "No s'ha pogut desar."),
             )
             .finally(() => setSaving(false))
         }}
@@ -416,7 +416,7 @@ function ProductForm({
             Cancel·la
           </button>
           <button className="button" disabled={saving}>
-            {saving ? 'S'està desant…' : 'Desa el material'}
+            {saving ? "S'està desant…" : 'Desa el material'}
           </button>
         </div>
       </form>
@@ -449,7 +449,7 @@ function MovementForm({
           onSave(numeric(quantity), type, note)
             .catch((reason: unknown) =>
               setError(
-                reason instanceof Error ? reason.message : 'No s'ha pogut registrar el moviment.',
+                reason instanceof Error ? reason.message : "No s'ha pogut registrar el moviment.",
               ),
             )
             .finally(() => setSaving(false))
@@ -499,7 +499,7 @@ function MovementForm({
             Cancel·la
           </button>
           <button className="button" disabled={saving}>
-            {saving ? 'S'està registrant…' : 'Registra el moviment'}
+            {saving ? "S'està registrant…" : 'Registra el moviment'}
           </button>
         </div>
       </form>

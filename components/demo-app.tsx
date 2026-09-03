@@ -376,7 +376,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
         timeTrackingPolicy.require_exception_reason &&
         !exceptionReason.trim()
       ) {
-        setStartError("Indica breument el motiu per registrar aquest inici excepcional.")
+        setStartError('Indica breument el motiu per registrar aquest inici excepcional.')
         return
       }
       setStartingVisit(true)
@@ -384,7 +384,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       return
     }
     if (!navigator.geolocation) {
-      setStartError("Aquest dispositiu no permet obtenir la ubicació necessària per iniciar.")
+      setStartError('Aquest dispositiu no permet obtenir la ubicació necessària per iniciar.')
       return
     }
     setStartingVisit(true)
@@ -481,7 +481,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           .maybeSingle()
     if (result.error) throw new Error(result.error.message)
     if (!result.data)
-      throw new Error("La feina ja no està pendent o no tens permís per modificar-la.")
+      throw new Error('La feina ja no està pendent o no tens permís per modificar-la.')
 
     setMessage(id ? 'Feina actualitzada.' : 'Feina programada.')
     await load()
@@ -495,8 +495,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       .select('id')
       .maybeSingle()
     if (error) throw new Error(error.message)
-    if (!data)
-      throw new Error("La feina ja no està pendent o no tens permís per eliminar-la.")
+    if (!data) throw new Error('La feina ja no està pendent o no tens permís per eliminar-la.')
 
     setMessage('Feina eliminada.')
     await load()
@@ -813,8 +812,8 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           }}
           title={
             startExceptions.length || requiresExceptionReason
-              ? 'Justifica l'inici excepcional'
-              : 'Registra l'inici de la visita'
+              ? "Justifica l'inici excepcional"
+              : "Registra l'inici de la visita"
           }
           description={
             visitToStart ? (
@@ -869,9 +868,8 @@ function StartVisitConfirmation({
   return (
     <div className="start-confirmation">
       <p>
-        Confirmes que ets a{' '}
-        <strong>{visit.installations?.address ?? "l'adreça assignada"}</strong> per a{' '}
-        {visit.installations?.clients?.legal_name ?? 'aquest client'}?
+        Confirmes que ets a <strong>{visit.installations?.address ?? "l'adreça assignada"}</strong>{' '}
+        per a {visit.installations?.clients?.legal_name ?? 'aquest client'}?
       </p>
       <p className="start-confirmation-schedule">Visita prevista: {formatDateTime(scheduledFor)}</p>
       {visit.planning_notes && (
@@ -922,7 +920,7 @@ function geolocationErrorMessage(error: GeolocationPositionError) {
     return "Necessitem el permís d'ubicació per registrar l'inici de la visita."
   }
   if (error.code === error.TIMEOUT) {
-    return "La ubicació ha trigat massa. Comprova la cobertura i torna-ho a provar."
+    return 'La ubicació ha trigat massa. Comprova la cobertura i torna-ho a provar.'
   }
   return "No s'ha pogut obtenir una ubicació precisa. Activa la ubicació i torna-ho a provar."
 }
@@ -1293,7 +1291,9 @@ function WeekCalendar({
             {visitsForDay(visits, day).map((visit) => (
               <CalendarEvent key={visit.id} visit={visit} isAdmin={isAdmin} start={start} compact />
             ))}
-            {visitsForDay(visits, day).length === 0 && <span className="calendar-free">Lliure</span>}
+            {visitsForDay(visits, day).length === 0 && (
+              <span className="calendar-free">Lliure</span>
+            )}
           </div>
         ))}
       </div>
@@ -1839,7 +1839,7 @@ function Clients({
                   <button
                     className="icon-action"
                     type="button"
-                aria-label={`Edita ${client.legal_name}`}
+                    aria-label={`Edita ${client.legal_name}`}
                     onClick={() => setEditingClient(client)}
                   >
                     <Pencil size={16} />
@@ -1847,7 +1847,7 @@ function Clients({
                   <button
                     className="icon-action destructive"
                     type="button"
-                aria-label={`Elimina ${client.legal_name}`}
+                    aria-label={`Elimina ${client.legal_name}`}
                     onClick={() => void onDeleteClient(client)}
                   >
                     <Trash2 size={16} />
@@ -2390,7 +2390,8 @@ function VisitStartMap({
   return (
     <div className="time-tracking-map">
       <button type="button" onClick={() => setMapOpen((open) => !open)}>
-        <MapPin size={15} aria-hidden="true" /> {mapOpen ? 'Amaga el mapa' : 'Veure el punt al mapa'}
+        <MapPin size={15} aria-hidden="true" />{' '}
+        {mapOpen ? 'Amaga el mapa' : 'Veure el punt al mapa'}
       </button>
       {mapOpen && (
         <>
@@ -2434,7 +2435,7 @@ function InstallationForm({
     setForm((current) => ({ ...current, [key]: value }))
   const setCurrentLocation = () => {
     if (!navigator.geolocation) {
-      setLocationError("Aquest dispositiu no permet obtenir la ubicació.")
+      setLocationError('Aquest dispositiu no permet obtenir la ubicació.')
       return
     }
     setLocationError(null)
@@ -2500,7 +2501,7 @@ function InstallationForm({
             </button>
           </div>
           <div className="form-grid">
-          <Field label="Latitud">
+            <Field label="Latitud">
               <input
                 type="number"
                 step="0.000001"
@@ -2515,7 +2516,7 @@ function InstallationForm({
                 }
               />
             </Field>
-          <Field label="Longitud">
+            <Field label="Longitud">
               <input
                 type="number"
                 step="0.000001"
@@ -2545,7 +2546,11 @@ function InstallationForm({
             Cancel·la
           </button>
           <button className="button" disabled={saving} type="submit">
-            {saving ? "S'està desant…" : installation ? 'Desa els canvis' : 'Afegeix la instal·lació'}
+            {saving
+              ? "S'està desant…"
+              : installation
+                ? 'Desa els canvis'
+                : 'Afegeix la instal·lació'}
           </button>
         </div>
       </form>
@@ -2651,7 +2656,7 @@ function AuthScreen() {
     if (isRegister && !result.data.session) {
       setFeedback({
         kind: 'success',
-          text: 'Compte creat. Revisa el teu correu per confirmar-lo i després inicia sessió.',
+        text: 'Compte creat. Revisa el teu correu per confirmar-lo i després inicia sessió.',
       })
       return
     }
@@ -2715,7 +2720,7 @@ function AuthScreen() {
             <h2>{isRegister ? 'Crea el teu compte' : 'Benvingut de nou'}</h2>
             <p>
               {isRegister
-                ? 'Registra't per començar a gestionar la teva operativa.'
+                ? "Registra't per començar a gestionar la teva operativa."
                 : 'Accedeix per continuar amb la teva operativa diària.'}
             </p>
           </div>
@@ -2799,14 +2804,18 @@ function AuthScreen() {
               </p>
             )}
             <button className="auth-submit" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "S'està comprovant…" : isRegister ? 'Crea el compte' : 'Entra al tauler'}
+              {isSubmitting
+                ? "S'està comprovant…"
+                : isRegister
+                  ? 'Crea el compte'
+                  : 'Entra al tauler'}
               <ArrowRight size={18} aria-hidden="true" />
             </button>
           </form>
           <p className="auth-switch">
             {isRegister ? 'Ja tens un compte?' : 'Encara no tens un compte?'}
             <button type="button" onClick={() => changeMode(isRegister ? 'login' : 'register')}>
-              {isRegister ? 'Inicia sessió' : 'Crea'n un ara'}
+              {isRegister ? 'Inicia sessió' : "Crea'n un ara"}
             </button>
           </p>
         </div>

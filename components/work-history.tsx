@@ -228,9 +228,7 @@ export function WorkHistory({
                     setOperationError(null)
                     void onDeletePendingWork(visit.id).catch((error: unknown) => {
                       setOperationError(
-                        error instanceof Error
-                          ? error.message
-                          : 'No s'ha pogut eliminar la feina.',
+                        error instanceof Error ? error.message : "No s'ha pogut eliminar la feina.",
                       )
                     })
                   }}
@@ -352,9 +350,7 @@ function WorkEditor({
     try {
       await onSave({ installationId, technicianId, scheduledFor, planningNotes })
     } catch (saveError) {
-      setError(
-        saveError instanceof Error ? saveError.message : 'No s'ha pogut desar la feina.',
-      )
+      setError(saveError instanceof Error ? saveError.message : "No s'ha pogut desar la feina.")
     } finally {
       setSaving(false)
     }
@@ -387,7 +383,9 @@ function WorkEditor({
                     <strong>{selectedClient.name}</strong>
                     <small>
                       {selectedClient.installations.length}{' '}
-                      {selectedClient.installations.length === 1 ? 'instal·lació' : 'instal·lacions'}
+                      {selectedClient.installations.length === 1
+                        ? 'instal·lació'
+                        : 'instal·lacions'}
                     </small>
                   </span>
                   <button
@@ -509,7 +507,11 @@ function WorkEditor({
               Cancel·la
             </DialogClose>
             <Button type="submit" disabled={saving || unavailable}>
-              {saving ? 'S'està desant…' : visit === 'new' ? 'Programa la feina' : 'Desa els canvis'}
+              {saving
+                ? "S'està desant…"
+                : visit === 'new'
+                  ? 'Programa la feina'
+                  : 'Desa els canvis'}
             </Button>
           </DialogFooter>
         </form>

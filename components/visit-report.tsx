@@ -185,7 +185,7 @@ export function VisitReport({
 
   if (loading) return <div className="report-loading">S'està carregant l'informe…</div>
   if (!visit || !intervention)
-    return <div className="report-loading">{error ?? 'No s'ha trobat l'informe.'}</div>
+    return <div className="report-loading">{error ?? "No s'ha trobat l'informe."}</div>
 
   const installation = visit.installations
   return (
@@ -388,7 +388,7 @@ export function VisitReport({
             </Link>
             <button className="button accent" type="submit" disabled={saving}>
               {saving ? (
-                'S'està desant…'
+                "S'està desant…"
               ) : (
                 <>
                   <CheckCircle2 size={17} /> Tanca la visita

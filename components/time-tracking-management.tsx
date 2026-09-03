@@ -3,13 +3,13 @@
 import { AlertTriangle, Save, Settings2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
+import { createClient } from '@/lib/supabase/client'
 import {
   defaultTimeTrackingPolicy,
   startExceptionLabel,
   type StartException,
   type TimeTrackingPolicy,
 } from '@/lib/time-tracking-policy'
-import { createClient } from '@/lib/supabase/client'
 
 type Settings = TimeTrackingPolicy & { timezone: string }
 type TimeEvent = {
@@ -74,7 +74,7 @@ export function TimeTrackingManagement() {
       .update(settings)
       .eq('id', true)
     setSaving(false)
-    setMessage(error ? error.message : 'S'ha actualitzat la política de control horari.')
+    setMessage(error ? error.message : "S'ha actualitzat la política de control horari.")
   }
 
   return (
@@ -128,8 +128,13 @@ export function TimeTrackingManagement() {
           />
           Exigeix un motiu si hi ha una excepció
         </label>
-        <button className="button tracking-policy-save" type="button" disabled={saving} onClick={save}>
-          <Save size={16} aria-hidden="true" /> {saving ? 'S'està desant…' : 'Desa la política'}
+        <button
+          className="button tracking-policy-save"
+          type="button"
+          disabled={saving}
+          onClick={save}
+        >
+          <Save size={16} aria-hidden="true" /> {saving ? "S'està desant…" : 'Desa la política'}
         </button>
       </div>
       {message && <p className="tracking-policy-message">{message}</p>}
@@ -151,8 +156,8 @@ export function TimeTrackingManagement() {
             <div>
               <strong>{event.visits?.installations?.clients?.legal_name ?? 'Client'}</strong>
               <span>
-                {event.visits?.installations?.name ?? 'Instal·lació'} · {formatDateTime(event.recorded_at)} ·{' '}
-                {event.technician?.full_name ?? 'Tècnic'}
+                {event.visits?.installations?.name ?? 'Instal·lació'} ·{' '}
+                {formatDateTime(event.recorded_at)} · {event.technician?.full_name ?? 'Tècnic'}
               </span>
             </div>
             <ul>

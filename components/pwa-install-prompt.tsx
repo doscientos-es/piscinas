@@ -19,7 +19,7 @@ export function PwaInstallPrompt() {
         {isIos ? <Share2 size={20} /> : <Download size={20} />}
       </div>
       <div className="pwa-install-content">
-        <strong>{isIos ? 'Afegeix Concepte Blau a l'inici' : 'Instal·la Concepte Blau'}</strong>
+        <strong>{isIos ? "Afegeix Concepte Blau a l'inici" : 'Instal·la Concepte Blau'}</strong>
         <p>
           {isIos
             ? 'A Safari, toca Compartir i selecciona «Afegeix a la pantalla d’inici».'
@@ -28,8 +28,13 @@ export function PwaInstallPrompt() {
       </div>
       <div className="pwa-install-actions">
         {!isIos && (
-          <button type="button" className="pwa-install-action" disabled={pending} onClick={() => void install()}>
-            {pending ? 'S'està obrint…' : 'Instal·la'}
+          <button
+            type="button"
+            className="pwa-install-action"
+            disabled={pending}
+            onClick={() => void install()}
+          >
+            {pending ? "S'està obrint…" : 'Instal·la'}
           </button>
         )}
         <button
