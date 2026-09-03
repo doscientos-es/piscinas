@@ -5,6 +5,7 @@ import { getAppRoute } from './app-route'
 describe('getAppRoute', () => {
   it('resuelve las vistas estáticas del App Router', () => {
     expect(getAppRoute('/agenda')).toEqual({ view: 'agenda' })
+    expect(getAppRoute('/trabajos')).toEqual({ view: 'trabajos' })
     expect(getAppRoute('/inventario')).toEqual({ view: 'inventario' })
     expect(getAppRoute('/estadisticas')).toEqual({ view: 'estadisticas' })
   })

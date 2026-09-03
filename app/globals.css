@@ -7564,9 +7564,10 @@ textarea:focus-visible {
 .billing-summary {
   gap: 0;
   margin: 0 0 24px;
-  border-top: 1px solid #dbe7ed;
-  border-bottom: 1px solid #dbe7ed;
+  border: 1px solid #dbe7ed;
+  border-radius: 8px;
   background: #fff;
+  overflow: hidden;
 }
 .billing-summary-card,
 .billing-summary-card.pending,
@@ -7607,7 +7608,7 @@ textarea:focus-visible {
 }
 .billing-list-panel {
   border-color: #d6e3e9;
-  border-radius: 0;
+  border-radius: 8px;
   box-shadow: none;
 }
 .billing-list-header {
@@ -7741,7 +7742,7 @@ textarea:focus-visible {
 .button,
 .icon-button {
   min-height: 40px;
-  border-radius: 3px;
+  border-radius: 6px;
   box-shadow: none;
   transition:
     background 0.12s ease,
@@ -7769,9 +7770,10 @@ textarea:focus-visible {
 
 .stats {
   gap: 0;
-  border-top: 1px solid #dce7ed;
-  border-bottom: 1px solid #dce7ed;
+  border: 1px solid #dce7ed;
+  border-radius: 8px;
   background: #fff;
+  overflow: hidden;
 }
 .stat {
   min-height: 116px;
@@ -7810,7 +7812,7 @@ textarea:focus-visible {
 .analytics-error,
 .analytics-denied {
   border-color: #d6e3e9;
-  border-radius: 2px;
+  border-radius: 8px;
   box-shadow: none;
 }
 .card {
@@ -7875,7 +7877,7 @@ textarea:focus-visible {
   font-weight: 700;
 }
 .icon-action {
-  border-radius: 2px;
+  border-radius: 6px;
   background: transparent;
   color: #527387;
 }
@@ -7886,7 +7888,7 @@ textarea:focus-visible {
   background: #fff3f3;
 }
 .empty-results {
-  border-radius: 2px;
+  border-radius: 8px;
   background: #fff;
 }
 .pagination .button {
@@ -7897,9 +7899,10 @@ textarea:focus-visible {
 .inventory-summary {
   gap: 0;
   margin: 0 0 16px;
-  border-top: 1px solid #dce7ed;
-  border-bottom: 1px solid #dce7ed;
+  border: 1px solid #dce7ed;
+  border-radius: 8px;
   background: #fff;
+  overflow: hidden;
 }
 .inventory-summary > div {
   min-height: 82px;
@@ -7924,7 +7927,7 @@ textarea:focus-visible {
   color: #755615;
 }
 .inventory-list {
-  border-radius: 2px;
+  border-radius: 8px;
 }
 .inventory-row {
   padding: 15px 18px;
@@ -7937,9 +7940,10 @@ textarea:focus-visible {
 /* Reporting: read values first, decoration last. */
 .analytics-kpis {
   gap: 0;
-  border-top: 1px solid #dce7ed;
-  border-bottom: 1px solid #dce7ed;
+  border: 1px solid #dce7ed;
+  border-radius: 8px;
   background: #fff;
+  overflow: hidden;
 }
 .analytics-kpi {
   min-height: 106px;
@@ -7965,7 +7969,7 @@ textarea:focus-visible {
 }
 .analytics-chart-card {
   padding: 17px;
-  border-radius: 2px;
+  border-radius: 8px;
 }
 .analytics-chart-heading h3 {
   color: #183d56;
@@ -7975,11 +7979,11 @@ textarea:focus-visible {
 .field select,
 .field textarea {
   border-color: #cfdde5;
-  border-radius: 3px;
+  border-radius: 6px;
 }
 .modal,
 .invoice-preview {
-  border-radius: 6px;
+  border-radius: 10px;
 }
 
 @media (max-width: 880px) {

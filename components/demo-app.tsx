@@ -40,8 +40,10 @@ import { Inventory, type Product } from '@/components/inventory'
 import { InvoicePreview } from '@/components/invoice-preview'
 import { VisitReport } from '@/components/visit-report'
 import { getAgendaVisitAction } from '@/lib/agenda-access'
+import { type AccountRole } from '@/lib/app-access'
 import { validateAuthInput, type AuthMode } from '@/lib/auth-validation'
 import { downloadInvoice, formatDate, getInvoiceLines, type Invoice } from '@/lib/invoice-template'
+import { isLocationSchemaPending } from '@/lib/location-schema-compatibility'
 import { createClient } from '@/lib/supabase/client'
 import {
   defaultTimeTrackingPolicy,
@@ -56,6 +58,7 @@ import { getVisitStartWarning } from '@/lib/visit-start-validation'
 type View =
   | 'inicio'
   | 'agenda'
+  | 'trabajos'
   | 'facturacion'
   | 'clientes'
   | 'inventario'
@@ -65,6 +68,7 @@ type Visit = {
   id: string
   scheduled_for: string
   status: string
+  technician_id: string | null
   technician: { full_name: string } | null
   installations: {
     name: string
@@ -73,6 +77,7 @@ type Visit = {
     location_longitude: number | null
     clients: { legal_name: string }
   } | null
+  interventions: { completed_at: string | null; notes: string | null } | null
 }
 type Installation = {
   id: string
@@ -112,6 +117,7 @@ const money = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR
 const titles: Record<View, string> = {
   inicio: 'Resumen operativo',
   agenda: 'Agenda de visitas',
+  trabajos: 'Historial de trabajos',
   facturacion: 'Facturación y cobros',
   clientes: 'Clientes e instalaciones',
   inventario: 'Inventario de materiales',
@@ -123,7 +129,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   const router = useRouter()
   const [ready, setReady] = useState(false)
   const [signedIn, setSignedIn] = useState(false)
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [role, setRole] = useState<AccountRole | null>(null)
   const [accountName, setAccountName] = useState('Tu cuenta')
   const [accountEmail, setAccountEmail] = useState('')
   const [clientSchemaReady, setClientSchemaReady] = useState(true)
@@ -177,9 +183,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
         .maybeSingle(),
       s.auth.getUser(),
     ])
-    const locationSchemaPending = v.error?.message.includes(
-      'column installations.location_latitude does not exist',
-    )
+    const locationSchemaPending = isLocationSchemaPending(v.error?.message)
     const visitResponse = locationSchemaPending
       ? await s
           .from('visits')
@@ -196,9 +200,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       .order('legal_name')
     const migrationPending =
       extendedClients.error?.message.includes('column clients.trade_name does not exist') ||
-      extendedClients.error?.message.includes(
-        'column installations.location_latitude does not exist',
-      )
+      isLocationSchemaPending(extendedClients.error?.message)
     const clientResponse = migrationPending
       ? await s
           .from('clients')
