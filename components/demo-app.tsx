@@ -1,10 +1,15 @@
 'use client'
 
+import { PopoverContent, PopoverTrigger } from '@doscientos/ui'
 import {
   ArrowRight,
   Building2,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  CircleDollarSign,
   Download,
   Eye,
   EyeOff,
@@ -29,8 +34,9 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 
 import { InvoicePreview } from '@/components/invoice-preview'
+import { VisitReport } from '@/components/visit-report'
 import { validateAuthInput, type AuthMode } from '@/lib/auth-validation'
-import { downloadInvoice, type Invoice } from '@/lib/invoice-template'
+import { downloadInvoice, formatDate, getInvoiceLines, type Invoice } from '@/lib/invoice-template'
 import { createClient } from '@/lib/supabase/client'
 
 type View = 'inicio' | 'agenda' | 'facturacion' | 'clientes' | 'parte'
@@ -86,6 +92,8 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   const [ready, setReady] = useState(false)
   const [signedIn, setSignedIn] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [accountName, setAccountName] = useState('Tu cuenta')
+  const [accountEmail, setAccountEmail] = useState('')
   const [clientSchemaReady, setClientSchemaReady] = useState(true)
   const [visits, setVisits] = useState<Visit[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -124,18 +132,25 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           .order('legal_name')
       : extendedClients
     setClientSchemaReady(!migrationPending)
+    if (session.data.user) {
+      const profile = await s
+        .from('profiles')
+        .select('role,full_name')
+        .eq('id', session.data.user.id)
+        .maybeSingle()
+      setIsAdmin(profile.data?.role === 'admin')
+      const metadataName = session.data.user.user_metadata.full_name
+      const fallbackName =
+        typeof metadataName === 'string'
+          ? metadataName.trim()
+          : session.data.user.email?.split('@')[0]
+      setAccountName(profile.data?.full_name?.trim() || fallbackName || 'Tu cuenta')
+      setAccountEmail(session.data.user.email ?? '')
+    }
     const error = v.error || i.error || clientResponse.error
     if (error) {
       setMessage(error.message)
       return
-    }
-    if (session.data.user) {
-      const profile = await s
-        .from('profiles')
-        .select('role')
-        .eq('id', session.data.user.id)
-        .maybeSingle()
-      setIsAdmin(profile.data?.role === 'admin')
     }
     setVisits((v.data ?? []) as unknown as Visit[])
     setInvoices((i.data ?? []) as unknown as Invoice[])
@@ -150,7 +165,13 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     })
     const { data } = s.auth.onAuthStateChange((_event, session) => {
       setSignedIn(Boolean(session))
-      if (session) void load()
+      if (session) {
+        void load()
+      } else {
+        setIsAdmin(false)
+        setAccountName('Tu cuenta')
+        setAccountEmail('')
+      }
     })
     return () => data.subscription.unsubscribe()
   }, [load])
@@ -245,6 +266,13 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     setMessage(error ? error.message : 'Instalación eliminada.')
     if (!error) await load()
   }
+  const accountInitials = accountName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -268,7 +296,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             href="/agenda"
             label="Agenda"
             icon={<CalendarDays size={18} />}
-            active={view === 'agenda'}
+            active={view === 'agenda' || view === 'parte'}
           />
           <Nav
             href="/clientes"
@@ -283,11 +311,44 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             active={view === 'facturacion'}
           />
         </nav>
-        <button className="profile" onClick={() => void createClient().auth.signOut()}>
-          <div className="avatar">CB</div>
-          <span>Cerrar sesión</span>
-          <LogOut size={16} />
-        </button>
+        <div className="profile">
+          <PopoverTrigger>
+            <button
+              className="profile-trigger"
+              type="button"
+              aria-label={`Abrir menú de ${accountName}`}
+            >
+              <span className="avatar" aria-hidden="true">
+                {accountInitials || 'CB'}
+              </span>
+              <span className="profile-summary">
+                <strong>{accountName}</strong>
+                <span>{isAdmin ? 'Administración' : 'Operativa'}</span>
+              </span>
+              <ChevronDown className="profile-chevron" size={16} aria-hidden="true" />
+            </button>
+            <PopoverContent placement="top start" className="profile-popover">
+              <div className="profile-popover-header">
+                <span className="avatar profile-popover-avatar" aria-hidden="true">
+                  {accountInitials || 'CB'}
+                </span>
+                <span>
+                  <strong>{accountName}</strong>
+                  <small>{accountEmail || 'Sesión activa'}</small>
+                </span>
+              </div>
+              <div className="profile-popover-divider" />
+              <button
+                className="profile-sign-out"
+                type="button"
+                onClick={() => void createClient().auth.signOut()}
+              >
+                <LogOut size={16} aria-hidden="true" />
+                Cerrar sesión
+              </button>
+            </PopoverContent>
+          </PopoverTrigger>
+        </div>
       </aside>
       <main className="main">
         <header className="topbar">
@@ -303,9 +364,10 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             </p>
           )}
           {view === 'inicio' && (
-            <Overview visits={visits} invoices={invoices} clients={clients} complete={start} />
+            <Overview visits={visits} invoices={invoices} clients={clients} start={start} />
           )}
-          {view === 'agenda' && <Agenda visits={visits} complete={start} />}
+          {view === 'agenda' && <Agenda visits={visits} start={start} />}
+          {view === 'parte' && visitId && <VisitReport visitId={visitId} />}
           {view === 'facturacion' && <Billing invoices={invoices} pay={pay} />}
           {view === 'clientes' && (
             <Clients
@@ -348,7 +410,7 @@ function Nav({
     </Link>
   )
 }
-function VisitRow({ visit, complete }: { visit: Visit; complete: (v: Visit) => void }) {
+function VisitRow({ visit, start }: { visit: Visit; start: (v: Visit) => void }) {
   const x = visit.installations
   return (
     <div className="visit">
@@ -363,13 +425,18 @@ function VisitRow({ visit, complete }: { visit: Visit; complete: (v: Visit) => v
           {x?.name ?? 'Instalación'} · {x?.address ?? ''}
         </div>
       </div>
-      {visit.status === 'completed' ? (
-        <span className="badge ok">Completada</span>
-      ) : (
-        <button className="badge progress" onClick={() => complete(visit)}>
-          Cerrar parte
+      {visit.status === 'completed' ? <span className="badge ok">Completada</span> : null}
+      {visit.status === 'in_progress' ? (
+        <Link className="badge progress" href={`/agenda/${visit.id}`}>
+          Continuar
+        </Link>
+      ) : null}
+      {visit.status === 'cancelled' ? <span className="badge pending">Cancelada</span> : null}
+      {visit.status === 'scheduled' ? (
+        <button className="badge progress" onClick={() => start(visit)}>
+          Iniciar
         </button>
-      )}
+      ) : null}
     </div>
   )
 }
@@ -377,12 +444,12 @@ function Overview({
   visits,
   invoices,
   clients,
-  complete,
+  start,
 }: {
   visits: Visit[]
   invoices: Invoice[]
   clients: Client[]
-  complete: (v: Visit) => void
+  start: (v: Visit) => void
 }) {
   const due = invoices.filter((i) => i.status !== 'paid')
   return (
@@ -401,21 +468,25 @@ function Overview({
       </section>
       <section className="stats">
         <Stat
+          icon={<CalendarDays size={19} />}
           label="Visitas"
           value={String(visits.length)}
           foot={`${visits.filter((v) => v.status === 'completed').length} completadas`}
         />
         <Stat
+          icon={<Users size={19} />}
           label="Clientes activos"
           value={String(clients.filter((client) => client.active).length)}
           foot={`${clients.length} clientes registrados`}
         />
         <Stat
+          icon={<FileText size={19} />}
           label="Facturas pendientes"
           value={String(due.length)}
           foot={money.format(due.reduce((n, i) => n + Number(i.total), 0))}
         />
         <Stat
+          icon={<CircleDollarSign size={19} />}
           label="Facturación"
           value={money.format(invoices.reduce((n, i) => n + Number(i.total), 0))}
           foot="Importe total emitido"
@@ -426,79 +497,507 @@ function Overview({
           <h3>Próximas visitas</h3>
         </div>
         {visits.map((v) => (
-          <VisitRow key={v.id} visit={v} complete={complete} />
+          <VisitRow key={v.id} visit={v} start={start} />
         ))}
       </section>
     </>
   )
 }
-function Stat({ label, value, foot }: { label: string; value: string; foot: string }) {
+function Stat({
+  icon,
+  label,
+  value,
+  foot,
+}: {
+  icon: ReactNode
+  label: string
+  value: string
+  foot: string
+}) {
   return (
     <div className="stat">
-      <div className="stat-label">{label}</div>
+      <div className="stat-heading">
+        <div className="stat-label">{label}</div>
+        <span className="stat-icon" aria-hidden="true">
+          {icon}
+        </span>
+      </div>
       <div className="stat-value">{value}</div>
       <div className="stat-foot">{foot}</div>
     </div>
   )
 }
-function Agenda({ visits, complete }: { visits: Visit[]; complete: (v: Visit) => void }) {
+type CalendarView = 'day' | 'week' | 'month'
+
+function Agenda({ visits, start }: { visits: Visit[]; start: (v: Visit) => void }) {
+  const [calendarView, setCalendarView] = useState<CalendarView>('week')
+  const [activeDate, setActiveDate] = useState(() => startOfDay(new Date()))
+  const weekStart = startOfWeek(activeDate)
+  const days =
+    calendarView === 'month'
+      ? getMonthGrid(activeDate)
+      : calendarView === 'week'
+        ? Array.from({ length: 7 }, (_, index) => addDays(weekStart, index))
+        : [activeDate]
+  const previous = () =>
+    setActiveDate((date) =>
+      addDays(
+        date,
+        calendarView === 'month' ? -getDaysInMonth(date) : calendarView === 'week' ? -7 : -1,
+      ),
+    )
+  const next = () =>
+    setActiveDate((date) =>
+      addDays(
+        date,
+        calendarView === 'month' ? getDaysInMonth(date) : calendarView === 'week' ? 7 : 1,
+      ),
+    )
+
   return (
     <>
-      <section className="intro">
+      <section className="agenda-intro">
         <div>
-          <h2>Organiza las visitas de mantenimiento.</h2>
+          <span className="eyebrow">Planificación operativa</span>
+          <h2>Tu agenda de mantenimiento</h2>
           <p>
-            Consulta el horario, la instalación y el cliente asignado antes de cada intervención.
+            Consulta las visitas por día, semana o mes y abre el parte cuando empieces la faena.
           </p>
         </div>
+        <span className="agenda-count">
+          <CalendarDays size={17} /> {visits.length} visitas programadas
+        </span>
       </section>
-      <section className="agenda-list">
-        {visits.map((v) => (
-          <VisitRow key={v.id} visit={v} complete={complete} />
-        ))}
+
+      <section
+        className={`calendar-shell calendar-${calendarView}`}
+        aria-label="Calendario de visitas"
+      >
+        <header className="calendar-toolbar">
+          <div className="calendar-period">
+            <span>Calendario</span>
+            <h3>{calendarPeriodLabel(activeDate, calendarView)}</h3>
+          </div>
+          <div className="calendar-controls">
+            <div className="calendar-pagination">
+              <button
+                type="button"
+                className="calendar-icon-button"
+                onClick={previous}
+                aria-label="Periodo anterior"
+              >
+                <ChevronLeft size={19} />
+              </button>
+              <button
+                type="button"
+                className="calendar-today"
+                onClick={() => setActiveDate(startOfDay(new Date()))}
+              >
+                Hoy
+              </button>
+              <button
+                type="button"
+                className="calendar-icon-button"
+                onClick={next}
+                aria-label="Periodo siguiente"
+              >
+                <ChevronRight size={19} />
+              </button>
+            </div>
+            <div className="calendar-view-switch" role="tablist" aria-label="Vista de calendario">
+              {(
+                [
+                  ['day', 'Día'],
+                  ['week', 'Semana'],
+                  ['month', 'Mes'],
+                ] as [CalendarView, string][]
+              ).map(([value, label]) => (
+                <button
+                  type="button"
+                  key={value}
+                  role="tab"
+                  aria-selected={calendarView === value}
+                  className={calendarView === value ? 'active' : ''}
+                  onClick={() => setCalendarView(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </header>
+
+        {calendarView === 'day' && (
+          <DayCalendar date={activeDate} visits={visitsForDay(visits, activeDate)} start={start} />
+        )}
+        {calendarView === 'week' && <WeekCalendar days={days} visits={visits} start={start} />}
+        {calendarView === 'month' && (
+          <MonthCalendar days={days} activeDate={activeDate} visits={visits} start={start} />
+        )}
       </section>
     </>
   )
 }
+
+function DayCalendar({
+  date,
+  visits,
+  start,
+}: {
+  date: Date
+  visits: Visit[]
+  start: (visit: Visit) => void
+}) {
+  const hours = Array.from({ length: 13 }, (_, index) => index + 7)
+  return (
+    <div className="day-calendar">
+      <div className="day-calendar-title">
+        <span>{dayLabel(date)}</span>
+        <strong>{date.getDate()}</strong>
+      </div>
+      <div className="day-calendar-grid">
+        <div className="calendar-hours">
+          {hours.map((hour) => (
+            <span key={hour}>{`${String(hour).padStart(2, '0')}:00`}</span>
+          ))}
+        </div>
+        <div className="day-track">
+          {hours.map((hour) => (
+            <div className="day-hour" key={hour} />
+          ))}
+          {visits.map((visit) => (
+            <CalendarEvent key={visit.id} visit={visit} start={start} timed />
+          ))}
+          {visits.length === 0 && (
+            <p className="calendar-empty">No hay visitas previstas para este día.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function WeekCalendar({
+  days,
+  visits,
+  start,
+}: {
+  days: Date[]
+  visits: Visit[]
+  start: (visit: Visit) => void
+}) {
+  return (
+    <div className="week-calendar">
+      <div className="week-day-headers">
+        {days.map((day) => (
+          <div className={isToday(day) ? 'today' : ''} key={day.toISOString()}>
+            <span>{dayLabel(day)}</span>
+            <strong>{day.getDate()}</strong>
+          </div>
+        ))}
+      </div>
+      <div className="week-day-columns">
+        {days.map((day) => (
+          <div className={`week-day ${isToday(day) ? 'today' : ''}`} key={day.toISOString()}>
+            {visitsForDay(visits, day).map((visit) => (
+              <CalendarEvent key={visit.id} visit={visit} start={start} compact />
+            ))}
+            {visitsForDay(visits, day).length === 0 && <span className="calendar-free">Libre</span>}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function MonthCalendar({
+  days,
+  activeDate,
+  visits,
+  start,
+}: {
+  days: Date[]
+  activeDate: Date
+  visits: Visit[]
+  start: (visit: Visit) => void
+}) {
+  return (
+    <div className="month-calendar">
+      <div className="month-weekdays">
+        {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((day) => (
+          <span key={day}>{day}</span>
+        ))}
+      </div>
+      <div className="month-grid">
+        {days.map((day) => {
+          const isCurrentMonth = day.getMonth() === activeDate.getMonth()
+          const dayVisits = visitsForDay(visits, day)
+          return (
+            <div
+              className={`month-day ${isCurrentMonth ? '' : 'outside-month'} ${isToday(day) ? 'today' : ''}`}
+              key={day.toISOString()}
+            >
+              <span className="month-date">{day.getDate()}</span>
+              <div className="month-events">
+                {dayVisits.slice(0, 3).map((visit) => (
+                  <CalendarEvent key={visit.id} visit={visit} start={start} compact />
+                ))}
+                {dayVisits.length > 3 && (
+                  <span className="more-events">+{dayVisits.length - 3} más</span>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function CalendarEvent({
+  visit,
+  start,
+  compact,
+  timed,
+}: {
+  visit: Visit
+  start: (visit: Visit) => void
+  compact?: boolean
+  timed?: boolean
+}) {
+  const scheduled = new Date(visit.scheduled_for)
+  const minutes = scheduled.getHours() * 60 + scheduled.getMinutes()
+  const top = Math.max(0, (minutes - 420) * 1.15)
+  const statusLabel =
+    visit.status === 'scheduled'
+      ? 'Iniciar'
+      : visit.status === 'in_progress'
+        ? 'Continuar'
+        : 'Completada'
+  const content = (
+    <>
+      <time>
+        {new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(scheduled)}
+      </time>
+      <strong>{visit.installations?.clients?.legal_name ?? 'Cliente'}</strong>
+      {!compact && <span>{visit.installations?.name ?? 'Instalación'}</span>}
+    </>
+  )
+  const className = `calendar-event ${visit.status} ${compact ? 'compact' : ''}`
+  if (visit.status === 'scheduled')
+    return (
+      <button
+        type="button"
+        className={className}
+        style={timed ? { top } : undefined}
+        onClick={() => start(visit)}
+      >
+        {content}
+        <em>{statusLabel}</em>
+      </button>
+    )
+  if (visit.status === 'in_progress')
+    return (
+      <Link className={className} style={timed ? { top } : undefined} href={`/agenda/${visit.id}`}>
+        {content}
+        <em>{statusLabel}</em>
+      </Link>
+    )
+  return (
+    <div className={className} style={timed ? { top } : undefined}>
+      {content}
+      <em>{statusLabel}</em>
+    </div>
+  )
+}
+
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+function addDays(date: Date, amount: number) {
+  const next = new Date(date)
+  next.setDate(next.getDate() + amount)
+  return next
+}
+function startOfWeek(date: Date) {
+  return addDays(startOfDay(date), -((date.getDay() + 6) % 7))
+}
+function getDaysInMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
+}
+function getMonthGrid(date: Date) {
+  const first = new Date(date.getFullYear(), date.getMonth(), 1)
+  const leadingDays = (first.getDay() + 6) % 7
+  const count = Math.ceil((leadingDays + getDaysInMonth(date)) / 7) * 7
+  return Array.from({ length: count }, (_, index) => addDays(first, index - leadingDays))
+}
+function isSameDay(left: Date, right: Date) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  )
+}
+function isToday(date: Date) {
+  return isSameDay(date, new Date())
+}
+function visitsForDay(visits: Visit[], date: Date) {
+  return visits
+    .filter((visit) => isSameDay(new Date(visit.scheduled_for), date))
+    .sort((left, right) => left.scheduled_for.localeCompare(right.scheduled_for))
+}
+function dayLabel(date: Date) {
+  return new Intl.DateTimeFormat('es-ES', { weekday: 'short' }).format(date).replace('.', '')
+}
+function calendarPeriodLabel(date: Date, view: CalendarView) {
+  if (view === 'month')
+    return new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(date)
+  if (view === 'day')
+    return new Intl.DateTimeFormat('es-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    }).format(date)
+  const end = addDays(startOfWeek(date), 6)
+  return `${new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' }).format(startOfWeek(date))} — ${new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }).format(end)}`
+}
 function Billing({ invoices, pay }: { invoices: Invoice[]; pay: (i: Invoice) => void }) {
   const [previewedInvoice, setPreviewedInvoice] = useState<Invoice | null>(null)
+  const pendingInvoices = invoices.filter((invoice) => invoice.status !== 'paid')
+  const paidInvoices = invoices.filter((invoice) => invoice.status === 'paid')
+  const pendingTotal = pendingInvoices.reduce((total, invoice) => total + Number(invoice.total), 0)
+  const billedTotal = invoices.reduce((total, invoice) => total + Number(invoice.total), 0)
+
   return (
     <>
       <section className="intro">
         <div>
-          <h2>Facturación persistente</h2>
-          <p>Consulta, descarga o guarda en PDF cada factura con los datos de su cliente.</p>
+          <h2>Facturación y cobros</h2>
+          <p>Consulta cada factura, sus conceptos y el estado de cobro de un vistazo.</p>
         </div>
       </section>
-      <div className="invoice-list">
-        {invoices.map((i) => (
-          <div className="invoice" key={i.id}>
-            <div>
-              <strong>{i.clients?.legal_name ?? 'Cliente'}</strong>
-              <span>
-                {i.number ?? 'Borrador'} · {i.issued_on ?? 'Sin emitir'}
-              </span>
-            </div>
-            <span className="invoice-total">{money.format(Number(i.total))}</span>
-            <div className="invoice-actions">
-              <button className="action-link" type="button" onClick={() => setPreviewedInvoice(i)}>
-                Ver factura
-              </button>
-              <button className="action-link" type="button" onClick={() => downloadInvoice(i)}>
-                <Download size={15} aria-hidden="true" />
-                Descargar
-              </button>
-            </div>
-            {i.status === 'paid' ? (
-              <span className="badge ok">Cobrada</span>
-            ) : (
-              <button className="badge progress" onClick={() => pay(i)}>
-                Marcar cobrada
-              </button>
-            )}
+      <section className="billing-summary" aria-label="Resumen de facturación">
+        <div className="billing-summary-card">
+          <FileText size={19} aria-hidden="true" />
+          <div>
+            <span>Facturado</span>
+            <strong>{money.format(billedTotal)}</strong>
+            <small>{invoices.length} facturas emitidas</small>
           </div>
-        ))}
-      </div>
+        </div>
+        <div className="billing-summary-card pending">
+          <CircleDollarSign size={19} aria-hidden="true" />
+          <div>
+            <span>Pendiente de cobro</span>
+            <strong>{money.format(pendingTotal)}</strong>
+            <small>{pendingInvoices.length} por gestionar</small>
+          </div>
+        </div>
+        <div className="billing-summary-card paid">
+          <CheckCircle2 size={19} aria-hidden="true" />
+          <div>
+            <span>Cobradas</span>
+            <strong>{paidInvoices.length}</strong>
+            <small>facturas conciliadas</small>
+          </div>
+        </div>
+      </section>
+      <section className="billing-list-panel" aria-labelledby="invoice-list-title">
+        <header className="billing-list-header">
+          <div>
+            <span className="billing-list-kicker">Registro de facturas</span>
+            <h3 id="invoice-list-title">Todas las facturas</h3>
+          </div>
+          <span className="billing-list-count">{invoices.length} en total</span>
+        </header>
+        {invoices.length ? (
+          <div className="invoice-list" aria-label="Listado de facturas">
+            {invoices.map((invoice) => {
+              const lines = getInvoiceLines(invoice)
+              const isPaid = invoice.status === 'paid'
+              const lineCountLabel = `${lines.length} ${lines.length === 1 ? 'concepto' : 'conceptos'}`
+
+              return (
+                <article
+                  className={`invoice ${isPaid ? 'is-paid' : 'is-pending'}`}
+                  key={invoice.id}
+                >
+                  <div className="invoice-main">
+                    <div className="invoice-document-icon" aria-hidden="true">
+                      {isPaid ? <CheckCircle2 size={20} /> : <FileText size={20} />}
+                    </div>
+                    <div className="invoice-client">
+                      <span className="invoice-number">{invoice.number ?? 'Borrador'}</span>
+                      <strong>{invoice.clients?.legal_name ?? 'Cliente sin asignar'}</strong>
+                      <div className="invoice-dates">
+                        <span>Emitida {formatDate(invoice.issued_on)}</span>
+                        <span>Vence {formatDate(invoice.due_on)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="invoice-concepts">
+                    <span className="invoice-concepts-label">
+                      <FileText size={14} aria-hidden="true" />
+                      {lineCountLabel}
+                    </span>
+                    <strong>{lines[0]?.description}</strong>
+                    {lines.length > 1 && <small>+ {lines.length - 1} más</small>}
+                  </div>
+                  <div className="invoice-amount">
+                    <span>Total</span>
+                    <strong>{money.format(Number(invoice.total))}</strong>
+                    <small>IVA incl.</small>
+                  </div>
+                  <div className="invoice-actions">
+                    <div className="invoice-utility-actions">
+                      <button
+                        className="invoice-action"
+                        type="button"
+                        onClick={() => setPreviewedInvoice(invoice)}
+                        aria-label={`Ver factura ${invoice.number ?? invoice.id}`}
+                      >
+                        <Eye size={16} aria-hidden="true" />
+                        <span>Ver</span>
+                      </button>
+                      <button
+                        className="invoice-action"
+                        type="button"
+                        onClick={() => downloadInvoice(invoice)}
+                        aria-label={`Descargar factura ${invoice.number ?? invoice.id}`}
+                      >
+                        <Download size={16} aria-hidden="true" />
+                        <span>Descargar</span>
+                      </button>
+                    </div>
+                    {isPaid ? (
+                      <span className="invoice-status-pill paid">
+                        <CheckCircle2 size={14} aria-hidden="true" />
+                        Cobrada
+                      </span>
+                    ) : (
+                      <button
+                        className="invoice-status-pill pending"
+                        type="button"
+                        onClick={() => pay(invoice)}
+                      >
+                        Marcar cobrada
+                      </button>
+                    )}
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="invoice-empty">
+            <FileText size={24} aria-hidden="true" />
+            <div>
+              <strong>Aún no hay facturas</strong>
+              <p>Las facturas que emitas aparecerán aquí con su estado de cobro y sus conceptos.</p>
+            </div>
+          </div>
+        )}
+      </section>
       {previewedInvoice && (
         <InvoicePreview
           invoice={previewedInvoice}
@@ -540,7 +1039,41 @@ function Clients({
   const [editingClient, setEditingClient] = useState<Client | null | 'new'>(null)
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [editingInstallation, setEditingInstallation] = useState<Installation | 'new' | null>(null)
-  useEffect(() => { const timer = window.setTimeout(async () => { const from = page * pageSize; let query = createClient().from('clients').select('id,legal_name,trade_name,tax_id,billing_email,phone,billing_address,payment_method,notes,contact_name,contact_role,contact_email,contact_phone,client_type,billing_frequency,payment_terms_days,active,installations(id,name,address,pool_type,instructions,notes)', { count: 'exact' }).order('legal_name').range(from, from + pageSize - 1); if (search.trim()) query = query.ilike('legal_name', `%${search.trim()}%`); if (statusFilter !== 'all') query = query.eq('active', statusFilter === 'active'); if (typeFilter !== 'all') query = query.eq('client_type', typeFilter); const result = await query; if (!result.error) { setRemoteClients((result.data ?? []).map((client) => normalizeClient(client))); setTotal(result.count ?? 0); } else if (!clientSchemaReady) { let fallback = createClient().from('clients').select('id,legal_name,tax_id,billing_email,phone,billing_address,payment_method,notes,installations(id,name,address,pool_type,instructions,notes)', { count: 'exact' }).order('legal_name').range(from, from + pageSize - 1); if (search.trim()) fallback = fallback.ilike('legal_name', `%${search.trim()}%`); const old = await fallback; setRemoteClients((old.data ?? []).map((client) => normalizeClient(client))); setTotal(old.count ?? 0); } }, 250); return () => window.clearTimeout(timer) }, [search, statusFilter, typeFilter, page, clients, clientSchemaReady])
+  useEffect(() => {
+    const timer = window.setTimeout(async () => {
+      const from = page * pageSize
+      let query = createClient()
+        .from('clients')
+        .select(
+          'id,legal_name,trade_name,tax_id,billing_email,phone,billing_address,payment_method,notes,contact_name,contact_role,contact_email,contact_phone,client_type,billing_frequency,payment_terms_days,active,installations(id,name,address,pool_type,instructions,notes)',
+          { count: 'exact' },
+        )
+        .order('legal_name')
+        .range(from, from + pageSize - 1)
+      if (search.trim()) query = query.ilike('legal_name', `%${search.trim()}%`)
+      if (statusFilter !== 'all') query = query.eq('active', statusFilter === 'active')
+      if (typeFilter !== 'all') query = query.eq('client_type', typeFilter)
+      const result = await query
+      if (!result.error) {
+        setRemoteClients((result.data ?? []).map((client) => normalizeClient(client)))
+        setTotal(result.count ?? 0)
+      } else if (!clientSchemaReady) {
+        let fallback = createClient()
+          .from('clients')
+          .select(
+            'id,legal_name,tax_id,billing_email,phone,billing_address,payment_method,notes,installations(id,name,address,pool_type,instructions,notes)',
+            { count: 'exact' },
+          )
+          .order('legal_name')
+          .range(from, from + pageSize - 1)
+        if (search.trim()) fallback = fallback.ilike('legal_name', `%${search.trim()}%`)
+        const old = await fallback
+        setRemoteClients((old.data ?? []).map((client) => normalizeClient(client)))
+        setTotal(old.count ?? 0)
+      }
+    }, 250)
+    return () => window.clearTimeout(timer)
+  }, [search, statusFilter, typeFilter, page, clients, clientSchemaReady])
   const visibleClients = remoteClients
   const pageCount = Math.max(1, Math.ceil(total / pageSize))
   return (
@@ -574,17 +1107,46 @@ function Clients({
           <span className="sr-only">Buscar clientes</span>
           <input
             value={search}
-            onChange={(event) => { setSearch(event.target.value); setPage(0) }}
+            onChange={(event) => {
+              setSearch(event.target.value)
+              setPage(0)
+            }}
             placeholder="Buscar por nombre"
           />
         </label>
-        <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value as typeof statusFilter); setPage(0) }}><option value="all">Todos los estados</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select>
-        <select value={typeFilter} onChange={(event) => { setTypeFilter(event.target.value as typeof typeFilter); setPage(0) }}><option value="all">Todos los tipos</option><option value="residential">Particular</option><option value="community">Comunidad</option><option value="hotel">Hotel</option><option value="business">Empresa</option></select>
+        <select
+          value={statusFilter}
+          onChange={(event) => {
+            setStatusFilter(event.target.value as typeof statusFilter)
+            setPage(0)
+          }}
+        >
+          <option value="all">Todos los estados</option>
+          <option value="active">Activos</option>
+          <option value="inactive">Inactivos</option>
+        </select>
+        <select
+          value={typeFilter}
+          onChange={(event) => {
+            setTypeFilter(event.target.value as typeof typeFilter)
+            setPage(0)
+          }}
+        >
+          <option value="all">Todos los tipos</option>
+          <option value="residential">Particular</option>
+          <option value="community">Comunidad</option>
+          <option value="hotel">Hotel</option>
+          <option value="business">Empresa</option>
+        </select>
         <span>{total} clientes</span>
       </div>
       <div className="client-list" role="list">
         {visibleClients.map((client) => (
-          <article className={`client-row client-card ${client.active ? '' : 'is-inactive'}`} key={client.id} role="listitem">
+          <article
+            className={`client-row client-card ${client.active ? '' : 'is-inactive'}`}
+            key={client.id}
+            role="listitem"
+          >
             <div className="client-card-head">
               <div>
                 <div className="client-name-row">
@@ -661,7 +1223,27 @@ function Clients({
           <p>No hay clientes que coincidan con la búsqueda.</p>
         </div>
       )}
-      <nav className="pagination" aria-label="Paginación de clientes"><button className="button secondary" type="button" disabled={page === 0} onClick={() => setPage((value) => value - 1)}>Anterior</button><span>Página {page + 1} de {pageCount}</span><button className="button secondary" type="button" disabled={page + 1 >= pageCount} onClick={() => setPage((value) => value + 1)}>Siguiente</button></nav>
+      <nav className="pagination" aria-label="Paginación de clientes">
+        <button
+          className="button secondary"
+          type="button"
+          disabled={page === 0}
+          onClick={() => setPage((value) => value - 1)}
+        >
+          Anterior
+        </button>
+        <span>
+          Página {page + 1} de {pageCount}
+        </span>
+        <button
+          className="button secondary"
+          type="button"
+          disabled={page + 1 >= pageCount}
+          onClick={() => setPage((value) => value + 1)}
+        >
+          Siguiente
+        </button>
+      </nav>
       {editingClient && (
         <ClientForm
           client={editingClient === 'new' ? undefined : editingClient}
