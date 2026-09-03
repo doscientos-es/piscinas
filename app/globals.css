@@ -6824,3 +6824,96 @@ textarea:focus-visible {
     padding-bottom: calc(108px + env(safe-area-inset-bottom));
   }
 }
+
+/* Visit form: capture the work first; products are an explicit, lightweight add-on. */
+.report-form {
+  gap: 14px;
+}
+.visit-checklist,
+.report-field,
+.report-products {
+  padding: 18px;
+}
+.report-products {
+  gap: 14px;
+}
+.product-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.product-picker select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #cbdfe9;
+  border-radius: 10px;
+  padding: 0 12px;
+  background: #fff;
+  color: var(--foreground);
+  outline-color: var(--accent);
+}
+.product-add {
+  min-height: 44px;
+}
+.usage-list {
+  gap: 6px;
+  margin-top: 0;
+}
+.usage-row {
+  grid-template-columns: minmax(0, 1fr) 124px 34px;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  background: #fff;
+}
+.usage-product,
+.usage-quantity {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.usage-product strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.usage-product span,
+.usage-quantity > span {
+  color: #607d90;
+  font-size: 11px;
+  font-weight: 650;
+}
+.usage-quantity small {
+  font: inherit;
+}
+.usage-quantity input {
+  min-height: 36px;
+  padding-inline: 9px;
+}
+.products-empty {
+  margin: 0;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f5fafc;
+}
+@media (max-width: 620px) {
+  .product-picker {
+    grid-template-columns: 1fr;
+  }
+  .product-add {
+    width: 100%;
+  }
+  .usage-row {
+    grid-template-columns: minmax(0, 1fr) 34px;
+  }
+  .usage-product {
+    grid-column: 1 / -1;
+  }
+  .usage-quantity {
+    grid-column: 1;
+    grid-template-columns: 1fr 112px;
+    align-items: center;
+  }
+}

@@ -3,7 +3,7 @@
 import { ArrowLeft, CheckCircle2, Clock3, PackagePlus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { createClient } from '@/lib/supabase/client'
 import { buildVisitNotes, standardVisitChecks } from '@/lib/visit-checklist'
@@ -13,8 +13,6 @@ type Product = {
   id: string
   name: string
   unit: string
-  sale_price: number
-  vat_rate: number
   stock_quantity: number
 }
 
@@ -55,6 +53,7 @@ export function VisitReport({ visitId }: { visitId: string }) {
   const [notes, setNotes] = useState('')
   const [completedCheckIds, setCompletedCheckIds] = useState<string[]>([])
   const [usages, setUsages] = useState<ProductUsageInput[]>([])
+  const [productToAdd, setProductToAdd] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -72,7 +71,7 @@ export function VisitReport({ visitId }: { visitId: string }) {
         .maybeSingle(),
       supabase
         .from('products')
-        .select('id,name,unit,sale_price,vat_rate,stock_quantity')
+        .select('id,name,unit,stock_quantity')
         .gt('stock_quantity', 0)
         .order('name'),
     ])
@@ -103,26 +102,23 @@ export function VisitReport({ visitId }: { visitId: string }) {
 
   const selectedProductIds = new Set(usages.map((usage) => usage.productId))
   const availableProducts = products.filter((product) => !selectedProductIds.has(product.id))
-  const total = useMemo(
-    () =>
-      usages.reduce((sum, usage) => {
-        const product = products.find((item) => item.id === usage.productId)
-        return sum + (product ? product.sale_price * usage.quantity : 0)
-      }, 0),
-    [products, usages],
-  )
   const intervention = visit?.interventions[0]
   const isClosed = visit?.status === 'completed'
 
   function addProduct() {
-    const product = availableProducts[0]
+    const product = availableProducts.find((item) => item.id === productToAdd)
     if (product) setUsages((current) => [...current, { productId: product.id, quantity: 1 }])
+    setProductToAdd('')
   }
 
   function updateUsage(index: number, patch: Partial<ProductUsageInput>) {
     setUsages((current) =>
       current.map((usage, itemIndex) => (itemIndex === index ? { ...usage, ...patch } : usage)),
     )
+  }
+
+  function removeUsage(index: number) {
+    setUsages((current) => current.filter((_, itemIndex) => itemIndex !== index))
   }
 
   function toggleCheck(checkId: string) {
@@ -213,8 +209,8 @@ export function VisitReport({ visitId }: { visitId: string }) {
       ) : (
         <form className="report-form" onSubmit={submit}>
           <fieldset className="visit-checklist">
-            <legend>Marca lo que has hecho</legend>
-            <p>Solo toca cada tarea terminada. Puedes marcar todas las que correspondan.</p>
+            <legend>Tareas realizadas</legend>
+            <p>Marca solo las tareas que has hecho en esta visita.</p>
             <div className="visit-checklist-options">
               {standardVisitChecks.map((check) => (
                 <label
@@ -235,13 +231,13 @@ export function VisitReport({ visitId }: { visitId: string }) {
           </fieldset>
           <label className="report-field">
             <span>
-              Algún detalle más <em>Opcional</em>
+              Notas o incidencias <em>Opcional</em>
             </span>
             <textarea
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              placeholder="Ej.: El agua estaba turbia o he detectado una avería."
-              rows={4}
+              placeholder="Ej.: He detectado una avería o el agua estaba turbia."
+              rows={3}
             />
           </label>
 
@@ -249,15 +245,34 @@ export function VisitReport({ visitId }: { visitId: string }) {
             <div className="section-heading">
               <div>
                 <h3>Productos usados</h3>
-                <p>Se descontarán del stock y quedarán pendientes de facturar al cliente.</p>
+                <p>Añade solo el material usado durante esta visita.</p>
               </div>
+            </div>
+            <div className="product-picker">
+              <label>
+                <span className="sr-only">Producto usado</span>
+                <select
+                  aria-label="Selecciona el producto usado"
+                  value={productToAdd}
+                  onChange={(event) => setProductToAdd(event.target.value)}
+                  disabled={!availableProducts.length}
+                >
+                  <option value="">Selecciona un producto…</option>
+                  {availableProducts.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.name} · {quantityFormat.format(product.stock_quantity)}{' '}
+                      {product.unit} disponibles
+                    </option>
+                  ))}
+                </select>
+              </label>
               <button
-                className="button secondary"
+                className="button secondary product-add"
                 type="button"
                 onClick={addProduct}
-                disabled={!availableProducts.length}
+                disabled={!productToAdd}
               >
-                <PackagePlus size={17} /> Añadir producto
+                <PackagePlus size={17} /> Añadir
               </button>
             </div>
             {usages.length ? (
@@ -266,20 +281,16 @@ export function VisitReport({ visitId }: { visitId: string }) {
                   const product = products.find((item) => item.id === usage.productId)
                   return (
                     <div className="usage-row" key={usage.productId}>
-                      <select
-                        aria-label="Producto"
-                        value={usage.productId}
-                        onChange={(event) => updateUsage(index, { productId: event.target.value })}
-                      >
-                        {product && <option value={product.id}>{product.name}</option>}
-                        {availableProducts.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.name}
-                          </option>
-                        ))}
-                      </select>
-                      <label>
-                        <span>Cantidad</span>
+                      <div className="usage-product">
+                        <strong>{product?.name ?? 'Producto no disponible'}</strong>
+                        <span>
+                          {product
+                            ? `${quantityFormat.format(product.stock_quantity)} ${product.unit} disponibles`
+                            : 'Producto no disponible'}
+                        </span>
+                      </div>
+                      <label className="usage-quantity">
+                        <span>Cantidad {product && <small>en {product.unit}</small>}</span>
                         <input
                           type="number"
                           min="0.001"
@@ -291,25 +302,11 @@ export function VisitReport({ visitId }: { visitId: string }) {
                           }
                         />
                       </label>
-                      <div className="usage-price">
-                        <span>
-                          {product
-                            ? `${quantityFormat.format(product.stock_quantity)} ${product.unit} en stock`
-                            : 'Producto no disponible'}
-                        </span>
-                        <strong>
-                          {product ? `${money.format(product.sale_price)} / ${product.unit}` : '—'}
-                        </strong>
-                      </div>
                       <button
                         className="usage-delete"
                         type="button"
-                        onClick={() =>
-                          setUsages((current) =>
-                            current.filter((_, itemIndex) => itemIndex !== index),
-                          )
-                        }
-                        aria-label="Eliminar producto"
+                        onClick={() => removeUsage(index)}
+                        aria-label={`Eliminar ${product?.name ?? 'producto'}`}
                       >
                         <Trash2 size={17} />
                       </button>
@@ -319,26 +316,22 @@ export function VisitReport({ visitId }: { visitId: string }) {
               </div>
             ) : (
               <p className="products-empty">
-                No has añadido productos. Puedes cerrar el parte igualmente si el trabajo está
-                incluido en la cuota.
+                Sin productos añadidos. Si el trabajo está incluido en la cuota, puedes cerrar la
+                visita directamente.
               </p>
             )}
-            <div className="report-total">
-              <span>Productos a facturar (sin IVA)</span>
-              <strong>{money.format(total)}</strong>
-            </div>
           </section>
 
           <div className="report-actions">
             <Link className="button secondary" href="/agenda">
-              Guardar más tarde
+              Volver sin guardar
             </Link>
             <button className="button accent" type="submit" disabled={saving}>
               {saving ? (
                 'Guardando…'
               ) : (
                 <>
-                  <CheckCircle2 size={17} /> Guardar y cerrar parte
+                  <CheckCircle2 size={17} /> Cerrar visita
                 </>
               )}
             </button>
