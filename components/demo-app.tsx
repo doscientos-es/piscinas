@@ -442,7 +442,9 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
               start={requestStart}
             />
           )}
-          {view === 'agenda' && <Agenda visits={visits} start={requestStart} />}
+          {view === 'agenda' && (
+            <Agenda visits={visits} isAdmin={isAdmin} start={requestStart} />
+          )}
           {view === 'parte' && visitId && <VisitReport visitId={visitId} readOnly={isAdmin} />}
           {view === 'facturacion' && <Billing invoices={invoices} pay={pay} />}
           {view === 'clientes' && (
@@ -695,7 +697,15 @@ function Stat({
 }
 type CalendarView = 'day' | 'week' | 'month'
 
-function Agenda({ visits, start }: { visits: Visit[]; start: (v: Visit) => void }) {
+function Agenda({
+  visits,
+  isAdmin,
+  start,
+}: {
+  visits: Visit[]
+  isAdmin: boolean
+  start: (v: Visit) => void
+}) {
   const [calendarView, setCalendarView] = useState<CalendarView>('week')
   const [activeDate, setActiveDate] = useState(() => startOfDay(new Date()))
   useEffect(() => {
