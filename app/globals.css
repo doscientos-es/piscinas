@@ -8850,3 +8850,47 @@ body {
     padding: 16px;
   }
 }
+
+/* Els diàlegs es mantenen centrats i operatius a qualsevol pantalla. */
+.modal-backdrop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 100dvh;
+  padding: clamp(12px, 3vw, 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.modal {
+  inline-size: min(700px, 100%);
+  max-inline-size: calc(100vw - clamp(24px, 6vw, 64px));
+  max-block-size: calc(100dvh - clamp(24px, 6vw, 64px));
+  margin: auto;
+}
+
+.client-modal {
+  inline-size: min(760px, 100%);
+}
+
+@media (max-width: 520px) {
+  .modal-backdrop {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .modal {
+    max-inline-size: calc(100vw - 24px);
+    max-block-size: calc(100dvh - 24px);
+    padding: 18px 16px;
+  }
+
+  .modal-foot {
+    flex-direction: column-reverse;
+  }
+
+  .modal-foot .button {
+    inline-size: 100%;
+    justify-content: center;
+  }
+}
