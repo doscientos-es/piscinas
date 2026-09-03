@@ -51,8 +51,8 @@ import {
 import {
   filterInvoicesByBillingPeriod,
   formatBillingPeriod,
+  getBillingPeriod,
   getBillingPeriodOptions,
-  getPreviousBillingPeriod,
   toBillingPeriodValue,
 } from '@/lib/monthly-billing'
 import type { SearchParamUpdates } from '@/lib/search-params'
@@ -316,6 +316,20 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   useEffect(() => {
     if (role && !canAccessAppView(role, view)) router.replace('/agenda')
   }, [role, router, view])
+  useEffect(() => {
+    if (role !== 'admin') return
+
+    const channel = createClient()
+      .channel('monthly-invoices')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => {
+        void load()
+      })
+      .subscribe()
+
+    return () => {
+      void channel.unsubscribe()
+    }
+  }, [load, role])
   if (!ready) return <main className="empty-state">S'està carregant la teva operativa…</main>
   if (!signedIn) return <AuthScreen />
   if (!role) return <main className="empty-state">S'estan carregant els teus permisos…</main>
@@ -453,14 +467,14 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     const generated = (data ?? []).filter((invoice: { created: boolean }) => invoice.created).length
     setMessage(
       generated
-        ? `Tancament de ${formatBillingPeriod(billingPeriod)} preparat: ${generated} esborranys nous.`
-        : `El tancament de ${formatBillingPeriod(billingPeriod)} ja estava preparat.`,
+        ? `${formatBillingPeriod(billingPeriod)} actualitzat: ${generated} esborranys nous.`
+        : `Les factures de ${formatBillingPeriod(billingPeriod)} ja estan actualitzades.`,
     )
     await load()
   }
   const prepareMonthlyInvoices = async () => {
     const billingPeriod =
-      searchParams.get('mes') ?? toBillingPeriodValue(getPreviousBillingPeriod())
+      searchParams.get('mes') ?? toBillingPeriodValue(getBillingPeriod())
 
     setIsPreparingBilling(true)
     try {
@@ -743,7 +757,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
                   onClick={() => void prepareMonthlyInvoices()}
                 >
                   <FileText size={17} aria-hidden="true" />
-                  {isPreparingBilling ? "S'està preparant…" : 'Prepara el tancament'}
+                  {isPreparingBilling ? "S'estan actualitzant…" : 'Actualitza les factures'}
                 </button>
               )}
               {activeView === 'inventario' && isAdmin && (
@@ -1508,7 +1522,7 @@ function Billing({
   const searchParams = useSearchParams()
   const updateSearchParams = usePersistentSearchParams()
   const [previewedInvoice, setPreviewedInvoice] = useState<Invoice | null>(null)
-  const billingPeriod = searchParams.get('mes') ?? toBillingPeriodValue(getPreviousBillingPeriod())
+  const billingPeriod = searchParams.get('mes') ?? toBillingPeriodValue(getBillingPeriod())
   const clientInvoices = clientId
     ? invoices.filter((invoice) => invoice.client_id === clientId)
     : invoices
@@ -1654,7 +1668,7 @@ function Billing({
             <FileText size={24} aria-hidden="true" />
             <div>
               <strong>Encara no hi ha factures</strong>
-              <p>Prepara el tancament mensual per crear els esborranys pendents de revisió.</p>
+              <p>Actualitza les factures del mes per crear els esborranys dels clients actius.</p>
             </div>
           </div>
         )}
