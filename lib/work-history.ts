@@ -1,11 +1,24 @@
 export type WorkHistoryVisit = {
   id: string
+  installation_id: string
   scheduled_for: string
   status: string
   technician_id: string | null
   technician: { full_name: string } | null
   installations: { name: string; address: string; clients: { legal_name: string } | null } | null
   interventions: { completed_at: string | null; notes: string | null } | null
+}
+
+export type WorkInstallation = { id: string; name: string; clientName: string }
+export type WorkTechnician = { id: string; full_name: string }
+export type PendingWorkInput = {
+  installationId: string
+  technicianId: string
+  scheduledFor: string
+}
+
+export function canManagePendingWork(isAdmin: boolean, status: string) {
+  return isAdmin && status === 'scheduled'
 }
 
 export type WorkHistoryFilters = {
@@ -46,5 +59,9 @@ export function paginateWorkHistory<T>(items: T[], page: number, pageSize: numbe
 }
 
 function normalize(value: string) {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
 }

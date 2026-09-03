@@ -1,46 +1,91 @@
 'use client'
 
-import { CalendarDays, Search, UserRound } from 'lucide-react'
+import { CalendarDays, Pencil, Plus, Search, Trash2, UserRound, X } from 'lucide-react'
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
-import { filterWorkHistory, paginateWorkHistory, type WorkHistoryVisit } from '@/lib/work-history'
+import {
+  canManagePendingWork,
+  filterWorkHistory,
+  paginateWorkHistory,
+  type PendingWorkInput,
+  type WorkHistoryVisit,
+  type WorkInstallation,
+  type WorkTechnician,
+} from '@/lib/work-history'
 
 const pageSize = 10
 
-export function WorkHistory({ visits, isAdmin }: { visits: WorkHistoryVisit[]; isAdmin: boolean }) {
+type WorkHistoryProps = {
+  visits: WorkHistoryVisit[]
+  installations: WorkInstallation[]
+  technicians: WorkTechnician[]
+  isAdmin: boolean
+  onSavePendingWork: (input: PendingWorkInput, id?: string) => Promise<void>
+  onDeletePendingWork: (id: string) => Promise<void>
+}
+
+export function WorkHistory({
+  visits,
+  installations,
+  technicians,
+  isAdmin,
+  onSavePendingWork,
+  onDeletePendingWork,
+}: WorkHistoryProps) {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('completed')
   const [technicianId, setTechnicianId] = useState('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [page, setPage] = useState(0)
-  const technicians = useMemo(() => {
+  const [editingVisit, setEditingVisit] = useState<WorkHistoryVisit | 'new' | null>(null)
+  const [operationError, setOperationError] = useState<string | null>(null)
+  const filterTechnicians = useMemo(() => {
     const names = new Map<string, string>()
+    for (const technician of technicians) names.set(technician.id, technician.full_name)
     for (const visit of visits) {
       if (visit.technician_id && visit.technician)
         names.set(visit.technician_id, visit.technician.full_name)
     }
     return Array.from(names.entries())
-  }, [visits])
+  }, [technicians, visits])
+  useEffect(() => {
+    if (isAdmin) setStatus('scheduled')
+  }, [isAdmin])
   const results = filterWorkHistory(visits, { query, status, technicianId, from, to })
   const pageCount = Math.max(1, Math.ceil(results.length / pageSize))
   const visibleVisits = paginateWorkHistory(results, Math.min(page, pageCount - 1), pageSize)
   const resetPage = () => setPage(0)
 
   return (
-    <section className="work-history" aria-label="Historial de trabajos">
+    <section className="work-history" aria-label="Trabajos">
       <header className="work-history-heading">
         <div>
-          <span>Historial operativo</span>
+          <span>{isAdmin ? 'Planificación operativa' : 'Historial operativo'}</span>
           <h2>Trabajos</h2>
           <p>
             {isAdmin
-              ? 'Consulta toda la actividad realizada por el equipo.'
+              ? 'Programa y gestiona trabajos pendientes; consulta los partes ya cerrados.'
               : 'Consulta el historial de tus trabajos realizados.'}
           </p>
         </div>
-        <strong>{results.length} resultados</strong>
+        <div className="work-history-heading-actions">
+          <strong>{results.length} resultados</strong>
+          {isAdmin && (
+            <button
+              className="button"
+              type="button"
+              onClick={() => {
+                setOperationError(null)
+                setEditingVisit('new')
+              }}
+            >
+              <Plus size={16} aria-hidden="true" />
+              Nuevo trabajo
+            </button>
+          )}
+        </div>
       </header>
       <div className="work-history-filters">
         <label className="client-search">
@@ -79,7 +124,7 @@ export function WorkHistory({ visits, isAdmin }: { visits: WorkHistoryVisit[]; i
             }}
           >
             <option value="">Todo el equipo</option>
-            {technicians.map(([id, name]) => (
+            {filterTechnicians.map(([id, name]) => (
               <option key={id} value={id}>
                 {name}
               </option>
@@ -139,12 +184,54 @@ export function WorkHistory({ visits, isAdmin }: { visits: WorkHistoryVisit[]; i
             >
               {statusLabel(visit.status)}
             </span>
-            <Link className="action-link" href={`/agenda/${visit.id}`}>
-              Ver parte
-            </Link>
+            {canManagePendingWork(isAdmin, visit.status) ? (
+              <div className="work-history-actions">
+                <button
+                  className="action-link"
+                  type="button"
+                  onClick={() => {
+                    setOperationError(null)
+                    setEditingVisit(visit)
+                  }}
+                >
+                  <Pencil size={15} aria-hidden="true" />
+                  Editar
+                </button>
+                <button
+                  className="action-link danger"
+                  type="button"
+                  onClick={() => {
+                    if (
+                      !window.confirm(
+                        '¿Eliminar este trabajo programado? Esta acción no se puede deshacer.',
+                      )
+                    )
+                      return
+                    setOperationError(null)
+                    void onDeletePendingWork(visit.id).catch((error: unknown) => {
+                      setOperationError(
+                        error instanceof Error
+                          ? error.message
+                          : 'No se ha podido eliminar el trabajo.',
+                      )
+                    })
+                  }}
+                >
+                  <Trash2 size={15} aria-hidden="true" />
+                  Eliminar
+                </button>
+              </div>
+            ) : visit.status !== 'scheduled' ? (
+              <Link className="action-link" href={`/agenda/${visit.id}`}>
+                {visit.status === 'completed' ? 'Ver parte' : 'Ver'}
+              </Link>
+            ) : (
+              <span className="muted">Pendiente</span>
+            )}
           </article>
         ))}
       </div>
+      {operationError && <p className="form-error">{operationError}</p>}
       {visibleVisits.length === 0 && (
         <div className="empty-results">
           <CalendarDays size={25} aria-hidden="true" />
@@ -172,8 +259,152 @@ export function WorkHistory({ visits, isAdmin }: { visits: WorkHistoryVisit[]; i
           Siguiente
         </button>
       </nav>
+      {editingVisit && (
+        <WorkEditor
+          key={editingVisit === 'new' ? 'new' : editingVisit.id}
+          visit={editingVisit}
+          installations={installations}
+          technicians={technicians}
+          onClose={() => setEditingVisit(null)}
+          onSave={async (input) => {
+            await onSavePendingWork(input, editingVisit === 'new' ? undefined : editingVisit.id)
+            setEditingVisit(null)
+          }}
+        />
+      )}
     </section>
   )
+}
+
+function WorkEditor({
+  visit,
+  installations,
+  technicians,
+  onClose,
+  onSave,
+}: {
+  visit: WorkHistoryVisit | 'new'
+  installations: WorkInstallation[]
+  technicians: WorkTechnician[]
+  onClose: () => void
+  onSave: (input: PendingWorkInput) => Promise<void>
+}) {
+  const [installationId, setInstallationId] = useState(
+    visit === 'new' ? (installations[0]?.id ?? '') : visit.installation_id,
+  )
+  const [technicianId, setTechnicianId] = useState(
+    visit === 'new' ? (technicians[0]?.id ?? '') : (visit.technician_id ?? ''),
+  )
+  const [scheduledFor, setScheduledFor] = useState(
+    visit === 'new' ? '' : toDateTimeLocal(visit.scheduled_for),
+  )
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const unavailable = installations.length === 0 || technicians.length === 0
+
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (unavailable) return
+    setSaving(true)
+    setError(null)
+    try {
+      await onSave({ installationId, technicianId, scheduledFor })
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error ? saveError.message : 'No se ha podido guardar el trabajo.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <section
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="work-editor-title"
+      >
+        <div className="modal-head">
+          <div>
+            <span className="eyebrow">Planificación</span>
+            <h2 id="work-editor-title">{visit === 'new' ? 'Nuevo trabajo' : 'Editar trabajo'}</h2>
+          </div>
+          <button className="close" type="button" onClick={onClose} aria-label="Cerrar">
+            <X size={20} aria-hidden="true" />
+          </button>
+        </div>
+        <form className="record-form" onSubmit={(event) => void submit(event)}>
+          <div className="form-grid">
+            <label className="field">
+              <span>Instalación</span>
+              <select
+                value={installationId}
+                onChange={(event) => setInstallationId(event.target.value)}
+                required
+              >
+                <option value="" disabled>
+                  Selecciona una instalación
+                </option>
+                {installations.map((installation) => (
+                  <option key={installation.id} value={installation.id}>
+                    {installation.clientName} · {installation.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Técnico</span>
+              <select
+                value={technicianId}
+                onChange={(event) => setTechnicianId(event.target.value)}
+                required
+              >
+                <option value="" disabled>
+                  Selecciona un técnico
+                </option>
+                {technicians.map((technician) => (
+                  <option key={technician.id} value={technician.id}>
+                    {technician.full_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field form-span-2">
+              <span>Fecha y hora</span>
+              <input
+                type="datetime-local"
+                value={scheduledFor}
+                onChange={(event) => setScheduledFor(event.target.value)}
+                required
+              />
+            </label>
+          </div>
+          {unavailable && (
+            <p className="form-error">
+              Necesitas al menos una instalación y un técnico para crear un trabajo.
+            </p>
+          )}
+          {error && <p className="form-error">{error}</p>}
+          <div className="modal-foot">
+            <button className="button secondary" type="button" onClick={onClose} disabled={saving}>
+              Cancelar
+            </button>
+            <button className="button" type="submit" disabled={saving || unavailable}>
+              {saving ? 'Guardando…' : visit === 'new' ? 'Programar trabajo' : 'Guardar cambios'}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  )
+}
+
+function toDateTimeLocal(value: string) {
+  const date = new Date(value)
+  const offset = date.getTimezoneOffset() * 60_000
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16)
 }
 
 function statusLabel(status: string) {

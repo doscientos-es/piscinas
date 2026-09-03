@@ -39,7 +39,7 @@ import { AdminStatistics } from '@/components/admin-statistics'
 import { Inventory, type Product } from '@/components/inventory'
 import { InvoicePreview } from '@/components/invoice-preview'
 import { VisitReport } from '@/components/visit-report'
-import { WorkHistory } from '@/components/work-history'
+import { WorkHistory, type WorkTechnician } from '@/components/work-history'
 import { getAgendaVisitAction } from '@/lib/agenda-access'
 import { canAccessAppView, type AccountRole } from '@/lib/app-access'
 import { validateAuthInput, type AuthMode } from '@/lib/auth-validation'
@@ -67,6 +67,7 @@ type View =
   | 'parte'
 type Visit = {
   id: string
+  installation_id: string
   scheduled_for: string
   status: string
   technician_id: string | null
@@ -137,6 +138,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   const [visits, setVisits] = useState<Visit[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [clients, setClients] = useState<Client[]>([])
+  const [technicians, setTechnicians] = useState<WorkTechnician[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [inventorySchemaReady, setInventorySchemaReady] = useState(true)
   const [productCreationVersion, setProductCreationVersion] = useState(0)
@@ -187,11 +189,15 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             )
             .order('created_at', { ascending: false })
         : Promise.resolve({ data: [], error: null })
-    const [v, i, p, settings] = await Promise.all([
+    const techniciansRequest =
+      accountRole === 'admin'
+        ? s.from('profiles').select('id,full_name').eq('role', 'technician').order('full_name')
+        : Promise.resolve({ data: [] as WorkTechnician[], error: null })
+    const [v, i, p, settings, techniciansResult] = await Promise.all([
       s
         .from('visits')
         .select(
-          'id,scheduled_for,status,technician_id,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,location_latitude,location_longitude,clients(legal_name)),interventions(completed_at,notes)',
+          'id,installation_id,scheduled_for,status,technician_id,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,location_latitude,location_longitude,clients(legal_name)),interventions(completed_at,notes)',
         )
         .order('scheduled_for'),
       invoicesRequest,
@@ -208,13 +214,14 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
         )
         .eq('id', true)
         .maybeSingle(),
+      techniciansRequest,
     ])
     const locationSchemaPending = isLocationSchemaPending(v.error?.message)
     const visitResponse = locationSchemaPending
       ? await s
           .from('visits')
           .select(
-            'id,scheduled_for,status,technician_id,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,clients(legal_name)),interventions(completed_at,notes)',
+            'id,installation_id,scheduled_for,status,technician_id,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,clients(legal_name)),interventions(completed_at,notes)',
           )
           .order('scheduled_for')
       : v
@@ -246,6 +253,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       visitResponse.error ||
       i.error ||
       clientResponse.error ||
+      techniciansResult.error ||
       (inventoryMigrationPending ? null : p.error)
     if (error) {
       setMessage(error.message)
@@ -254,6 +262,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     setVisits((visitResponse.data ?? []) as unknown as Visit[])
     setInvoices((i.data ?? []) as unknown as Invoice[])
     setClients((clientResponse.data ?? []).map((client) => normalizeClient(client)) as Client[])
+    setTechnicians((techniciansResult.data ?? []) as WorkTechnician[])
     setProducts((p.data ?? []) as Product[])
     setInventorySchemaReady(!inventoryMigrationPending)
     setTimeTrackingPolicy(
@@ -410,6 +419,51 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     setMessage(error ? error.message : 'Factura marcada como cobrada.')
     await load()
   }
+  const savePendingWork = async (input: PendingWorkInput, id?: string) => {
+    const scheduledFor = new Date(input.scheduledFor)
+    if (Number.isNaN(scheduledFor.getTime()))
+      throw new Error('Selecciona una fecha y hora válidas.')
+
+    const payload = {
+      installation_id: input.installationId,
+      technician_id: input.technicianId,
+      scheduled_for: scheduledFor.toISOString(),
+    }
+    const result = id
+      ? await createClient()
+          .from('visits')
+          .update(payload)
+          .eq('id', id)
+          .eq('status', 'scheduled')
+          .select('id')
+          .maybeSingle()
+      : await createClient()
+          .from('visits')
+          .insert({ ...payload, status: 'scheduled' })
+          .select('id')
+          .maybeSingle()
+    if (result.error) throw new Error(result.error.message)
+    if (!result.data)
+      throw new Error('El trabajo ya no está pendiente o no tienes permiso para modificarlo.')
+
+    setMessage(id ? 'Trabajo actualizado.' : 'Trabajo programado.')
+    await load()
+  }
+  const deletePendingWork = async (id: string) => {
+    const { data, error } = await createClient()
+      .from('visits')
+      .delete()
+      .eq('id', id)
+      .eq('status', 'scheduled')
+      .select('id')
+      .maybeSingle()
+    if (error) throw new Error(error.message)
+    if (!data)
+      throw new Error('El trabajo ya no está pendiente o no tienes permiso para eliminarlo.')
+
+    setMessage('Trabajo eliminado.')
+    await load()
+  }
   const saveClient = async (client: ClientInput, id?: string) => {
     const basePayload = {
       legal_name: client.legal_name.trim(),
@@ -489,6 +543,13 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     .map((part) => part[0])
     .join('')
     .toUpperCase()
+  const workInstallations: WorkInstallation[] = clients.flatMap((client) =>
+    client.installations.map((installation) => ({
+      id: installation.id,
+      name: installation.name,
+      clientName: client.legal_name,
+    })),
+  )
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -654,7 +715,16 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           {activeView === 'agenda' && (
             <Agenda visits={visits} isAdmin={isAdmin} start={requestStart} />
           )}
-          {activeView === 'trabajos' && <WorkHistory visits={visits} isAdmin={isAdmin} />}
+          {activeView === 'trabajos' && (
+            <WorkHistory
+              visits={visits}
+              installations={workInstallations}
+              technicians={technicians}
+              isAdmin={isAdmin}
+              onSavePendingWork={savePendingWork}
+              onDeletePendingWork={deletePendingWork}
+            />
+          )}
           {activeView === 'parte' && visitId && (
             <VisitReport visitId={visitId} readOnly={isAdmin} />
           )}

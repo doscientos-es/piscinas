@@ -8078,6 +8078,21 @@ textarea:focus-visible {
   color: #527387;
   font-size: 13px;
 }
+.work-history-heading-actions,
+.work-history-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.work-history-heading-actions {
+  flex: none;
+}
+.work-history-row > .work-history-actions {
+  flex: none;
+}
+.work-history-actions .danger {
+  color: #b42318;
+}
 .work-history-filters {
   display: flex;
   flex-wrap: wrap;
