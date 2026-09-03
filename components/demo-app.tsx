@@ -869,7 +869,7 @@ function StartVisitConfirmation({
   return (
     <div className="start-confirmation">
       <p>
-        Confirmeu que sou a{' '}
+        Confirmes que ets a{' '}
         <strong>{visit.installations?.address ?? "l'adreça assignada"}</strong> per a{' '}
         {visit.installations?.clients?.legal_name ?? 'aquest client'}?
       </p>
@@ -1779,7 +1779,7 @@ function Clients({
           <option value="hotel">Hotel</option>
           <option value="business">Empresa</option>
         </select>
-        <span>{total} clientes</span>
+        <span>{total} clients</span>
       </div>
       <div className="client-list" role="list">
         {visibleClients.map((client) => (
