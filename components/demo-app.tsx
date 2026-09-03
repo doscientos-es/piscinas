@@ -32,19 +32,25 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 
 import { AdminStatistics } from '@/components/admin-statistics'
 import { Inventory, type Product } from '@/components/inventory'
 import { InvoicePreview } from '@/components/invoice-preview'
 import { VisitReport } from '@/components/visit-report'
-import { WorkHistory, type WorkTechnician } from '@/components/work-history'
+import { WorkHistory } from '@/components/work-history'
 import { getAgendaVisitAction } from '@/lib/agenda-access'
 import { canAccessAppView, type AccountRole } from '@/lib/app-access'
 import { validateAuthInput, type AuthMode } from '@/lib/auth-validation'
 import { downloadInvoice, formatDate, getInvoiceLines, type Invoice } from '@/lib/invoice-template'
 import { isLocationSchemaPending } from '@/lib/location-schema-compatibility'
+import {
+  formatBillingPeriod,
+  getBillingPeriodOptions,
+  getPreviousBillingPeriod,
+  toBillingPeriodValue,
+} from '@/lib/monthly-billing'
 import { createClient } from '@/lib/supabase/client'
 import {
   defaultTimeTrackingPolicy,
@@ -55,6 +61,7 @@ import {
   type TrackingCoordinates,
 } from '@/lib/time-tracking-policy'
 import { getVisitStartWarning } from '@/lib/visit-start-validation'
+import type { PendingWorkInput, WorkInstallation, WorkTechnician } from '@/lib/work-history'
 
 type View =
   | 'inicio'
@@ -129,6 +136,7 @@ const titles: Record<View, string> = {
 
 export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [ready, setReady] = useState(false)
   const [signedIn, setSignedIn] = useState(false)
   const [role, setRole] = useState<AccountRole | null>(null)
@@ -185,7 +193,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
         ? s
             .from('invoices')
             .select(
-              'id,number,status,subtotal,vat_total,total,issued_on,due_on,clients(legal_name,tax_id,billing_email,billing_address),invoice_lines(id,description,quantity,unit_price,vat_rate,line_total)',
+              'id,client_id,number,status,subtotal,vat_total,total,issued_on,due_on,billing_period,clients(legal_name,tax_id,billing_email,billing_address),invoice_lines(id,description,quantity,unit_price,vat_rate,line_total)',
             )
             .order('created_at', { ascending: false })
         : Promise.resolve({ data: [], error: null })
@@ -417,6 +425,22 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       .update({ status: 'paid', paid_at: new Date().toISOString() })
       .eq('id', invoice.id)
     setMessage(error ? error.message : 'Factura marcada como cobrada.')
+    await load()
+  }
+  const generateMonthlyInvoices = async (billingPeriod: string) => {
+    const { data, error } = await createClient().rpc('generate_monthly_invoices', {
+      p_billing_period: billingPeriod,
+    })
+    if (error) {
+      setMessage(error.message)
+      return
+    }
+    const generated = (data ?? []).filter((invoice: { created: boolean }) => invoice.created).length
+    setMessage(
+      generated
+        ? `Cierre de ${formatBillingPeriod(billingPeriod)} preparado: ${generated} borradores nuevos.`
+        : `El cierre de ${formatBillingPeriod(billingPeriod)} ya estaba preparado.`,
+    )
     await load()
   }
   const savePendingWork = async (input: PendingWorkInput, id?: string) => {
@@ -728,7 +752,14 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           {activeView === 'parte' && visitId && (
             <VisitReport visitId={visitId} readOnly={isAdmin} />
           )}
-          {activeView === 'facturacion' && <Billing invoices={invoices} pay={pay} />}
+          {activeView === 'facturacion' && (
+            <Billing
+              invoices={invoices}
+              pay={pay}
+              clientId={searchParams.get('cliente')}
+              generateMonthlyInvoices={generateMonthlyInvoices}
+            />
+          )}
           {activeView === 'estadisticas' && (
             <AdminStatistics isAdmin={isAdmin} reloadVersion={statisticsReload} />
           )}
@@ -1403,12 +1434,30 @@ function calendarPeriodLabel(date: Date, view: CalendarView) {
   const end = addDays(startOfWeek(date), 6)
   return `${new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' }).format(startOfWeek(date))} — ${new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }).format(end)}`
 }
-function Billing({ invoices, pay }: { invoices: Invoice[]; pay: (i: Invoice) => void }) {
+function Billing({
+  invoices,
+  pay,
+  clientId,
+  generateMonthlyInvoices,
+}: {
+  invoices: Invoice[]
+  pay: (i: Invoice) => void
+  clientId: string | null
+  generateMonthlyInvoices: (billingPeriod: string) => Promise<void>
+}) {
   const [previewedInvoice, setPreviewedInvoice] = useState<Invoice | null>(null)
-  const pendingInvoices = invoices.filter((invoice) => invoice.status !== 'paid')
-  const paidInvoices = invoices.filter((invoice) => invoice.status === 'paid')
+  const [billingPeriod, setBillingPeriod] = useState(
+    toBillingPeriodValue(getPreviousBillingPeriod()),
+  )
+  const [generating, setGenerating] = useState(false)
+  const displayedInvoices = clientId
+    ? invoices.filter((invoice) => invoice.client_id === clientId)
+    : invoices
+  const filteredClientName = displayedInvoices[0]?.clients?.legal_name
+  const pendingInvoices = displayedInvoices.filter((invoice) => invoice.status !== 'paid')
+  const paidInvoices = displayedInvoices.filter((invoice) => invoice.status === 'paid')
   const pendingTotal = pendingInvoices.reduce((total, invoice) => total + Number(invoice.total), 0)
-  const billedTotal = invoices.reduce((total, invoice) => total + Number(invoice.total), 0)
+  const billedTotal = displayedInvoices.reduce((total, invoice) => total + Number(invoice.total), 0)
 
   return (
     <>
@@ -1418,7 +1467,7 @@ function Billing({ invoices, pay }: { invoices: Invoice[]; pay: (i: Invoice) => 
           <div>
             <span>Facturado</span>
             <strong>{money.format(billedTotal)}</strong>
-            <small>{invoices.length} facturas emitidas</small>
+            <small>{displayedInvoices.length} facturas emitidas</small>
           </div>
         </div>
         <div className="billing-summary-card pending">
@@ -1442,13 +1491,40 @@ function Billing({ invoices, pay }: { invoices: Invoice[]; pay: (i: Invoice) => 
         <header className="billing-list-header">
           <div>
             <span className="billing-list-kicker">Registro de facturas</span>
-            <h3 id="invoice-list-title">Todas las facturas</h3>
+            <h3 id="invoice-list-title">
+              {filteredClientName ? `Facturas de ${filteredClientName}` : 'Todas las facturas'}
+            </h3>
           </div>
-          <span className="billing-list-count">{invoices.length} en total</span>
+          <div className="billing-list-controls">
+            {clientId && <Link href="/facturacion">Ver todas</Link>}
+            <select
+              value={billingPeriod}
+              onChange={(event) => setBillingPeriod(event.target.value)}
+            >
+              {getBillingPeriodOptions().map((period) => (
+                <option key={period.value} value={period.value}>
+                  {period.label}
+                </option>
+              ))}
+            </select>
+            <button
+              className="button secondary"
+              type="button"
+              disabled={generating}
+              onClick={async () => {
+                setGenerating(true)
+                await generateMonthlyInvoices(billingPeriod)
+                setGenerating(false)
+              }}
+            >
+              {generating ? 'Preparando…' : 'Preparar cierre mensual'}
+            </button>
+            <span className="billing-list-count">{displayedInvoices.length} en total</span>
+          </div>
         </header>
-        {invoices.length ? (
+        {displayedInvoices.length ? (
           <div className="invoice-list" aria-label="Listado de facturas">
-            {invoices.map((invoice) => {
+            {displayedInvoices.map((invoice) => {
               const lines = getInvoiceLines(invoice)
               const isPaid = invoice.status === 'paid'
               const lineCountLabel = `${lines.length} ${lines.length === 1 ? 'concepto' : 'conceptos'}`
@@ -1466,6 +1542,7 @@ function Billing({ invoices, pay }: { invoices: Invoice[]; pay: (i: Invoice) => 
                       <span className="invoice-number">{invoice.number ?? 'Borrador'}</span>
                       <strong>{invoice.clients?.legal_name ?? 'Cliente sin asignar'}</strong>
                       <div className="invoice-dates">
+                        <span>Período {formatBillingPeriod(invoice.billing_period)}</span>
                         <span>Emitida {formatDate(invoice.issued_on)}</span>
                         <span>Vence {formatDate(invoice.due_on)}</span>
                       </div>
@@ -1529,7 +1606,7 @@ function Billing({ invoices, pay }: { invoices: Invoice[]; pay: (i: Invoice) => 
             <FileText size={24} aria-hidden="true" />
             <div>
               <strong>Aún no hay facturas</strong>
-              <p>Las facturas que emitas aparecerán aquí con su estado de cobro y sus conceptos.</p>
+              <p>Prepara el cierre mensual para crear los borradores pendientes de revisión.</p>
             </div>
           </div>
         )}
@@ -2140,6 +2217,11 @@ function ClientDetail({
                 : 'Mensual'}{' '}
             · pago a {client.payment_terms_days} días
           </p>
+          {isAdmin && (
+            <Link className="client-invoices-link" href={`/facturacion?cliente=${client.id}`}>
+              Ver facturas de este cliente
+            </Link>
+          )}
         </div>
         {isAdmin && <ClientTimeTracking client={client} />}
       </div>

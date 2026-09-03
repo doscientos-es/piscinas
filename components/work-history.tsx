@@ -62,16 +62,9 @@ export function WorkHistory({
     <section className="work-history" aria-label="Trabajos">
       <header className="work-history-heading">
         <div>
-          <span>{isAdmin ? 'Planificación operativa' : 'Historial operativo'}</span>
           <h2>Trabajos</h2>
-          <p>
-            {isAdmin
-              ? 'Programa y gestiona trabajos pendientes; consulta los partes ya cerrados.'
-              : 'Consulta el historial de tus trabajos realizados.'}
-          </p>
         </div>
         <div className="work-history-heading-actions">
-          <strong>{results.length} resultados</strong>
           {isAdmin && (
             <button
               className="button"

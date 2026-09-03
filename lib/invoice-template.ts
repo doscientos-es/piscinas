@@ -16,6 +16,7 @@ export type InvoiceLine = {
 
 export type Invoice = {
   id: string
+  client_id: string
   number: string | null
   status: string
   subtotal: number
