@@ -6956,6 +6956,38 @@ textarea:focus-visible {
   background: #fff1f1;
   color: #9d2828;
 }
+.start-exception {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid #f0d493;
+  border-radius: 10px;
+  background: #fffaf0;
+  color: #795813;
+  font-size: 13px;
+}
+.start-exception ul {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding-left: 18px;
+}
+.start-exception label {
+  display: grid;
+  gap: 5px;
+  margin-top: 3px;
+  font-weight: 750;
+}
+.start-exception textarea {
+  min-height: 58px;
+  resize: vertical;
+  border: 1px solid #ddc88e;
+  border-radius: 8px;
+  padding: 8px;
+  background: #fff;
+  color: var(--foreground);
+  font: inherit;
+}
 .time-tracking .sheet-heading > span {
   color: #6c8696;
   font-size: 11px;
@@ -7020,7 +7052,8 @@ textarea:focus-visible {
   height: 170px;
   border: 0;
 }
-.time-tracking-map a {
+.time-tracking-map a,
+.time-tracking-map button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -7029,6 +7062,39 @@ textarea:focus-visible {
   font-size: 12px;
   font-weight: 750;
   text-decoration: none;
+}
+.time-tracking-map button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.installation-location-fields {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid #dce9ef;
+  border-radius: 12px;
+  background: #fafdfe;
+}
+.installation-location-fields .sheet-heading h3,
+.installation-location-fields .sheet-heading p {
+  margin: 0;
+}
+.installation-location-fields .sheet-heading p {
+  margin-top: 3px;
+  color: #637e90;
+  font-size: 12px;
+}
+.installation-location-fields .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.installation-location-error {
+  margin: 0;
+  color: #a52323;
+  font-size: 12px;
 }
 
 /* Administration reporting dashboard. */
@@ -7148,11 +7214,161 @@ textarea:focus-visible {
   color: var(--foreground);
   font-size: 18px;
 }
+.tracking-management {
+  display: grid;
+  gap: 16px;
+  margin-top: 14px;
+  padding: 18px;
+  border: 1px solid #dce9ef;
+  border-radius: 14px;
+  background: #fff;
+}
+.tracking-management-heading,
+.tracking-incidents-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.tracking-management-heading h3,
+.tracking-incidents-heading h3 {
+  margin: 5px 0 0;
+  color: var(--foreground);
+  font-size: 17px;
+}
+.tracking-management-heading p,
+.tracking-incidents-heading p {
+  margin: 5px 0 0;
+  color: #617d8f;
+  font-size: 12px;
+}
+.tracking-management-heading > svg {
+  color: #0879ae;
+}
+.tracking-policy-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.tracking-policy-field {
+  display: grid;
+  gap: 5px;
+  color: #536f81;
+  font-size: 12px;
+  font-weight: 700;
+}
+.tracking-policy-field div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tracking-policy-field input {
+  width: 78px;
+  min-width: 0;
+  border: 1px solid #cddfe8;
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--foreground);
+  font: inherit;
+}
+.tracking-policy-field small {
+  color: #7891a0;
+  font-size: 11px;
+  font-weight: 600;
+}
+.tracking-policy-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #536f81;
+  font-size: 12px;
+  font-weight: 700;
+}
+.tracking-policy-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}
+.tracking-policy-save {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  align-self: end;
+}
+.tracking-policy-message {
+  margin: -5px 0 0;
+  color: #527286;
+  font-size: 12px;
+}
+.tracking-incidents-heading {
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid #e2edf2;
+}
+.tracking-incidents-heading > svg {
+  color: #d48b16;
+}
+.tracking-incidents-empty {
+  margin: 0;
+  color: #607d90;
+  font-size: 13px;
+}
+.tracking-incidents-list {
+  display: grid;
+  gap: 9px;
+}
+.tracking-incident {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid #efddb0;
+  border-radius: 10px;
+  background: #fffdf7;
+}
+.tracking-incident strong,
+.tracking-incident span {
+  display: block;
+}
+.tracking-incident strong {
+  color: var(--foreground);
+  font-size: 13px;
+}
+.tracking-incident span,
+.tracking-incident small {
+  color: #637e8f;
+  font-size: 12px;
+}
+.tracking-incident ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tracking-incident li {
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #fff0ca;
+  color: #7a5918;
+  font-size: 11px;
+  font-weight: 700;
+}
+.tracking-incident p {
+  margin: 0;
+  color: #516d7d;
+  font-size: 12px;
+  font-style: italic;
+}
 @media (max-width: 880px) {
   .nav-admin {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
   .analytics-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tracking-policy-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -7169,6 +7385,12 @@ textarea:focus-visible {
   }
   .analytics-chart {
     height: 230px;
+  }
+  .tracking-policy-grid {
+    grid-template-columns: 1fr;
+  }
+  .tracking-policy-save {
+    min-height: 40px;
   }
 }
 
@@ -7504,8 +7726,8 @@ textarea:focus-visible {
 .topbar {
   height: 72px;
   padding: 0 38px;
-  background: #fff;
-  border-bottom: 1px solid #dce7ed;
+  background: var(--background);
+  border-bottom: 0;
 }
 .topbar h1,
 .card h3,
@@ -7769,7 +7991,8 @@ textarea:focus-visible {
   }
 }
 @media (max-width: 700px) {
-  .top-actions .analytics-refresh {
+  .top-actions .analytics-refresh,
+  .top-actions .inventory-create {
     display: inline-flex;
   }
   .stats,
@@ -7801,4 +8024,16 @@ textarea:focus-visible {
   .inventory-row {
     padding: 14px;
   }
+}
+
+/* Agenda is a dedicated workspace rather than a card within a page. */
+.agenda-content {
+  max-width: none;
+  min-height: 100dvh;
+  padding: 0;
+}
+.agenda-content .calendar-shell {
+  min-height: 100dvh;
+  border: 0;
+  border-radius: 0;
 }

@@ -14,14 +14,14 @@ describe('getAgendaVisitAction', () => {
     })
   })
 
-  it('mantiene la agenda de administración en solo supervisión', () => {
+  it('permite a administración consultar los partes cerrados sin operar la visita', () => {
     expect(getAgendaVisitAction('scheduled', true)).toEqual({
       label: 'Programada',
       isInteractive: false,
     })
     expect(getAgendaVisitAction('completed', true)).toEqual({
-      label: 'Completada',
-      isInteractive: false,
+      label: 'Ver',
+      isInteractive: true,
     })
   })
 })

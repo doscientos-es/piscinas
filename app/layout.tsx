@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
 
+import { PersistentApp } from '@/components/persistent-app'
 import { PwaInstallPrompt } from '@/components/pwa-install-prompt'
 import { PwaRegister } from '@/components/pwa-register'
 
@@ -17,7 +18,8 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
   return (
     <html lang="es">
       <body>
-        {children}
+        <PersistentApp />
+        <div hidden>{children}</div>
         <PwaRegister />
         <PwaInstallPrompt />
       </body>

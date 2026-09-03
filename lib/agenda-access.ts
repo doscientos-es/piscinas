@@ -3,10 +3,10 @@ export function getAgendaVisitAction(status: string, isSupervisor: boolean) {
     const labels: Record<string, string> = {
       scheduled: 'Programada',
       in_progress: 'En curso',
-      completed: 'Completada',
+      completed: 'Ver',
       cancelled: 'Cancelada',
     }
-    return { label: labels[status] ?? 'Sin estado', isInteractive: false }
+    return { label: labels[status] ?? 'Sin estado', isInteractive: status === 'completed' }
   }
 
   if (status === 'scheduled') return { label: 'Iniciar', isInteractive: true }

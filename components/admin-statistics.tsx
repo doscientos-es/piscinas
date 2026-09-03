@@ -4,6 +4,7 @@ import * as echarts from 'echarts'
 import { CalendarDays, CheckCircle2, CircleDollarSign, Clock3 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
+import { TimeTrackingManagement } from '@/components/time-tracking-management'
 import {
   buildAdminStatistics,
   getStatisticsPeriod,
@@ -165,6 +166,7 @@ export function AdminStatistics({
               <EChart option={options.billing} label="Gráfico mensual de facturación y cobro" />
             </article>
           </div>
+          <TimeTrackingManagement />
         </>
       )}
     </section>

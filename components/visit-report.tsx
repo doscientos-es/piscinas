@@ -35,6 +35,7 @@ type VisitDetail = {
     instructions: string | null
     clients: { legal_name: string } | null
   } | null
+  technician: { full_name: string } | null
   interventions: {
     id: string
     started_at: string | null
@@ -72,7 +73,7 @@ export function VisitReport({
       supabase
         .from('visits')
         .select(
-          'id,status,scheduled_for,installations(name,address,instructions,clients(legal_name)),interventions(id,started_at,completed_at,notes,intervention_products(id,product_id,quantity,unit_price,products(name,unit)))',
+          'id,status,scheduled_for,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,instructions,clients(legal_name)),interventions(id,started_at,completed_at,notes,intervention_products(id,product_id,quantity,unit_price,products(name,unit)))',
         )
         .eq('id', visitId)
         .maybeSingle(),
@@ -208,7 +209,12 @@ export function VisitReport({
       )}
 
       {isClosed ? (
-        <ClosedReport notes={intervention.notes} usages={intervention.intervention_products} />
+        <ClosedReport
+          notes={intervention.notes}
+          usages={intervention.intervention_products}
+          technicianName={visit.technician?.full_name ?? null}
+          completedAt={intervention.completed_at}
+        />
       ) : readOnly ? (
         <section className="closed-report">
           <Clock3 size={22} />
@@ -353,12 +359,31 @@ export function VisitReport({
   )
 }
 
-function ClosedReport({ notes, usages }: { notes: string | null; usages: ExistingConsumption[] }) {
+function ClosedReport({
+  notes,
+  usages,
+  technicianName,
+  completedAt,
+}: {
+  notes: string | null
+  usages: ExistingConsumption[]
+  technicianName: string | null
+  completedAt: string | null
+}) {
   return (
     <section className="closed-report">
       <CheckCircle2 size={22} />
       <div>
         <h3>Parte cerrado</h3>
+        <p>
+          Cerrado por <strong>{technicianName ?? 'Técnico no disponible'}</strong>
+          {completedAt && (
+            <>
+              {' '}
+              el <strong>{formatDateTime(new Date(completedAt))}</strong>
+            </>
+          )}
+        </p>
         <p>{notes}</p>
         {usages.length ? (
           <ul>
@@ -376,4 +401,11 @@ function ClosedReport({ notes, usages }: { notes: string | null; usages: Existin
       </div>
     </section>
   )
+}
+
+function formatDateTime(value: Date) {
+  return new Intl.DateTimeFormat('es-ES', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(value)
 }

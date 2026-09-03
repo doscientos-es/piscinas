@@ -43,6 +43,14 @@ import { getAgendaVisitAction } from '@/lib/agenda-access'
 import { validateAuthInput, type AuthMode } from '@/lib/auth-validation'
 import { downloadInvoice, formatDate, getInvoiceLines, type Invoice } from '@/lib/invoice-template'
 import { createClient } from '@/lib/supabase/client'
+import {
+  defaultTimeTrackingPolicy,
+  getStartExceptions,
+  startExceptionLabel,
+  type StartException,
+  type TimeTrackingPolicy,
+  type TrackingCoordinates,
+} from '@/lib/time-tracking-policy'
 import { getVisitStartWarning } from '@/lib/visit-start-validation'
 
 type View =
@@ -58,7 +66,13 @@ type Visit = {
   scheduled_for: string
   status: string
   technician: { full_name: string } | null
-  installations: { name: string; address: string; clients: { legal_name: string } } | null
+  installations: {
+    name: string
+    address: string
+    location_latitude: number | null
+    location_longitude: number | null
+    clients: { legal_name: string }
+  } | null
 }
 type Installation = {
   id: string
@@ -67,6 +81,8 @@ type Installation = {
   pool_type: string | null
   instructions: string | null
   notes: string | null
+  location_latitude: number | null
+  location_longitude: number | null
 }
 type Client = {
   id: string
@@ -116,6 +132,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   const [clients, setClients] = useState<Client[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [inventorySchemaReady, setInventorySchemaReady] = useState(true)
+  const [productCreationVersion, setProductCreationVersion] = useState(0)
   const [statisticsReload, setStatisticsReload] = useState(0)
   const [message, setMessage] = useState<string | null>(null)
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -124,13 +141,19 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   const [editingClient, setEditingClient] = useState<Client | null | 'new'>(null)
   const [startingVisit, setStartingVisit] = useState(false)
   const [startError, setStartError] = useState<string | null>(null)
+  const [startPosition, setStartPosition] = useState<TrackingCoordinates | null>(null)
+  const [startExceptions, setStartExceptions] = useState<StartException[]>([])
+  const [requiresExceptionReason, setRequiresExceptionReason] = useState(false)
+  const [exceptionReason, setExceptionReason] = useState('')
+  const [timeTrackingPolicy, setTimeTrackingPolicy] =
+    useState<TimeTrackingPolicy>(defaultTimeTrackingPolicy)
   const load = useCallback(async () => {
     const s = createClient()
-    const [v, i, p, session] = await Promise.all([
+    const [v, i, p, settings, session] = await Promise.all([
       s
         .from('visits')
         .select(
-          'id,scheduled_for,status,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,clients(legal_name))',
+          'id,scheduled_for,status,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,location_latitude,location_longitude,clients(legal_name))',
         )
         .order('scheduled_for'),
       s
@@ -145,17 +168,37 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           'id,name,reference,category,unit,sale_price,cost_price,stock_quantity,minimum_stock,active',
         )
         .order('name'),
+      s
+        .from('time_tracking_settings')
+        .select(
+          'early_start_tolerance_minutes,late_start_tolerance_minutes,geofence_radius_m,max_location_accuracy_m,require_exception_reason',
+        )
+        .eq('id', true)
+        .maybeSingle(),
       s.auth.getUser(),
     ])
+    const locationSchemaPending = v.error?.message.includes(
+      'column installations.location_latitude does not exist',
+    )
+    const visitResponse = locationSchemaPending
+      ? await s
+          .from('visits')
+          .select(
+            'id,scheduled_for,status,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,clients(legal_name))',
+          )
+          .order('scheduled_for')
+      : v
     const extendedClients = await s
       .from('clients')
       .select(
-        'id,legal_name,trade_name,tax_id,billing_email,phone,billing_address,payment_method,notes,contact_name,contact_role,contact_email,contact_phone,client_type,billing_frequency,payment_terms_days,active,installations(id,name,address,pool_type,instructions,notes)',
+        'id,legal_name,trade_name,tax_id,billing_email,phone,billing_address,payment_method,notes,contact_name,contact_role,contact_email,contact_phone,client_type,billing_frequency,payment_terms_days,active,installations(id,name,address,pool_type,instructions,notes,location_latitude,location_longitude)',
       )
       .order('legal_name')
-    const migrationPending = extendedClients.error?.message.includes(
-      'column clients.trade_name does not exist',
-    )
+    const migrationPending =
+      extendedClients.error?.message.includes('column clients.trade_name does not exist') ||
+      extendedClients.error?.message.includes(
+        'column installations.location_latitude does not exist',
+      )
     const clientResponse = migrationPending
       ? await s
           .from('clients')
@@ -184,16 +227,24 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       setAccountEmail(session.data.user.email ?? '')
     }
     const error =
-      v.error || i.error || clientResponse.error || (inventoryMigrationPending ? null : p.error)
+      visitResponse.error ||
+      i.error ||
+      clientResponse.error ||
+      (inventoryMigrationPending ? null : p.error)
     if (error) {
       setMessage(error.message)
       return
     }
-    setVisits((v.data ?? []) as unknown as Visit[])
+    setVisits((visitResponse.data ?? []) as unknown as Visit[])
     setInvoices((i.data ?? []) as unknown as Invoice[])
     setClients((clientResponse.data ?? []).map((client) => normalizeClient(client)) as Client[])
     setProducts((p.data ?? []) as Product[])
     setInventorySchemaReady(!inventoryMigrationPending)
+    setTimeTrackingPolicy(
+      settings.data
+        ? { ...defaultTimeTrackingPolicy, ...(settings.data as Partial<TimeTrackingPolicy>) }
+        : defaultTimeTrackingPolicy,
+    )
   }, [])
   useEffect(() => {
     const s = createClient()
@@ -236,19 +287,31 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   const requestStart = (visit: Visit) => {
     setMessage(null)
     setStartError(null)
+    setStartPosition(null)
+    setStartExceptions([])
+    setRequiresExceptionReason(false)
+    setExceptionReason('')
     setVisitToStart(visit)
   }
-  const recordVisitStart = async (visit: Visit, position: GeolocationPosition) => {
+  const recordVisitStart = async (visit: Visit, position: TrackingCoordinates) => {
     const { error } = await createClient().rpc('start_visit', {
       p_visit_id: visit.id,
-      p_start_latitude: position.coords.latitude,
-      p_start_longitude: position.coords.longitude,
-      p_start_accuracy_m: position.coords.accuracy,
-      p_start_outside_schedule_confirmed: Boolean(getVisitStartWarning(visit.scheduled_for)),
+      p_start_latitude: position.latitude,
+      p_start_longitude: position.longitude,
+      p_start_accuracy_m: position.accuracy,
+      p_start_outside_schedule_confirmed: startExceptions.some((exception) =>
+        ['different_day', 'too_early', 'too_late'].includes(exception),
+      ),
+      p_exception_reason: exceptionReason.trim() || null,
     })
     setStartingVisit(false)
     if (error) {
-      setStartError(error.message)
+      if (error.message.startsWith('START_EXCEPTION:')) {
+        setRequiresExceptionReason(true)
+        setStartError(error.message.replace('START_EXCEPTION: ', ''))
+      } else {
+        setStartError(error.message)
+      }
       return
     }
     setVisitToStart(null)
@@ -256,6 +319,19 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   }
   const confirmVisitStart = () => {
     if (!visitToStart || startingVisit) return
+    if (startPosition) {
+      if (
+        (startExceptions.length > 0 || requiresExceptionReason) &&
+        timeTrackingPolicy.require_exception_reason &&
+        !exceptionReason.trim()
+      ) {
+        setStartError('Indica brevemente el motivo para registrar este inicio excepcional.')
+        return
+      }
+      setStartingVisit(true)
+      void recordVisitStart(visitToStart, startPosition)
+      return
+    }
     if (!navigator.geolocation) {
       setStartError('Este dispositivo no permite obtener la ubicación necesaria para iniciar.')
       return
@@ -263,7 +339,40 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     setStartingVisit(true)
     setStartError(null)
     navigator.geolocation.getCurrentPosition(
-      (position) => void recordVisitStart(visitToStart, position),
+      (position) => {
+        const currentPosition = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        }
+        const exceptions = getStartExceptions({
+          scheduledFor: visitToStart.scheduled_for,
+          now: new Date(),
+          position: currentPosition,
+          installation: visitToStart.installations
+            ? {
+                latitude:
+                  visitToStart.installations.location_latitude === null ||
+                  visitToStart.installations.location_latitude === undefined
+                    ? null
+                    : Number(visitToStart.installations.location_latitude),
+                longitude:
+                  visitToStart.installations.location_longitude === null ||
+                  visitToStart.installations.location_longitude === undefined
+                    ? null
+                    : Number(visitToStart.installations.location_longitude),
+              }
+            : undefined,
+          policy: timeTrackingPolicy,
+        })
+        setStartPosition(currentPosition)
+        setStartExceptions(exceptions)
+        if (exceptions.length > 0 && timeTrackingPolicy.require_exception_reason) {
+          setStartingVisit(false)
+          return
+        }
+        void recordVisitStart(visitToStart, currentPosition)
+      },
       (error) => {
         setStartingVisit(false)
         setStartError(geolocationErrorMessage(error))
@@ -452,36 +561,48 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           </PopoverTrigger>
         </div>
       </aside>
-      <main className="main">
-        <header className="topbar">
-          <div>
-            <h1>{titles[view]}</h1>
-          </div>
-          <div className="top-actions">
-            {view === 'inicio' && (
-              <Link className="button accent" href="/agenda">
-                Ver agenda
-              </Link>
-            )}
-            {view === 'clientes' && isAdmin && (
-              <button className="button" type="button" onClick={() => setEditingClient('new')}>
-                <Plus size={17} aria-hidden="true" />
-                Nuevo cliente
-              </button>
-            )}
-            {view === 'estadisticas' && isAdmin && (
-              <button
-                className="button secondary analytics-refresh"
-                type="button"
-                onClick={() => setStatisticsReload((value) => value + 1)}
-              >
-                <RefreshCw size={16} aria-hidden="true" />
-                Actualizar
-              </button>
-            )}
-          </div>
-        </header>
-        <div className="content">
+      <main className={view === 'agenda' ? 'main agenda-main' : 'main'}>
+        {view !== 'agenda' && (
+          <header className="topbar">
+            <div>
+              <h1>{titles[view]}</h1>
+            </div>
+            <div className="top-actions">
+              {view === 'inicio' && (
+                <Link className="button accent" href="/agenda">
+                  Ver agenda
+                </Link>
+              )}
+              {view === 'clientes' && isAdmin && (
+                <button className="button" type="button" onClick={() => setEditingClient('new')}>
+                  <Plus size={17} aria-hidden="true" />
+                  Nuevo cliente
+                </button>
+              )}
+              {view === 'inventario' && isAdmin && (
+                <button
+                  className="button inventory-create"
+                  type="button"
+                  onClick={() => setProductCreationVersion((value) => value + 1)}
+                >
+                  <Plus size={17} aria-hidden="true" />
+                  Nuevo material
+                </button>
+              )}
+              {view === 'estadisticas' && isAdmin && (
+                <button
+                  className="button secondary analytics-refresh"
+                  type="button"
+                  onClick={() => setStatisticsReload((value) => value + 1)}
+                >
+                  <RefreshCw size={16} aria-hidden="true" />
+                  Actualizar
+                </button>
+              )}
+            </div>
+          </header>
+        )}
+        <div className={view === 'agenda' ? 'content agenda-content' : 'content'}>
           {message && (
             <p className="toast" role="status">
               {message}
@@ -521,6 +642,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
               isAdmin={isAdmin}
               schemaReady={inventorySchemaReady}
               onRefresh={load}
+              creationVersion={productCreationVersion}
             />
           )}
         </div>
@@ -529,19 +651,37 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
         <ConfirmDialog
           open={Boolean(visitToStart)}
           onOpenChange={(open) => {
-            if (!open && !startingVisit) setVisitToStart(null)
+            if (!open && !startingVisit) {
+              setVisitToStart(null)
+              setStartPosition(null)
+            }
           }}
-          title="Registrar inicio de visita"
+          title={
+            startExceptions.length || requiresExceptionReason
+              ? 'Justificar inicio excepcional'
+              : 'Registrar inicio de visita'
+          }
           description={
             visitToStart ? (
               <StartVisitConfirmation
                 visit={visitToStart}
                 warning={getVisitStartWarning(visitToStart.scheduled_for)}
                 error={startError}
+                position={startPosition}
+                exceptions={startExceptions}
+                requiresExceptionReason={requiresExceptionReason}
+                exceptionReason={exceptionReason}
+                onExceptionReasonChange={setExceptionReason}
               />
             ) : undefined
           }
-          confirmLabel={startingVisit ? 'Obteniendo ubicación…' : 'Confirmar y registrar inicio'}
+          confirmLabel={
+            startingVisit
+              ? 'Obteniendo ubicación…'
+              : startExceptions.length || requiresExceptionReason
+                ? 'Registrar inicio excepcional'
+                : 'Confirmar y registrar inicio'
+          }
           cancelLabel="Cancelar"
           pending={startingVisit}
           onConfirm={confirmVisitStart}
@@ -554,12 +694,23 @@ function StartVisitConfirmation({
   visit,
   warning,
   error,
+  position,
+  exceptions,
+  requiresExceptionReason,
+  exceptionReason,
+  onExceptionReasonChange,
 }: {
   visit: Visit
   warning: ReturnType<typeof getVisitStartWarning>
   error: string | null
+  position: TrackingCoordinates | null
+  exceptions: StartException[]
+  requiresExceptionReason: boolean
+  exceptionReason: string
+  onExceptionReasonChange: (value: string) => void
 }) {
   const scheduledFor = new Date(visit.scheduled_for)
+  const mustExplain = exceptions.length > 0 || requiresExceptionReason
   return (
     <div className="start-confirmation">
       <p>
@@ -576,9 +727,31 @@ function StartVisitConfirmation({
         </p>
       )}
       <p className="start-confirmation-location">
-        Al confirmar, el navegador pedirá permiso para registrar tu ubicación precisa y la hora
-        oficial de inicio.
+        {position
+          ? `Ubicación obtenida con una precisión aproximada de ±${Math.round(position.accuracy)} m.`
+          : 'Al confirmar, el navegador pedirá permiso para registrar tu ubicación precisa y la hora oficial de inicio.'}
       </p>
+      {mustExplain && (
+        <div className="start-exception">
+          <strong>Este inicio necesita justificación</strong>
+          {exceptions.length > 0 && (
+            <ul>
+              {exceptions.map((exception) => (
+                <li key={exception}>{startExceptionLabel[exception]}</li>
+              ))}
+            </ul>
+          )}
+          <label>
+            Motivo de la excepción
+            <textarea
+              rows={2}
+              value={exceptionReason}
+              onChange={(event) => onExceptionReasonChange(event.target.value)}
+              placeholder="Ej. avería urgente, acceso restringido o imprecisión GPS"
+            />
+          </label>
+        </div>
+      )}
       {error && <p className="start-confirmation-error">{error}</p>}
     </div>
   )
@@ -599,11 +772,23 @@ function formatDateTime(value: Date) {
   }).format(value)
 }
 const blankToNull = (value: string | null) => value?.trim() || null
-const normalizeClient = (client: Partial<Client>): Client => ({
+const normalizeClient = (
+  client: Omit<Partial<Client>, 'installations'> & { installations?: Partial<Installation>[] },
+): Client => ({
   ...emptyClient,
   ...client,
   id: client.id ?? '',
-  installations: client.installations ?? [],
+  installations: (client.installations ?? []).map((installation) => ({
+    ...installation,
+    id: installation.id ?? '',
+    name: installation.name ?? '',
+    address: installation.address ?? '',
+    pool_type: installation.pool_type ?? null,
+    instructions: installation.instructions ?? null,
+    notes: installation.notes ?? null,
+    location_latitude: installation.location_latitude ?? null,
+    location_longitude: installation.location_longitude ?? null,
+  })),
 })
 function Nav({
   href,
@@ -1290,7 +1475,7 @@ function Clients({
       let query = createClient()
         .from('clients')
         .select(
-          'id,legal_name,trade_name,tax_id,billing_email,phone,billing_address,payment_method,notes,contact_name,contact_role,contact_email,contact_phone,client_type,billing_frequency,payment_terms_days,active,installations(id,name,address,pool_type,instructions,notes)',
+          'id,legal_name,trade_name,tax_id,billing_email,phone,billing_address,payment_method,notes,contact_name,contact_role,contact_email,contact_phone,client_type,billing_frequency,payment_terms_days,active,installations(id,name,address,pool_type,instructions,notes,location_latitude,location_longitude)',
           { count: 'exact' },
         )
         .order('legal_name')
@@ -1554,6 +1739,8 @@ const emptyInstallation: InstallationInput = {
   pool_type: null,
   instructions: null,
   notes: null,
+  location_latitude: null,
+  location_longitude: null,
 }
 const clientToInput = ({
   id: _id,
@@ -1969,20 +2156,28 @@ function VisitStartMap({
   longitude: number
   installationName: string
 }) {
+  const [mapOpen, setMapOpen] = useState(false)
   const offset = 0.004
   const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${longitude - offset}%2C${latitude - offset}%2C${longitude + offset}%2C${latitude + offset}&layer=mapnik&marker=${latitude}%2C${longitude}`
   const mapLink = `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`
   return (
     <div className="time-tracking-map">
-      <iframe
-        title={`Punto de inicio de ${installationName}`}
-        src={mapUrl}
-        loading="lazy"
-        referrerPolicy="no-referrer"
-      />
-      <a href={mapLink} target="_blank" rel="noreferrer">
-        <MapPin size={15} aria-hidden="true" /> Abrir punto en el mapa
-      </a>
+      <button type="button" onClick={() => setMapOpen((open) => !open)}>
+        <MapPin size={15} aria-hidden="true" /> {mapOpen ? 'Ocultar mapa' : 'Ver punto en el mapa'}
+      </button>
+      {mapOpen && (
+        <>
+          <iframe
+            title={`Punto de inicio de ${installationName}`}
+            src={mapUrl}
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
+          <a href={mapLink} target="_blank" rel="noreferrer">
+            Abrir mapa completo
+          </a>
+        </>
+      )}
     </div>
   )
 }
@@ -2007,8 +2202,24 @@ function InstallationForm({
 }) {
   const [form, setForm] = useState<InstallationInput>(installation ?? emptyInstallation)
   const [saving, setSaving] = useState(false)
+  const [locationError, setLocationError] = useState<string | null>(null)
   const update = <K extends keyof InstallationInput>(key: K, value: InstallationInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
+  const setCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError('Este dispositivo no permite obtener la ubicación.')
+      return
+    }
+    setLocationError(null)
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        update('location_latitude', Number(position.coords.latitude.toFixed(6)))
+        update('location_longitude', Number(position.coords.longitude.toFixed(6)))
+      },
+      () => setLocationError('No se ha podido obtener la ubicación de la instalación.'),
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20_000 },
+    )
+  }
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setSaving(true)
@@ -2051,6 +2262,50 @@ function InstallationForm({
             onChange={(e) => update('instructions', e.target.value)}
           />
         </Field>
+        <div className="installation-location-fields">
+          <div className="sheet-heading">
+            <div>
+              <h3>Ubicación de la instalación</h3>
+              <p>Opcional. Activa la comprobación de distancia al iniciar una visita.</p>
+            </div>
+            <button className="button secondary" type="button" onClick={setCurrentLocation}>
+              <MapPin size={15} aria-hidden="true" /> Usar mi ubicación
+            </button>
+          </div>
+          <div className="form-grid">
+            <Field label="Latitud">
+              <input
+                type="number"
+                step="0.000001"
+                min="-90"
+                max="90"
+                value={form.location_latitude ?? ''}
+                onChange={(event) =>
+                  update(
+                    'location_latitude',
+                    event.target.value === '' ? null : Number(event.target.value),
+                  )
+                }
+              />
+            </Field>
+            <Field label="Longitud">
+              <input
+                type="number"
+                step="0.000001"
+                min="-180"
+                max="180"
+                value={form.location_longitude ?? ''}
+                onChange={(event) =>
+                  update(
+                    'location_longitude',
+                    event.target.value === '' ? null : Number(event.target.value),
+                  )
+                }
+              />
+            </Field>
+          </div>
+          {locationError && <p className="installation-location-error">{locationError}</p>}
+        </div>
         <Field label="Notas internas">
           <textarea
             rows={3}
