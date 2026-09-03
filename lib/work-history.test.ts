@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest'
 import {
   canManagePendingWork,
   filterWorkHistory,
+  groupWorkInstallationsByClient,
   paginateWorkHistory,
   type WorkHistoryVisit,
+  type WorkInstallation,
 } from './work-history'
 
 const visits: WorkHistoryVisit[] = [
@@ -67,5 +69,44 @@ describe('work history', () => {
     expect(canManagePendingWork(true, 'scheduled')).toBe(true)
     expect(canManagePendingWork(true, 'in_progress')).toBe(false)
     expect(canManagePendingWork(false, 'scheduled')).toBe(false)
+  })
+
+  it('agrupa las instalaciones por cliente para seleccionarlas en dos pasos', () => {
+    const installations: WorkInstallation[] = [
+      {
+        id: 'installation-1',
+        name: 'Piscina principal',
+        address: 'Calle Mar 2',
+        clientId: 'client-a',
+        clientName: 'Álvaro',
+      },
+      {
+        id: 'installation-2',
+        name: 'Piscina principal',
+        address: 'Avenida Sol 8',
+        clientId: 'client-b',
+        clientName: 'Baleares Hotel',
+      },
+      {
+        id: 'installation-3',
+        name: 'Piscina terraza',
+        address: 'Calle Mar 2',
+        clientId: 'client-a',
+        clientName: 'Álvaro',
+      },
+    ]
+
+    expect(groupWorkInstallationsByClient(installations)).toEqual([
+      {
+        id: 'client-a',
+        name: 'Álvaro',
+        installations: [installations[0], installations[2]],
+      },
+      {
+        id: 'client-b',
+        name: 'Baleares Hotel',
+        installations: [installations[1]],
+      },
+    ])
   })
 })

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  filterInvoicesByBillingPeriod,
   getBillingPeriod,
   getBillingPeriodOptions,
   getPreviousBillingPeriod,
@@ -21,5 +22,15 @@ describe('monthly billing periods', () => {
       '2026-08-01',
       '2026-07-01',
     ])
+  })
+
+  it('filters invoices by the selected billing period', () => {
+    const invoices = [
+      { id: 'september', billing_period: '2026-09-01' },
+      { id: 'august', billing_period: '2026-08-01' },
+      { id: 'without-period', billing_period: null },
+    ]
+
+    expect(filterInvoicesByBillingPeriod(invoices, '2026-08-01')).toEqual([invoices[1]])
   })
 })

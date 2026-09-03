@@ -46,6 +46,7 @@ import { validateAuthInput, type AuthMode } from '@/lib/auth-validation'
 import { downloadInvoice, formatDate, getInvoiceLines, type Invoice } from '@/lib/invoice-template'
 import { isLocationSchemaPending } from '@/lib/location-schema-compatibility'
 import {
+  filterInvoicesByBillingPeriod,
   formatBillingPeriod,
   getBillingPeriodOptions,
   getPreviousBillingPeriod,
@@ -571,6 +572,8 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     client.installations.map((installation) => ({
       id: installation.id,
       name: installation.name,
+      address: installation.address,
+      clientId: client.id,
       clientName: client.legal_name,
     })),
   )
@@ -1450,10 +1453,11 @@ function Billing({
     toBillingPeriodValue(getPreviousBillingPeriod()),
   )
   const [generating, setGenerating] = useState(false)
-  const displayedInvoices = clientId
+  const clientInvoices = clientId
     ? invoices.filter((invoice) => invoice.client_id === clientId)
     : invoices
-  const filteredClientName = displayedInvoices[0]?.clients?.legal_name
+  const displayedInvoices = filterInvoicesByBillingPeriod(clientInvoices, billingPeriod)
+  const filteredClientName = clientId ? clientInvoices[0]?.clients?.legal_name : null
   const pendingInvoices = displayedInvoices.filter((invoice) => invoice.status !== 'paid')
   const paidInvoices = displayedInvoices.filter((invoice) => invoice.status === 'paid')
   const pendingTotal = pendingInvoices.reduce((total, invoice) => total + Number(invoice.total), 0)

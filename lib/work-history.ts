@@ -9,7 +9,18 @@ export type WorkHistoryVisit = {
   interventions: { completed_at: string | null; notes: string | null } | null
 }
 
-export type WorkInstallation = { id: string; name: string; clientName: string }
+export type WorkInstallation = {
+  id: string
+  name: string
+  address: string
+  clientId: string
+  clientName: string
+}
+export type WorkClient = {
+  id: string
+  name: string
+  installations: WorkInstallation[]
+}
 export type WorkTechnician = { id: string; full_name: string }
 export type PendingWorkInput = {
   installationId: string
@@ -56,6 +67,27 @@ export function filterWorkHistory(visits: WorkHistoryVisit[], filters: WorkHisto
 
 export function paginateWorkHistory<T>(items: T[], page: number, pageSize: number) {
   return items.slice(page * pageSize, (page + 1) * pageSize)
+}
+
+export function groupWorkInstallationsByClient(installations: WorkInstallation[]): WorkClient[] {
+  const clients = new Map<string, WorkClient>()
+  for (const installation of installations) {
+    const client = clients.get(installation.clientId) ?? {
+      id: installation.clientId,
+      name: installation.clientName,
+      installations: [],
+    }
+    client.installations.push(installation)
+    clients.set(client.id, client)
+  }
+  return Array.from(clients.values())
+    .map((client) => ({
+      ...client,
+      installations: [...client.installations].sort((left, right) =>
+        `${left.name} ${left.address}`.localeCompare(`${right.name} ${right.address}`, 'es'),
+      ),
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name, 'es'))
 }
 
 function normalize(value: string) {

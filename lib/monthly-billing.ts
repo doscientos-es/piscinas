@@ -24,3 +24,10 @@ export function getBillingPeriodOptions(now: Date = new Date(), count = 12) {
     return { value, label: formatBillingPeriod(value) }
   })
 }
+
+export function filterInvoicesByBillingPeriod<T extends { billing_period: string | null }>(
+  invoices: T[],
+  billingPeriod: string,
+) {
+  return invoices.filter((invoice) => invoice.billing_period === billingPeriod)
+}

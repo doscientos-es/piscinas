@@ -7,8 +7,10 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   canManagePendingWork,
   filterWorkHistory,
+  groupWorkInstallationsByClient,
   paginateWorkHistory,
   type PendingWorkInput,
+  type WorkClient,
   type WorkHistoryVisit,
   type WorkInstallation,
   type WorkTechnician,
@@ -282,9 +284,11 @@ function WorkEditor({
   onClose: () => void
   onSave: (input: PendingWorkInput) => Promise<void>
 }) {
-  const [installationId, setInstallationId] = useState(
-    visit === 'new' ? (installations[0]?.id ?? '') : visit.installation_id,
-  )
+  const initialInstallation =
+    visit === 'new' ? undefined : installations.find((item) => item.id === visit.installation_id)
+  const [installationId, setInstallationId] = useState(visit === 'new' ? '' : visit.installation_id)
+  const [selectedClientId, setSelectedClientId] = useState(initialInstallation?.clientId ?? '')
+  const [clientSearch, setClientSearch] = useState(initialInstallation?.clientName ?? '')
   const [technicianId, setTechnicianId] = useState(
     visit === 'new' ? (technicians[0]?.id ?? '') : (visit.technician_id ?? ''),
   )
@@ -293,7 +297,26 @@ function WorkEditor({
   )
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const unavailable = installations.length === 0 || technicians.length === 0
+  const clients = useMemo(() => groupWorkInstallationsByClient(installations), [installations])
+  const selectedClient = clients.find((client) => client.id === selectedClientId)
+  const matchingClients = clients.filter((client) =>
+    client.name.toLocaleLowerCase('es').includes(clientSearch.toLocaleLowerCase('es').trim()),
+  )
+  const unavailable = !installationId || !technicianId
+
+  const selectClient = (client: WorkClient) => {
+    setSelectedClientId(client.id)
+    setClientSearch(client.name)
+    setInstallationId(client.installations.length === 1 ? client.installations[0].id : '')
+  }
+
+  const updateClientSearch = (value: string) => {
+    setClientSearch(value)
+    if (value !== selectedClient?.name) {
+      setSelectedClientId('')
+      setInstallationId('')
+    }
+  }
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -330,23 +353,92 @@ function WorkEditor({
         </div>
         <form className="record-form" onSubmit={(event) => void submit(event)}>
           <div className="form-grid">
-            <label className="field">
-              <span>Instalación</span>
-              <select
-                value={installationId}
-                onChange={(event) => setInstallationId(event.target.value)}
-                required
-              >
-                <option value="" disabled>
-                  Selecciona una instalación
-                </option>
-                {installations.map((installation) => (
-                  <option key={installation.id} value={installation.id}>
-                    {installation.clientName} · {installation.name}
+            <div className="field form-span-2 work-client-picker">
+              <span>Cliente</span>
+              <input
+                type="search"
+                value={clientSearch}
+                onChange={(event) => updateClientSearch(event.target.value)}
+                placeholder="Busca por nombre de cliente"
+                aria-label="Buscar cliente"
+                autoComplete="off"
+              />
+              {selectedClient ? (
+                <div className="work-client-selected">
+                  <span>
+                    <strong>{selectedClient.name}</strong>
+                    <small>
+                      {selectedClient.installations.length}{' '}
+                      {selectedClient.installations.length === 1 ? 'instalación' : 'instalaciones'}
+                    </small>
+                  </span>
+                  <button
+                    type="button"
+                    className="action-link"
+                    onClick={() => updateClientSearch('')}
+                  >
+                    Cambiar
+                  </button>
+                </div>
+              ) : clientSearch.trim() ? (
+                <div className="work-client-options" aria-label="Clientes encontrados">
+                  {matchingClients.length ? (
+                    matchingClients.map((client) => (
+                      <button
+                        type="button"
+                        className="work-client-option"
+                        key={client.id}
+                        onClick={() => selectClient(client)}
+                      >
+                        <strong>{client.name}</strong>
+                        <small>
+                          {client.installations.length}{' '}
+                          {client.installations.length === 1 ? 'instalación' : 'instalaciones'}
+                        </small>
+                      </button>
+                    ))
+                  ) : (
+                    <p>No hay clientes que coincidan con la búsqueda.</p>
+                  )}
+                </div>
+              ) : (
+                <p className="work-client-hint">
+                  Busca y selecciona el cliente antes de elegir la instalación.
+                </p>
+              )}
+            </div>
+            {selectedClient?.installations.length === 1 ? (
+              <div className="field form-span-2">
+                <span>Instalación</span>
+                <div className="work-installation-selected">
+                  <strong>{selectedClient.installations[0].name}</strong>
+                  <small>{selectedClient.installations[0].address}</small>
+                </div>
+              </div>
+            ) : selectedClient ? (
+              <label className="field form-span-2">
+                <span>Instalación</span>
+                <select
+                  value={installationId}
+                  onChange={(event) => setInstallationId(event.target.value)}
+                  required
+                >
+                  <option value="" disabled>
+                    Selecciona una instalación
                   </option>
-                ))}
-              </select>
-            </label>
+                  {selectedClient.installations.map((installation) => (
+                    <option key={installation.id} value={installation.id}>
+                      {installation.name} · {installation.address}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <div className="field form-span-2 work-installation-prompt">
+                <span>Instalación</span>
+                <p>Selecciona primero un cliente.</p>
+              </div>
+            )}
             <label className="field">
               <span>Técnico</span>
               <select
@@ -376,7 +468,7 @@ function WorkEditor({
           </div>
           {unavailable && (
             <p className="form-error">
-              Necesitas al menos una instalación y un técnico para crear un trabajo.
+              Selecciona un cliente, una instalación y un técnico para programar el trabajo.
             </p>
           )}
           {error && <p className="form-error">{error}</p>}

@@ -8235,3 +8235,75 @@ textarea:focus-visible {
     grid-column: 1 / -1;
   }
 }
+
+/* Work planning: resolve the client before asking for a specific installation. */
+.work-client-picker {
+  position: relative;
+}
+.work-client-hint {
+  margin: 0;
+  color: #617d8f;
+  font-size: 12px;
+}
+.work-client-options {
+  display: grid;
+  max-height: 190px;
+  overflow-y: auto;
+  border: 1px solid #cfdde5;
+  border-radius: 6px;
+  background: #fff;
+}
+.work-client-option {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-top: 1px solid #e3ebef;
+  background: transparent;
+  color: #183d56;
+  font-size: 13px;
+  text-align: left;
+}
+.work-client-option:first-child {
+  border-top: 0;
+}
+.work-client-option:hover {
+  background: #f5f9fb;
+}
+.work-client-option small,
+.work-client-selected small,
+.work-installation-selected small {
+  color: #617d8f;
+  font-size: 12px;
+}
+.work-client-options p {
+  margin: 0;
+  padding: 10px 12px;
+  color: #617d8f;
+  font-size: 13px;
+}
+.work-client-selected,
+.work-installation-selected,
+.work-installation-prompt p {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 42px;
+  margin: 0;
+  padding: 9px 12px;
+  border: 1px solid #d6e3e9;
+  border-radius: 6px;
+  background: #f8fbfc;
+}
+.work-client-selected > span,
+.work-installation-selected {
+  display: grid;
+  gap: 2px;
+}
+.work-installation-prompt p {
+  justify-content: flex-start;
+  color: #617d8f;
+  font-size: 13px;
+}
