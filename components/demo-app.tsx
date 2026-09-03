@@ -2,33 +2,33 @@
 
 import { Button, ConfirmDialog, PopoverContent, PopoverTrigger } from '@doscientos/ui'
 import {
-    ArrowRight,
-    Building2,
-    CalendarDays,
-    CheckCircle2,
-    ChevronDown,
-    ChevronLeft,
-    ChevronRight,
-    CircleDollarSign,
-    Download,
-    Eye,
-    EyeOff,
-    FileText,
-    LayoutDashboard,
-    LockKeyhole,
-    LogOut,
-    Mail,
-    MapPin,
-    Package,
-    Pencil,
-    Phone,
-    Plus,
-    RefreshCw,
-    Search,
-    Trash2,
-    UserRound,
-    Users,
-    X,
+  ArrowRight,
+  Building2,
+  CalendarDays,
+  CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  CircleDollarSign,
+  Download,
+  Eye,
+  EyeOff,
+  FileText,
+  LayoutDashboard,
+  LockKeyhole,
+  LogOut,
+  Mail,
+  MapPin,
+  Package,
+  Pencil,
+  Phone,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  UserRound,
+  Users,
+  X,
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -44,27 +44,27 @@ import { getAgendaVisitAction } from '@/lib/agenda-access'
 import { canAccessAppView, type AccountRole } from '@/lib/app-access'
 import { validateAuthInput, type AuthMode } from '@/lib/auth-validation'
 import { downloadInvoice, formatDate, getInvoiceLines, type Invoice } from '@/lib/invoice-template'
-import { isLocationSchemaPending } from '@/lib/location-schema-compatibility'
 import {
-    filterInvoicesByBillingPeriod,
-    formatBillingPeriod,
-    getBillingPeriodOptions,
-    getPreviousBillingPeriod,
-    toBillingPeriodValue,
+  isClientExtensionSchemaPending,
+  isLocationSchemaPending,
+} from '@/lib/location-schema-compatibility'
+import {
+  filterInvoicesByBillingPeriod,
+  formatBillingPeriod,
+  getBillingPeriodOptions,
+  getPreviousBillingPeriod,
+  toBillingPeriodValue,
 } from '@/lib/monthly-billing'
 import { createClient } from '@/lib/supabase/client'
-import { usePersistentSearchParams } from '@/lib/use-persistent-search-params'
 import {
-    defaultTimeTrackingPolicy,
-    getStartExceptions,
-    startExceptionLabel,
-    type StartException,
-    type TimeTrackingPolicy,
-    type TrackingCoordinates,
+  defaultTimeTrackingPolicy,
+  getStartExceptions,
+  startExceptionLabel,
+  type StartException,
+  type TimeTrackingPolicy,
+  type TrackingCoordinates,
 } from '@/lib/time-tracking-policy'
-import { getVisitStartWarning } from '@/lib/visit-start-validation'
-import type { PendingWorkInput, WorkInstallation, WorkTechnician } from '@/lib/work-history'
-} from '@/lib/time-tracking-policy'
+import { usePersistentSearchParams } from '@/lib/use-persistent-search-params'
 import { getVisitStartWarning } from '@/lib/visit-start-validation'
 import type { PendingWorkInput, WorkInstallation, WorkTechnician } from '@/lib/work-history'
 
@@ -1455,8 +1455,7 @@ function Billing({
   const searchParams = useSearchParams()
   const updateSearchParams = usePersistentSearchParams()
   const [previewedInvoice, setPreviewedInvoice] = useState<Invoice | null>(null)
-  const billingPeriod =
-    searchParams.get('mes') ?? toBillingPeriodValue(getPreviousBillingPeriod())
+  const billingPeriod = searchParams.get('mes') ?? toBillingPeriodValue(getPreviousBillingPeriod())
   const [generating, setGenerating] = useState(false)
   const clientInvoices = clientId
     ? invoices.filter((invoice) => invoice.client_id === clientId)
@@ -1655,10 +1654,27 @@ function Clients({
   ) => Promise<void>
   onDeleteInstallation: (installation: Installation) => Promise<void>
 }) {
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
-  const [typeFilter, setTypeFilter] = useState<'all' | ClientType>('all')
-  const [page, setPage] = useState(0)
+  const searchParams = useSearchParams()
+  const updateSearchParams = usePersistentSearchParams()
+  const search = searchParams.get('q') ?? ''
+  const statusFilter: 'all' | 'active' | 'inactive' =
+    searchParams.get('estado') === 'active'
+      ? 'active'
+      : searchParams.get('estado') === 'inactive'
+        ? 'inactive'
+        : 'all'
+  const typeParam = searchParams.get('tipo')
+  const typeFilter: 'all' | ClientType =
+    typeParam === 'residential' ||
+    typeParam === 'community' ||
+    typeParam === 'hotel' ||
+    typeParam === 'business'
+      ? typeParam
+      : 'all'
+  const requestedPage = Number(searchParams.get('pagina') ?? '1')
+  const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage - 1 : 0
+  const updateFilters = (updates: SearchParamUpdates) =>
+    updateSearchParams({ ...updates, pagina: null })
   const [remoteClients, setRemoteClients] = useState<Client[]>(clients)
   const [total, setTotal] = useState(clients.length)
   const pageSize = 10
@@ -1715,8 +1731,7 @@ function Clients({
           <input
             value={search}
             onChange={(event) => {
-              setSearch(event.target.value)
-              setPage(0)
+              updateFilters({ q: event.target.value })
             }}
             placeholder="Buscar por nombre"
           />
@@ -1724,8 +1739,7 @@ function Clients({
         <select
           value={statusFilter}
           onChange={(event) => {
-            setStatusFilter(event.target.value as typeof statusFilter)
-            setPage(0)
+            updateFilters({ estado: event.target.value })
           }}
         >
           <option value="all">Todos los estados</option>
@@ -1735,8 +1749,7 @@ function Clients({
         <select
           value={typeFilter}
           onChange={(event) => {
-            setTypeFilter(event.target.value as typeof typeFilter)
-            setPage(0)
+            updateFilters({ tipo: event.target.value })
           }}
         >
           <option value="all">Todos los tipos</option>
@@ -1835,7 +1848,7 @@ function Clients({
           className="button secondary"
           type="button"
           disabled={page === 0}
-          onClick={() => setPage((value) => value - 1)}
+          onClick={() => updateSearchParams({ pagina: page > 1 ? page : null })}
         >
           Anterior
         </button>
@@ -1846,7 +1859,7 @@ function Clients({
           className="button secondary"
           type="button"
           disabled={page + 1 >= pageCount}
-          onClick={() => setPage((value) => value + 1)}
+          onClick={() => updateSearchParams({ pagina: page + 2 })}
         >
           Siguiente
         </button>
