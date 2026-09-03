@@ -3,27 +3,27 @@ import { describe, expect, it } from 'vitest'
 import { buildVisitNotes, parseVisitNotes } from './visit-checklist'
 
 describe('buildVisitNotes', () => {
-  it('crea una descripción con las tareas habituales marcadas', () => {
+  it('crea una descripció amb les feines habituals marcades', () => {
     expect(buildVisitNotes('', ['filter', 'ph'])).toBe(
-      'Tareas realizadas:\n• He limpiado el filtro o hecho un lavado\n• He medido y ajustado el pH',
+      "Feines realitzades:\n• He netejat el filtre o n'he fet un rentat\n• He mesurat i ajustat el pH",
     )
   })
 
-  it('conserva los detalles escritos por el técnico', () => {
-    expect(buildVisitNotes('  El agua estaba algo turbia.  ', ['surface'])).toBe(
-      'Tareas realizadas:\n• He retirado hojas y residuos\n\nEl agua estaba algo turbia.',
+  it('conserva els detalls escrits pel tècnic', () => {
+    expect(buildVisitNotes("  L'aigua estava una mica tèrbola.  ", ['surface'])).toBe(
+      "Feines realitzades:\n• He retirat fulles i residus\n\nL'aigua estava una mica tèrbola.",
     )
   })
 
-  it('ignora checks que no pertenecen a la lista', () => {
-    expect(buildVisitNotes('', ['desconocido'])).toBe('')
+  it('ignora verificacions que no pertanyen a la llista', () => {
+    expect(buildVisitNotes('', ['desconegut'])).toBe('')
   })
 
-  it('separa los checks guardados de las notas libres del parte', () => {
+  it('separa les verificacions desades de les notes lliures de l'informe', () => {
     expect(
       parseVisitNotes(
-        'Tareas realizadas:\n• He limpiado el filtro o hecho un lavado\n• He medido y ajustado el pH\n\nEl agua estaba algo turbia.',
+        "Feines realitzades:\n• He netejat el filtre o n'he fet un rentat\n• He mesurat i ajustat el pH\n\nL'aigua estava una mica tèrbola.",
       ),
-    ).toEqual({ completedCheckIds: ['filter', 'ph'], details: 'El agua estaba algo turbia.' })
+    ).toEqual({ completedCheckIds: ['filter', 'ph'], details: "L'aigua estava una mica tèrbola." })
   })
 })

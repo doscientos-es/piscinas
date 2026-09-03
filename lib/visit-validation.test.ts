@@ -5,19 +5,19 @@ import { validateVisitCompletion } from './visit-validation'
 const products = [{ id: 'cloro', stockQuantity: 10 }]
 
 describe('validateVisitCompletion', () => {
-  it('requiere una descripción de la intervención', () => {
+  it('requereix una descripció de la intervenció', () => {
     expect(validateVisitCompletion('  ', [], products)).toBe(
-      'Describe el trabajo realizado antes de cerrar el parte.',
+      "Descriu la feina realitzada abans de tancar l'informe.",
     )
   })
 
-  it('impide registrar más producto del disponible', () => {
+  it('impedeix registrar més producte del disponible', () => {
     expect(
-      validateVisitCompletion('Limpieza', [{ productId: 'cloro', quantity: 12 }], products),
-    ).toBe('La cantidad indicada supera las existencias disponibles.')
+      validateVisitCompletion('Neteja', [{ productId: 'cloro', quantity: 12 }], products),
+    ).toBe('La quantitat indicada supera les existències disponibles.')
   })
 
-  it('acepta un parte sin consumo cuando su descripción es válida', () => {
-    expect(validateVisitCompletion('Limpieza de cestos', [], products)).toBeNull()
+  it('accepta un informe sense consum quan la descripció és vàlida', () => {
+    expect(validateVisitCompletion('Neteja de cistells', [], products)).toBeNull()
   })
 })
