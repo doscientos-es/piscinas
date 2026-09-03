@@ -1,13 +1,13 @@
 export const standardVisitChecks = [
-  { id: 'surface', label: 'He retirado hojas y residuos' },
-  { id: 'baskets', label: 'He limpiado los cestos de los skimmers' },
-  { id: 'filter', label: 'He limpiado el filtro o hecho un lavado' },
-  { id: 'floor', label: 'He limpiado el fondo' },
-  { id: 'walls', label: 'He cepillado las paredes y la línea de agua' },
-  { id: 'water', label: 'He revisado el nivel y el aspecto del agua' },
-  { id: 'ph', label: 'He medido y ajustado el pH' },
-  { id: 'disinfectant', label: 'He medido y ajustado el cloro o desinfectante' },
-  { id: 'equipment', label: 'He revisado la bomba y la depuradora' },
+  { id: 'surface', label: 'He retirat fulles i residus' },
+  { id: 'baskets', label: 'He netejat els cistells dels skimmers' },
+  { id: 'filter', label: "He netejat el filtre o n'he fet un rentat" },
+  { id: 'floor', label: 'He netejat el fons' },
+  { id: 'walls', label: 'He raspallat les parets i la línia d'aigua' },
+  { id: 'water', label: 'He revisat el nivell i l'aspecte de l'aigua' },
+  { id: 'ph', label: 'He mesurat i ajustat el pH' },
+  { id: 'disinfectant', label: 'He mesurat i ajustat el clor o desinfectant' },
+  { id: 'equipment', label: 'He revisat la bomba i la depuradora' },
 ] as const
 
 export function buildVisitNotes(notes: string, completedCheckIds: readonly string[]) {
@@ -15,7 +15,7 @@ export function buildVisitNotes(notes: string, completedCheckIds: readonly strin
     .filter((check) => completedCheckIds.includes(check.id))
     .map((check) => `• ${check.label}`)
   const checklistNotes = completedChecks.length
-    ? `Tareas realizadas:\n${completedChecks.join('\n')}`
+    ? `Feines realitzades:\n${completedChecks.join('\n')}`
     : ''
 
   return [checklistNotes, notes.trim()].filter(Boolean).join('\n\n')
@@ -31,7 +31,7 @@ export function parseVisitNotes(notes: string | null) {
     .filter((check) => check !== undefined)
     .map((check) => `• ${check.label}`)
     .join('\n')
-  const prefix = checklist ? `Tareas realizadas:\n${checklist}` : ''
+  const prefix = checklist ? `Feines realitzades:\n${checklist}` : ''
 
   return {
     completedCheckIds,

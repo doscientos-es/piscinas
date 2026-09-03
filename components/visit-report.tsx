@@ -3,8 +3,9 @@
 import { ArrowLeft, CheckCircle2, Clock3, MapPin, PackagePlus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { findProducts } from '@/lib/product-search'
 import { createClient } from '@/lib/supabase/client'
 import { buildVisitNotes, parseVisitNotes, standardVisitChecks } from '@/lib/visit-checklist'
 import { getInitialVisitReportState } from '@/lib/visit-report-state'
@@ -13,6 +14,7 @@ import { validateVisitCompletion, type ProductUsageInput } from '@/lib/visit-val
 type Product = {
   id: string
   name: string
+  reference: string | null
   unit: string
   stock_quantity: number
 }
@@ -50,8 +52,8 @@ type VisitDetail = {
   } | null
 }
 
-const money = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' })
-const quantityFormat = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 3 })
+const money = new Intl.NumberFormat('ca-ES', { style: 'currency', currency: 'EUR' })
+const quantityFormat = new Intl.NumberFormat('ca-ES', { maximumFractionDigits: 3 })
 
 export function VisitReport({
   visitId,
@@ -68,7 +70,7 @@ export function VisitReport({
   const [notes, setNotes] = useState('')
   const [completedCheckIds, setCompletedCheckIds] = useState<string[]>([])
   const [usages, setUsages] = useState<ProductUsageInput[]>([])
-  const [productToAdd, setProductToAdd] = useState('')
+  const [productSearch, setProductSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -89,7 +91,7 @@ export function VisitReport({
         .maybeSingle(),
       supabase
         .from('products')
-        .select('id,name,unit,stock_quantity')
+        .select('id,name,reference,unit,stock_quantity')
         .gt('stock_quantity', 0)
         .order('name'),
     ])
@@ -98,7 +100,7 @@ export function VisitReport({
     if (loadError) {
       setError(loadError.message)
     } else if (!visitResult.data) {
-      setError('No tienes acceso a esta visita o ya no existe.')
+      setError('No tens accés a aquesta visita o ja no existeix.')
     } else {
       const detail = visitResult.data as unknown as VisitDetail
       const initialReportState = getInitialVisitReportState(detail.interventions)
@@ -116,13 +118,17 @@ export function VisitReport({
 
   const selectedProductIds = new Set(usages.map((usage) => usage.productId))
   const availableProducts = products.filter((product) => !selectedProductIds.has(product.id))
+  const matchingProducts = useMemo(
+    () => findProducts(availableProducts, productSearch),
+    [availableProducts, productSearch],
+  )
   const intervention = visit?.interventions
   const isClosed = visit?.status === 'completed'
 
-  function addProduct() {
-    const product = availableProducts.find((item) => item.id === productToAdd)
+  function addProduct(productId: string) {
+    const product = availableProducts.find((item) => item.id === productId)
     if (product) setUsages((current) => [...current, { productId: product.id, quantity: 1 }])
-    setProductToAdd('')
+    setProductSearch('')
   }
 
   function updateUsage(index: number, patch: Partial<ProductUsageInput>) {
@@ -177,29 +183,29 @@ export function VisitReport({
     router.refresh()
   }
 
-  if (loading) return <div className="report-loading">Cargando el parte…</div>
+  if (loading) return <div className="report-loading">S'està carregant l'informe…</div>
   if (!visit || !intervention)
-    return <div className="report-loading">{error ?? 'No se ha encontrado el parte.'}</div>
+    return <div className="report-loading">{error ?? 'No s'ha trobat l'informe.'}</div>
 
   const installation = visit.installations
   return (
     <section className="report-page">
       <Link className="back-link" href="/agenda">
-        <ArrowLeft size={17} /> Volver a la agenda
+        <ArrowLeft size={17} /> Torna a l'agenda
       </Link>
       <div className="report-heading">
         <div>
-          <span className="eyebrow">Parte de visita</span>
-          <h2>{installation?.clients?.legal_name ?? 'Cliente'}</h2>
+          <span className="eyebrow">Informe de visita</span>
+          <h2>{installation?.clients?.legal_name ?? 'Client'}</h2>
           <p>
-            {installation?.name ?? 'Instalación'} · {installation?.address ?? 'Sin dirección'}
+            {installation?.name ?? 'Instal·lació'} · {installation?.address ?? 'Sense adreça'}
           </p>
         </div>
         <div className="report-started">
           <Clock3 size={17} />
           <span>Iniciada</span>
           <strong>
-            {new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(
+            {new Intl.DateTimeFormat('ca-ES', { hour: '2-digit', minute: '2-digit' }).format(
               new Date(intervention.started_at ?? visit.scheduled_for),
             )}
           </strong>
@@ -208,13 +214,13 @@ export function VisitReport({
 
       {installation?.instructions && (
         <aside className="visit-instructions">
-          <strong>Indicaciones de acceso</strong>
+          <strong>Indicacions d'accés</strong>
           <p>{installation.instructions}</p>
         </aside>
       )}
       {visit.planning_notes && (
         <aside className="visit-instructions visit-planning-notes">
-          <strong>Notas de planificación</strong>
+          <strong>Notes de planificació</strong>
           <p>{visit.planning_notes}</p>
         </aside>
       )}
@@ -236,21 +242,21 @@ export function VisitReport({
           startLongitude={intervention.start_longitude}
           startAccuracy={intervention.start_location_accuracy_m}
           startLocationRecordedAt={intervention.start_location_recorded_at}
-          installationName={installation?.name ?? 'Instalación'}
+          installationName={installation?.name ?? 'Instal·lació'}
         />
       ) : readOnly ? (
         <section className="closed-report">
           <Clock3 size={22} />
           <div>
-            <h3>Visita en curso</h3>
-            <p>El parte estará disponible para supervisión cuando el técnico cierre la faena.</p>
+            <h3>Visita en curs</h3>
+            <p>L'informe estarà disponible per supervisar-lo quan el tècnic tanqui la feina.</p>
           </div>
         </section>
       ) : (
         <form className="report-form" onSubmit={submit}>
           <fieldset className="visit-checklist">
-            <legend>Tareas realizadas</legend>
-            <p>Marca solo las tareas que has hecho en esta visita.</p>
+            <legend>Feines realitzades</legend>
+            <p>Marca només les feines que has fet en aquesta visita.</p>
             <div className="visit-checklist-options">
               {standardVisitChecks.map((check) => (
                 <label
@@ -271,12 +277,12 @@ export function VisitReport({
           </fieldset>
           <label className="report-field">
             <span>
-              Notas o incidencias <em>Opcional</em>
+              Notes o incidències <em>Opcional</em>
             </span>
             <textarea
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              placeholder="Ej.: He detectado una avería o el agua estaba turbia."
+              placeholder="P. ex.: He detectat una avaria o l'aigua estava tèrbola."
               rows={3}
             />
           </label>
@@ -284,37 +290,51 @@ export function VisitReport({
           <section className="report-products">
             <div className="section-heading">
               <div>
-                <h3>Productos usados</h3>
-                <p>Añade solo el material usado durante esta visita.</p>
+                <h3>Productes utilitzats</h3>
+                <p>Afegeix només el material utilitzat durant aquesta visita.</p>
               </div>
             </div>
             <div className="product-picker">
-              <label>
-                <span className="sr-only">Producto usado</span>
-                <select
-                  aria-label="Selecciona el producto usado"
-                  value={productToAdd}
-                  onChange={(event) => setProductToAdd(event.target.value)}
+              <label className="product-search">
+                <span>Cerca un producte</span>
+                <input
+                  type="search"
+                  value={productSearch}
+                  onChange={(event) => setProductSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter') return
+                    event.preventDefault()
+                    if (matchingProducts.length === 1) addProduct(matchingProducts[0].id)
+                  }}
                   disabled={!availableProducts.length}
-                >
-                  <option value="">Selecciona un producto…</option>
-                  {availableProducts.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.name} · {quantityFormat.format(product.stock_quantity)}{' '}
-                      {product.unit} disponibles
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Nom o referència…"
+                />
               </label>
-              <button
-                className="button secondary product-add"
-                type="button"
-                onClick={addProduct}
-                disabled={!productToAdd}
-              >
-                <PackagePlus size={17} /> Añadir
-              </button>
             </div>
+            {productSearch.trim() && (
+              <ul className="product-search-results" aria-label="Resultats de productes">
+                {matchingProducts.length ? (
+                  matchingProducts.map((product) => (
+                    <li key={product.id}>
+                      <button type="button" onClick={() => addProduct(product.id)}>
+                        <span>
+                          <strong>{product.name}</strong>
+                          <small>{product.reference ?? 'Sense referència'}</small>
+                        </span>
+                        <em>
+                          {quantityFormat.format(product.stock_quantity)} {product.unit}
+                        </em>
+                        <PackagePlus size={17} aria-hidden="true" />
+                      </button>
+                    </li>
+                  ))
+                ) : (
+                  <li className="product-search-empty">
+                    No hi ha coincidències entre els materials amb estoc.
+                  </li>
+                )}
+              </ul>
+            )}
             {usages.length ? (
               <div className="usage-list">
                 {usages.map((usage, index) => {
@@ -322,15 +342,15 @@ export function VisitReport({
                   return (
                     <div className="usage-row" key={usage.productId}>
                       <div className="usage-product">
-                        <strong>{product?.name ?? 'Producto no disponible'}</strong>
+                        <strong>{product?.name ?? 'Producte no disponible'}</strong>
                         <span>
                           {product
                             ? `${quantityFormat.format(product.stock_quantity)} ${product.unit} disponibles`
-                            : 'Producto no disponible'}
+                            : 'Producte no disponible'}
                         </span>
                       </div>
                       <label className="usage-quantity">
-                        <span>Cantidad {product && <small>en {product.unit}</small>}</span>
+                        <span>Quantitat {product && <small>en {product.unit}</small>}</span>
                         <input
                           type="number"
                           min="0.001"
@@ -346,7 +366,7 @@ export function VisitReport({
                         className="usage-delete"
                         type="button"
                         onClick={() => removeUsage(index)}
-                        aria-label={`Eliminar ${product?.name ?? 'producto'}`}
+                        aria-label={`Elimina ${product?.name ?? 'producte'}`}
                       >
                         <Trash2 size={17} />
                       </button>
@@ -356,22 +376,22 @@ export function VisitReport({
               </div>
             ) : (
               <p className="products-empty">
-                Sin productos añadidos. Si el trabajo está incluido en la cuota, puedes cerrar la
-                visita directamente.
+                Sense productes afegits. Si la feina està inclosa a la quota, pots tancar la visita
+                directament.
               </p>
             )}
           </section>
 
           <div className="report-actions">
             <Link className="button secondary" href="/agenda">
-              Volver sin guardar
+              Torna sense desar
             </Link>
             <button className="button accent" type="submit" disabled={saving}>
               {saving ? (
-                'Guardando…'
+                'S'està desant…'
               ) : (
                 <>
-                  <CheckCircle2 size={17} /> Cerrar visita
+                  <CheckCircle2 size={17} /> Tanca la visita
                 </>
               )}
             </button>
@@ -434,31 +454,31 @@ function ClosedReport({
       <header className="closed-report-heading">
         <CheckCircle2 size={24} aria-hidden="true" />
         <div>
-          <span className="eyebrow">Visita finalizada</span>
-          <h3>Parte cerrado</h3>
+          <span className="eyebrow">Visita finalitzada</span>
+          <h3>Informe tancat</h3>
           <p>
-            Cerrado por <strong>{technicianName ?? 'Técnico no disponible'}</strong>
+            Tancat per <strong>{technicianName ?? 'Tècnic no disponible'}</strong>
           </p>
         </div>
       </header>
 
       <dl className="closed-report-summary">
         <div>
-          <dt>Inicio</dt>
-          <dd>{startedAt ? formatDateTime(new Date(startedAt)) : 'No registrado'}</dd>
+          <dt>Inici</dt>
+          <dd>{startedAt ? formatDateTime(new Date(startedAt)) : 'No registrat'}</dd>
         </div>
         <div>
-          <dt>Fin</dt>
-          <dd>{completedAt ? formatDateTime(new Date(completedAt)) : 'No registrado'}</dd>
+          <dt>Final</dt>
+          <dd>{completedAt ? formatDateTime(new Date(completedAt)) : 'No registrat'}</dd>
         </div>
         <div>
-          <dt>Duración</dt>
+          <dt>Durada</dt>
           <dd>{formatDuration(startedAt, completedAt) ?? 'No disponible'}</dd>
         </div>
       </dl>
 
       <section className="closed-report-section">
-        <h4>Tareas realizadas</h4>
+        <h4>Feines realitzades</h4>
         {completedChecks.length ? (
           <ul className="closed-report-checks">
             {completedChecks.map((check) => (
@@ -468,19 +488,19 @@ function ClosedReport({
             ))}
           </ul>
         ) : (
-          <p>No se han marcado tareas en este parte.</p>
+          <p>No s'han marcat feines en aquest informe.</p>
         )}
       </section>
 
       {details && (
         <section className="closed-report-section">
-          <h4>Notas e incidencias</h4>
+          <h4>Notes i incidències</h4>
           <p>{details}</p>
         </section>
       )}
 
       <section className="closed-report-section">
-        <h4>Productos usados</h4>
+        <h4>Productes utilitzats</h4>
         {usages.length ? (
           <ul className="closed-report-products">
             {usages.map((usage) => (
@@ -494,7 +514,7 @@ function ClosedReport({
             ))}
           </ul>
         ) : (
-          <p>Sin productos adicionales facturables.</p>
+          <p>Sense productes addicionals facturables.</p>
         )}
       </section>
 
@@ -503,26 +523,26 @@ function ClosedReport({
           <div className="closed-report-location-heading">
             <div>
               <h4>
-                <MapPin size={17} aria-hidden="true" /> Inicio registrado
+                <MapPin size={17} aria-hidden="true" /> Inici registrat
               </h4>
               <p>
                 {startLocationRecordedAt
-                  ? `Registrado el ${formatDateTime(new Date(startLocationRecordedAt))}`
-                  : 'Ubicación comunicada por el dispositivo'}
+                  ? `Registrat el ${formatDateTime(new Date(startLocationRecordedAt))}`
+                  : 'Ubicació comunicada pel dispositiu'}
                 {startAccuracy !== null &&
-                  ` · Precisión aproximada de ${Math.round(Number(startAccuracy))} m`}
+                  ` · Precisió aproximada de ${Math.round(Number(startAccuracy))} m`}
               </p>
             </div>
-            <span>Solo administración</span>
+            <span>Només administració</span>
           </div>
           <iframe
-            title={`Punto de inicio de ${installationName}`}
+            title={`Punt d'inici de ${installationName}`}
             src={mapUrl}
             loading="lazy"
             referrerPolicy="no-referrer"
           />
           <a href={mapLink} target="_blank" rel="noreferrer">
-            Abrir mapa completo
+            Obre el mapa complet
           </a>
         </section>
       )}
@@ -531,7 +551,7 @@ function ClosedReport({
 }
 
 function formatDateTime(value: Date) {
-  return new Intl.DateTimeFormat('es-ES', {
+  return new Intl.DateTimeFormat('ca-ES', {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(value)

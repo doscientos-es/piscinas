@@ -29,15 +29,15 @@ export type Invoice = {
   invoice_lines: InvoiceLine[]
 }
 
-const moneyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' })
-const dateFormatter = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long' })
+const moneyFormatter = new Intl.NumberFormat('ca-ES', { style: 'currency', currency: 'EUR' })
+const dateFormatter = new Intl.DateTimeFormat('ca-ES', { dateStyle: 'long' })
 
 export function formatMoney(value: number) {
   return moneyFormatter.format(value)
 }
 
 export function formatDate(value: string | null) {
-  return value ? dateFormatter.format(new Date(`${value}T12:00:00`)) : 'Pendiente de emisión'
+  return value ? dateFormatter.format(new Date(`${value}T12:00:00`)) : "Pendent d'emissió"
 }
 
 export function getInvoiceLines(invoice: Invoice): InvoiceLine[] {
@@ -46,7 +46,7 @@ export function getInvoiceLines(invoice: Invoice): InvoiceLine[] {
   return [
     {
       id: 'maintenance-service',
-      description: 'Servicio de mantenimiento de piscina',
+      description: 'Servei de manteniment de piscina',
       quantity: 1,
       unit_price: invoice.subtotal,
       vat_rate:
@@ -66,10 +66,29 @@ function escapeHtml(value: string) {
 }
 
 function replaceTemplateLanguage(document: string) {
-  return document.replace(
-    'Factura generada desde Concepte Blau. Este documento es una plantilla de ejemplo para la demo.',
-    'Documento generado desde Concepte Blau. Revise los datos fiscales y los importes antes de enviarlo al cliente.',
-  )
+  return document
+    .replace('<html lang="es">', '<html lang="ca">')
+    .replaceAll('Gestión y mantenimiento de piscinas', 'Gestió i manteniment de piscines')
+    .replaceAll('Borrador', 'Esborrany')
+    .replaceAll('Fecha de emisión', "Data d'emissió")
+    .replaceAll('Vencimiento', 'Venciment')
+    .replaceAll('Facturar a', 'Factura a')
+    .replaceAll('Cliente sin asignar', 'Client sense assignar')
+    .replaceAll('NIF pendiente', 'NIF pendent')
+    .replaceAll('Dirección de facturación pendiente', 'Adreça de facturació pendent')
+    .replaceAll('Email de facturación pendiente', 'Adreça electrònica de facturació pendent')
+    .replaceAll('Estado', 'Estat')
+    .replaceAll('Cobrada', 'Cobrada')
+    .replaceAll('Pendiente de cobro', 'Pendent de cobrament')
+    .replaceAll('Concepto', 'Concepte')
+    .replaceAll('Cant.', 'Quant.')
+    .replaceAll('Precio', 'Preu')
+    .replaceAll('Importe', 'Import')
+    .replaceAll('Base imponible', 'Base imposable')
+    .replaceAll(
+      'Factura generada desde Concepte Blau. Este documento es una plantilla de ejemplo para la demo.',
+      "Factura generada des de Concepte Blau. Aquest document és una plantilla d'exemple per a la demo.",
+    )
 }
 
 export function buildInvoiceHtml(invoice: Invoice) {

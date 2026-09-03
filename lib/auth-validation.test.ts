@@ -1,12 +1,27 @@
-import { describe, expect, it } from "vitest";
-import { validateAuthInput } from "./auth-validation";
+import { describe, expect, it } from 'vitest'
 
-describe("validateAuthInput", () => {
-  it("requiere un nombre al registrarse", () => {
-    expect(validateAuthInput({ mode: "register", name: "", email: "operaciones@concepteblau.cat", password: "segura123" })).toBe("Introduce tu nombre para crear la cuenta.");
-  });
+import { validateAuthInput } from './auth-validation'
 
-  it("acepta credenciales válidas para iniciar sesión", () => {
-    expect(validateAuthInput({ mode: "login", name: "", email: "operaciones@concepteblau.cat", password: "segura123" })).toBeNull();
-  });
-});
+describe('validateAuthInput', () => {
+  it('requereix un nom en registrar-se', () => {
+    expect(
+      validateAuthInput({
+        mode: 'register',
+        name: '',
+        email: 'operaciones@concepteblau.cat',
+        password: 'segura123',
+      }),
+    ).toBe('Introdueix el teu nom per crear el compte.')
+  })
+
+  it('accepta credencials vàlides per iniciar sessió', () => {
+    expect(
+      validateAuthInput({
+        mode: 'login',
+        name: '',
+        email: 'operaciones@concepteblau.cat',
+        password: 'segura123',
+      }),
+    ).toBeNull()
+  })
+})

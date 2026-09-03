@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertTriangle, History, PackagePlus, Pencil, Trash2, X } from 'lucide-react'
+import { History, PackagePlus, Pencil, Trash2, X } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
@@ -31,7 +31,7 @@ type Movement = {
 
 type ProductInput = Omit<Product, 'id'>
 
-const currency = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' })
+const currency = new Intl.NumberFormat('ca-ES', { style: 'currency', currency: 'EUR' })
 const emptyProduct: ProductInput = {
   name: '',
   reference: null,
@@ -72,8 +72,8 @@ export function Inventory({
     () =>
       products.filter(
         (product) =>
-          product.name.toLocaleLowerCase('es').includes(query.toLocaleLowerCase('es')) ||
-          product.reference?.toLocaleLowerCase('es').includes(query.toLocaleLowerCase('es')),
+          product.name.toLocaleLowerCase('ca').includes(query.toLocaleLowerCase('ca')) ||
+          product.reference?.toLocaleLowerCase('ca').includes(query.toLocaleLowerCase('ca')),
       ),
     [products, query],
   )
@@ -104,7 +104,7 @@ export function Inventory({
   const remove = async (product: Product) => {
     if (
       !window.confirm(
-        `¿Eliminar «${product.name}»? No se puede eliminar si ya se ha usado en una visita.`,
+        `Voleu eliminar «${product.name}»? No es pot eliminar si ja s'ha utilitzat en una visita.`,
       )
     )
       return
@@ -125,25 +125,25 @@ export function Inventory({
       )}
       {!schemaReady && (
         <p className="access-note" role="status">
-          El inventario se activará al aplicar la migración de Supabase incluida en el proyecto.
+          L'inventari s'activarà en aplicar la migració de Supabase inclosa en el projecte.
         </p>
       )}
       {!isAdmin && (
         <p className="access-note" role="status">
-          Solo los administradores pueden modificar el inventario.
+          Només els administradors poden modificar l'inventari.
         </p>
       )}
-      <section className="inventory-summary" aria-label="Resumen de inventario">
+      <section className="inventory-summary" aria-label="Resum de l'inventari">
         <div>
-          <span>Materiales activos</span>
+          <span>Materials actius</span>
           <strong>{products.filter((product) => product.active).length}</strong>
         </div>
         <div>
-          <span>Stock bajo</span>
+          <span>Estoc baix</span>
           <strong>{lowStock.length}</strong>
         </div>
         <div>
-          <span>Valor de coste</span>
+          <span>Valor de cost</span>
           <strong>
             {currency.format(
               products.reduce(
@@ -155,23 +155,16 @@ export function Inventory({
           </strong>
         </div>
       </section>
-      {lowStock.length > 0 && (
-        <p className="inventory-alert">
-          <AlertTriangle size={17} aria-hidden="true" />
-          {lowStock.map((product) => product.name).join(', ')}{' '}
-          {lowStock.length === 1 ? 'está' : 'están'} en o por debajo del mínimo.
-        </p>
-      )}
       <div className="client-toolbar">
         <label className="client-search">
-          <span className="sr-only">Buscar materiales</span>
+          <span className="sr-only">Cerca materials</span>
           <input
             value={query}
             onChange={(event) => updateSearchParams({ q: event.target.value })}
-            placeholder="Buscar por material o referencia"
+            placeholder="Cerca per material o referència"
           />
         </label>
-        <span>{visible.length} materiales</span>
+        <span>{visible.length} materials</span>
       </div>
       <div className="inventory-list">
         {visible.map((product) => (
@@ -181,10 +174,10 @@ export function Inventory({
           >
             <div>
               <strong>{product.name}</strong>
-              <span>{product.reference || product.category || 'Sin referencia'}</span>
+              <span>{product.reference || product.category || 'Sense referència'}</span>
             </div>
             <div>
-              <span>Existencias</span>
+              <span>Existències</span>
               <strong
                 className={product.stock_quantity <= product.minimum_stock ? 'stock-low' : ''}
               >
@@ -195,7 +188,7 @@ export function Inventory({
               </small>
             </div>
             <div>
-              <span>Coste / venta</span>
+              <span>Cost / venda</span>
               <strong>
                 {currency.format(Number(product.cost_price ?? 0))} /{' '}
                 {currency.format(Number(product.sale_price))}
@@ -218,12 +211,12 @@ export function Inventory({
                     onClick={() => setMovementProduct(product)}
                   >
                     <PackagePlus size={16} aria-hidden="true" />
-                    Ajustar
+                    Ajusta
                   </button>
                   <button
                     className="icon-action"
                     type="button"
-                    aria-label={`Editar ${product.name}`}
+                    aria-label={`Edita ${product.name}`}
                     onClick={() => setEditing(product)}
                   >
                     <Pencil size={16} />
@@ -231,7 +224,7 @@ export function Inventory({
                   <button
                     className="icon-action destructive"
                     type="button"
-                    aria-label={`Eliminar ${product.name}`}
+                    aria-label={`Elimina ${product.name}`}
                     onClick={() => void remove(product)}
                   >
                     <Trash2 size={16} />
@@ -244,7 +237,7 @@ export function Inventory({
       </div>
       {visible.length === 0 && (
         <div className="empty-results">
-          <p>No hay materiales que coincidan con la búsqueda.</p>
+          <p>No hi ha materials que coincideixin amb la cerca.</p>
         </div>
       )}
       {editing && (
@@ -313,7 +306,7 @@ function ProductForm({
   const set = <K extends keyof ProductInput>(key: K, value: ProductInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
   return (
-    <Modal title={product ? 'Editar material' : 'Nuevo material'} onClose={onClose}>
+    <Modal title={product ? 'Edita el material' : 'Material nou'} onClose={onClose}>
       <form
         className="record-form"
         onSubmit={(event) => {
@@ -322,47 +315,47 @@ function ProductForm({
           setError(null)
           onSave(form)
             .catch((reason: unknown) =>
-              setError(reason instanceof Error ? reason.message : 'No se pudo guardar.'),
+              setError(reason instanceof Error ? reason.message : 'No s'ha pogut desar.'),
             )
             .finally(() => setSaving(false))
         }}
       >
         <div className="form-grid">
           <label className="field form-span-2">
-            <span>Nombre</span>
+            <span>Nom</span>
             <input
               required
               value={form.name}
               onChange={(event) => set('name', event.target.value)}
-              placeholder="Ej. Cloro granulado"
+              placeholder="P. ex. clor granulat"
             />
           </label>
           <label className="field">
-            <span>Referencia</span>
+            <span>Referència</span>
             <input
               value={form.reference ?? ''}
               onChange={(event) => set('reference', event.target.value)}
             />
           </label>
           <label className="field">
-            <span>Categoría</span>
+            <span>Categoria</span>
             <input
               value={form.category ?? ''}
               onChange={(event) => set('category', event.target.value)}
-              placeholder="Tratamiento"
+              placeholder="Tractament"
             />
           </label>
           <label className="field">
-            <span>Unidad</span>
+            <span>Unitat</span>
             <select value={form.unit} onChange={(event) => set('unit', event.target.value)}>
               <option value="kg">kg</option>
               <option value="l">l</option>
-              <option value="ud">unidades</option>
+              <option value="ud">unitats</option>
               <option value="g">g</option>
             </select>
           </label>
           <label className="field">
-            <span>Stock inicial</span>
+            <span>Estoc inicial</span>
             <input
               type="number"
               min="0"
@@ -372,7 +365,7 @@ function ProductForm({
             />
           </label>
           <label className="field">
-            <span>Stock mínimo</span>
+            <span>Estoc mínim</span>
             <input
               type="number"
               min="0"
@@ -382,7 +375,7 @@ function ProductForm({
             />
           </label>
           <label className="field">
-            <span>Coste unitario (€)</span>
+            <span>Cost unitari (€)</span>
             <input
               type="number"
               min="0"
@@ -394,7 +387,7 @@ function ProductForm({
             />
           </label>
           <label className="field">
-            <span>Precio de venta (€)</span>
+            <span>Preu de venda (€)</span>
             <input
               required
               type="number"
@@ -411,7 +404,7 @@ function ProductForm({
             checked={form.active}
             onChange={(event) => set('active', event.target.checked)}
           />
-          Material activo
+          Material actiu
         </label>
         {error && (
           <p className="form-error" role="alert">
@@ -420,10 +413,10 @@ function ProductForm({
         )}
         <div className="modal-foot">
           <button className="button secondary" type="button" onClick={onClose}>
-            Cancelar
+            Cancel·la
           </button>
           <button className="button" disabled={saving}>
-            {saving ? 'Guardando…' : 'Guardar material'}
+            {saving ? 'S'està desant…' : 'Desa el material'}
           </button>
         </div>
       </form>
@@ -446,7 +439,7 @@ function MovementForm({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   return (
-    <Modal title={`Ajustar · ${product.name}`} onClose={onClose}>
+    <Modal title={`Ajusta · ${product.name}`} onClose={onClose}>
       <form
         className="record-form"
         onSubmit={(event) => {
@@ -456,28 +449,28 @@ function MovementForm({
           onSave(numeric(quantity), type, note)
             .catch((reason: unknown) =>
               setError(
-                reason instanceof Error ? reason.message : 'No se pudo registrar el movimiento.',
+                reason instanceof Error ? reason.message : 'No s'ha pogut registrar el moviment.',
               ),
             )
             .finally(() => setSaving(false))
         }}
       >
         <p className="movement-current">
-          Stock actual:{' '}
+          Estoc actual:{' '}
           <strong>
             {product.stock_quantity} {product.unit}
           </strong>
         </p>
         <div className="form-grid">
           <label className="field">
-            <span>Tipo</span>
+            <span>Tipus</span>
             <select value={type} onChange={(event) => setType(event.target.value as typeof type)}>
               <option value="entry">Entrada de material</option>
-              <option value="adjustment">Ajuste de inventario</option>
+              <option value="adjustment">Ajust d'inventari</option>
             </select>
           </label>
           <label className="field">
-            <span>Cantidad {type === 'adjustment' ? '(usa − para restar)' : ''}</span>
+            <span>Quantitat {type === 'adjustment' ? '(fes servir − per restar)' : ''}</span>
             <input
               required
               type="number"
@@ -492,7 +485,7 @@ function MovementForm({
             <input
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              placeholder="Ej. Recepción de proveedor"
+              placeholder="P. ex. recepció del proveïdor"
             />
           </label>
         </div>
@@ -503,10 +496,10 @@ function MovementForm({
         )}
         <div className="modal-foot">
           <button className="button secondary" type="button" onClick={onClose}>
-            Cancelar
+            Cancel·la
           </button>
           <button className="button" disabled={saving}>
-            {saving ? 'Registrando…' : 'Registrar movimiento'}
+            {saving ? 'S'està registrant…' : 'Registra el moviment'}
           </button>
         </div>
       </form>
@@ -527,12 +520,12 @@ function HistoryModal({
     <Modal title={`Historial · ${product.name}`} onClose={onClose}>
       <div className="movement-history">
         {movements.length === 0 ? (
-          <p>Este material aún no tiene movimientos registrados.</p>
+          <p>Aquest material encara no té moviments registrats.</p>
         ) : (
           movements.map((movement) => (
             <div key={movement.id}>
               <span>
-                {new Intl.DateTimeFormat('es-ES', {
+                {new Intl.DateTimeFormat('ca-ES', {
                   dateStyle: 'medium',
                   timeStyle: 'short',
                 }).format(new Date(movement.occurred_at))}
@@ -554,10 +547,10 @@ function HistoryModal({
 }
 function movementLabel(type: Movement['movement_type']) {
   return {
-    opening: 'Stock inicial',
+    opening: 'Estoc inicial',
     entry: 'Entrada',
-    adjustment: 'Ajuste',
-    consumption: 'Consumo en mantenimiento',
+    adjustment: 'Ajust',
+    consumption: 'Consum en manteniment',
   }[type]
 }
 function Modal({
@@ -574,7 +567,7 @@ function Modal({
       <section className="modal inventory-modal" role="dialog" aria-modal="true" aria-label={title}>
         <div className="modal-title">
           <h2>{title}</h2>
-          <button className="close" type="button" aria-label="Cerrar" onClick={onClose}>
+          <button className="close" type="button" aria-label="Tanca" onClick={onClose}>
             <X size={19} />
           </button>
         </div>

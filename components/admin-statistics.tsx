@@ -14,7 +14,7 @@ import {
 } from '@/lib/admin-statistics'
 import { createClient } from '@/lib/supabase/client'
 
-const money = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' })
+const money = new Intl.NumberFormat('ca-ES', { style: 'currency', currency: 'EUR' })
 const colours = {
   primary: '#0879ae',
   cyan: '#13b8e8',
@@ -89,41 +89,41 @@ export function AdminStatistics({
     return (
       <section className="analytics-denied">
         <Clock3 size={24} aria-hidden="true" />
-        <h2>Estadísticas restringidas</h2>
-        <p>Este apartado está disponible únicamente para administración.</p>
+        <h2>Estadístiques restringides</h2>
+        <p>Aquest apartat només està disponible per a administració.</p>
       </section>
     )
   }
 
   return (
     <section className="analytics-page">
-      {loading && <div className="analytics-loading">Preparando indicadores…</div>}
+      {loading && <div className="analytics-loading">S'estan preparant els indicadors…</div>}
       {error && (
-        <div className="analytics-error">No se han podido cargar las estadísticas: {error}</div>
+        <div className="analytics-error">No s'han pogut carregar les estadístiques: {error}</div>
       )}
       {statistics && options && (
         <>
           <div className="analytics-kpis">
             <Metric
               icon={<CalendarDays size={19} />}
-              label="Visitas previstas"
+              label="Visites previstes"
               value={String(statistics.totals.planned)}
             />
             <Metric
               icon={<CheckCircle2 size={19} />}
-              label="Visitas completadas"
+              label="Visites completades"
               value={`${percentage(statistics.totals.completed, statistics.totals.planned)}%`}
-              detail={`${statistics.totals.completed} cerradas`}
+              detail={`${statistics.totals.completed} tancades`}
             />
             <Metric
               icon={<Clock3 size={19} />}
-              label="Inicios en hora"
+              label="Inicis puntuals"
               value={`${percentage(statistics.punctuality.onTime, statistics.totals.started)}%`}
-              detail={`${statistics.totals.started} inicios registrados`}
+              detail={`${statistics.totals.started} inicis registrats`}
             />
             <Metric
               icon={<CircleDollarSign size={19} />}
-              label="Facturación emitida"
+              label="Facturació emesa"
               value={money.format(statistics.totals.invoiced)}
               detail={`${money.format(statistics.totals.collected)} cobrado`}
             />
@@ -132,38 +132,38 @@ export function AdminStatistics({
             <article className="analytics-chart-card analytics-chart-wide">
               <div className="analytics-chart-heading">
                 <div>
-                  <h3>Actividad de visitas</h3>
-                  <p>Planificadas frente a partes completados.</p>
+                  <h3>Activitat de visites</h3>
+                  <p>Planificades en comparació amb informes completats.</p>
                 </div>
               </div>
-              <EChart option={options.activity} label="Gráfico mensual de actividad de visitas" />
+              <EChart option={options.activity} label="Gràfic mensual d'activitat de visites" />
             </article>
             <article className="analytics-chart-card">
               <div className="analytics-chart-heading">
                 <div>
-                  <h3>Estado de agenda</h3>
-                  <p>Distribución de las visitas del periodo.</p>
+                  <h3>Estat de l'agenda</h3>
+                  <p>Distribució de les visites del període.</p>
                 </div>
               </div>
-              <EChart option={options.status} label="Gráfico de estado de las visitas" />
+              <EChart option={options.status} label="Gràfic d'estat de les visites" />
             </article>
             <article className="analytics-chart-card">
               <div className="analytics-chart-heading">
                 <div>
-                  <h3>Puntualidad de inicio</h3>
-                  <p>Desviación sobre la hora planificada.</p>
+                  <h3>Puntualitat d'inici</h3>
+                  <p>Desviació respecte de l'hora planificada.</p>
                 </div>
               </div>
-              <EChart option={options.punctuality} label="Gráfico de puntualidad de inicio" />
+              <EChart option={options.punctuality} label="Gràfic de puntualitat d'inici" />
             </article>
             <article className="analytics-chart-card analytics-chart-wide">
               <div className="analytics-chart-heading">
                 <div>
-                  <h3>Facturación y cobro</h3>
-                  <p>Importe emitido frente al importe cobrado.</p>
+                  <h3>Facturació i cobrament</h3>
+                  <p>Import emès en comparació amb l'import cobrat.</p>
                 </div>
               </div>
-              <EChart option={options.billing} label="Gráfico mensual de facturación y cobro" />
+              <EChart option={options.billing} label="Gràfic mensual de facturació i cobrament" />
             </article>
           </div>
           <TimeTrackingManagement />
@@ -231,13 +231,13 @@ function chartOptions(statistics: AdminStatistics) {
       yAxis: { type: 'value', minInterval: 1, ...axis },
       series: [
         {
-          name: 'Planificadas',
+          name: 'Planificades',
           type: 'bar',
           data: statistics.months.map((month) => month.planned),
           itemStyle: { color: colours.cyan, borderRadius: [5, 5, 0, 0] },
         },
         {
-          name: 'Completadas',
+          name: 'Completades',
           type: 'bar',
           data: statistics.months.map((month) => month.completed),
           itemStyle: { color: colours.green, borderRadius: [5, 5, 0, 0] },
@@ -255,22 +255,22 @@ function chartOptions(statistics: AdminStatistics) {
           label: { show: false },
           data: [
             {
-              name: 'Completadas',
+              name: 'Completades',
               value: statistics.status.completed,
               itemStyle: { color: colours.green },
             },
             {
-              name: 'En curso',
+              name: 'En curs',
               value: statistics.status.in_progress,
               itemStyle: { color: colours.primary },
             },
             {
-              name: 'Programadas',
+              name: 'Programades',
               value: statistics.status.scheduled,
               itemStyle: { color: colours.cyan },
             },
             {
-              name: 'Canceladas',
+              name: 'Cancel·lades',
               value: statistics.status.cancelled,
               itemStyle: { color: colours.red },
             },
@@ -282,7 +282,7 @@ function chartOptions(statistics: AdminStatistics) {
       aria: { enabled: true },
       tooltip,
       grid: { top: 18, right: 12, bottom: 30, left: 38 },
-      xAxis: { type: 'category', data: ['Antes', 'En hora', '16–90 min', '>90 min'], ...axis },
+      xAxis: { type: 'category', data: ['Abans', 'Puntual', '16–90 min', '>90 min'], ...axis },
       yAxis: { type: 'value', minInterval: 1, ...axis },
       series: [
         {
@@ -314,13 +314,13 @@ function chartOptions(statistics: AdminStatistics) {
       },
       series: [
         {
-          name: 'Emitido',
+          name: 'Emès',
           type: 'bar',
           data: statistics.months.map((month) => month.invoiced),
           itemStyle: { color: colours.primary, borderRadius: [5, 5, 0, 0] },
         },
         {
-          name: 'Cobrado',
+          name: 'Cobrat',
           type: 'bar',
           data: statistics.months.map((month) => month.collected),
           itemStyle: { color: colours.green, borderRadius: [5, 5, 0, 0] },

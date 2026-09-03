@@ -8,15 +8,15 @@ import { PwaRegister } from '@/components/pwa-register'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: { default: 'Concepte Blau · Gestión de piscinas', template: '%s · Concepte Blau' },
-  description: 'Gestión de mantenimiento, visitas, clientes y facturación de piscinas.',
+  title: { default: 'Concepte Blau · Gestió de piscines', template: '%s · Concepte Blau' },
+  description: 'Gestió del manteniment, visites, clients i facturació de piscines.',
 }
 
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#2a4227' }
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="es">
+    <html lang="ca">
       <body>
         <PersistentApp />
         <div hidden>{children}</div>

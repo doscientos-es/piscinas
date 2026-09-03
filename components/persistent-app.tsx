@@ -8,7 +8,7 @@ import { getAppRoute } from '@/lib/app-route'
 
 export function PersistentApp() {
   return (
-    <Suspense fallback={<main className="empty-state">Cargando la aplicación…</main>}>
+    <Suspense fallback={<main className="empty-state">S'està carregant l'aplicació…</main>}>
       <PersistentAppContent />
     </Suspense>
   )

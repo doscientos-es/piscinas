@@ -3,24 +3,24 @@ import { describe, expect, it } from 'vitest'
 import { getAgendaVisitAction } from './agenda-access'
 
 describe('getAgendaVisitAction', () => {
-  it('deja a los técnicos iniciar o continuar sus faenas', () => {
+  it('permet als tècnics iniciar o continuar les seves feines', () => {
     expect(getAgendaVisitAction('scheduled', false)).toEqual({
-      label: 'Iniciar',
+      label: 'Inicia',
       isInteractive: true,
     })
     expect(getAgendaVisitAction('in_progress', false)).toEqual({
-      label: 'Continuar',
+      label: 'Continua',
       isInteractive: true,
     })
   })
 
-  it('permite a administración consultar los partes cerrados sin operar la visita', () => {
+  it('permet a administració consultar els informes tancats sense operar la visita', () => {
     expect(getAgendaVisitAction('scheduled', true)).toEqual({
       label: 'Programada',
       isInteractive: false,
     })
     expect(getAgendaVisitAction('completed', true)).toEqual({
-      label: 'Ver',
+      label: 'Veure',
       isInteractive: true,
     })
   })

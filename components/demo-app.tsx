@@ -134,16 +134,16 @@ type ClientType = 'residential' | 'community' | 'hotel' | 'business'
 type BillingFrequency = 'monthly' | 'quarterly' | 'per_visit'
 type ClientInput = Omit<Client, 'id' | 'installations'>
 type InstallationInput = Omit<Installation, 'id'>
-const money = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' })
+const money = new Intl.NumberFormat('ca-ES', { style: 'currency', currency: 'EUR' })
 const titles: Record<View, string> = {
-  inicio: 'Resumen operativo',
-  agenda: 'Agenda de visitas',
-  trabajos: 'Historial de trabajos',
-  facturacion: 'Facturación y cobros',
-  clientes: 'Clientes e instalaciones',
-  inventario: 'Inventario de materiales',
-  estadisticas: 'Estadísticas',
-  parte: 'Parte de visita',
+  inicio: 'Resum operatiu',
+  agenda: 'Agenda de visites',
+  trabajos: 'Historial de feines',
+  facturacion: 'Facturació i cobraments',
+  clientes: 'Clients i instal·lacions',
+  inventario: 'Inventari de materials',
+  estadisticas: 'Estadístiques',
+  parte: 'Informe de visita',
 }
 
 export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
@@ -152,7 +152,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   const [ready, setReady] = useState(false)
   const [signedIn, setSignedIn] = useState(false)
   const [role, setRole] = useState<AccountRole | null>(null)
-  const [accountName, setAccountName] = useState('Tu cuenta')
+  const [accountName, setAccountName] = useState('El teu compte')
   const [accountEmail, setAccountEmail] = useState('')
   const [clientSchemaReady, setClientSchemaReady] = useState(true)
   const [visits, setVisits] = useState<Visit[]>([])
@@ -180,7 +180,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     const s = createClient()
     const { data: userData, error: userError } = await s.auth.getUser()
     if (userError || !userData.user) {
-      setMessage(userError?.message ?? 'No se ha podido identificar la sesión.')
+      setMessage(userError?.message ?? "No s'ha pogut identificar la sessió.")
       return
     }
     const profile = await s
@@ -189,7 +189,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       .eq('id', userData.user.id)
       .maybeSingle()
     if (profile.error || !profile.data) {
-      setMessage(profile.error?.message ?? 'No se ha encontrado el perfil de acceso.')
+      setMessage(profile.error?.message ?? "No s'ha trobat el perfil d'accés.")
       return
     }
     const accountRole = profile.data.role as AccountRole
@@ -197,7 +197,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     const metadataName = userData.user.user_metadata.full_name
     const fallbackName =
       typeof metadataName === 'string' ? metadataName.trim() : userData.user.email?.split('@')[0]
-    setAccountName(profile.data.full_name?.trim() || fallbackName || 'Tu cuenta')
+    setAccountName(profile.data.full_name?.trim() || fallbackName || 'El teu compte')
     setAccountEmail(userData.user.email ?? '')
 
     const invoicesRequest =
@@ -304,7 +304,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
         void load()
       } else {
         setRole(null)
-        setAccountName('Tu cuenta')
+        setAccountName('El teu compte')
         setAccountEmail('')
       }
     })
@@ -313,9 +313,9 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   useEffect(() => {
     if (role && !canAccessAppView(role, view)) router.replace('/agenda')
   }, [role, router, view])
-  if (!ready) return <main className="empty-state">Cargando tu operativa…</main>
+  if (!ready) return <main className="empty-state">S'està carregant la teva operativa…</main>
   if (!signedIn) return <AuthScreen />
-  if (!role) return <main className="empty-state">Cargando tus permisos…</main>
+  if (!role) return <main className="empty-state">S'estan carregant els teus permisos…</main>
   const isAdmin = role === 'admin'
   const activeView = canAccessAppView(role, view) ? view : 'agenda'
   const signOut = async () => {
@@ -326,7 +326,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     const { error } = await createClient().auth.signOut()
 
     if (error) {
-      setSignOutError('No se ha podido cerrar la sesión. Inténtalo de nuevo.')
+      setSignOutError("No s'ha pogut tancar la sessió. Torna-ho a provar.")
       setIsSigningOut(false)
       return
     }
@@ -376,7 +376,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
         timeTrackingPolicy.require_exception_reason &&
         !exceptionReason.trim()
       ) {
-        setStartError('Indica brevemente el motivo para registrar este inicio excepcional.')
+        setStartError("Indica breument el motiu per registrar aquest inici excepcional.")
         return
       }
       setStartingVisit(true)
@@ -384,7 +384,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       return
     }
     if (!navigator.geolocation) {
-      setStartError('Este dispositivo no permite obtener la ubicación necesaria para iniciar.')
+      setStartError("Aquest dispositiu no permet obtenir la ubicació necessària per iniciar.")
       return
     }
     setStartingVisit(true)
@@ -436,7 +436,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       .from('invoices')
       .update({ status: 'paid', paid_at: new Date().toISOString() })
       .eq('id', invoice.id)
-    setMessage(error ? error.message : 'Factura marcada como cobrada.')
+    setMessage(error ? error.message : 'Factura marcada com a cobrada.')
     await load()
   }
   const generateMonthlyInvoices = async (billingPeriod: string) => {
@@ -450,15 +450,15 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     const generated = (data ?? []).filter((invoice: { created: boolean }) => invoice.created).length
     setMessage(
       generated
-        ? `Cierre de ${formatBillingPeriod(billingPeriod)} preparado: ${generated} borradores nuevos.`
-        : `El cierre de ${formatBillingPeriod(billingPeriod)} ya estaba preparado.`,
+        ? `Tancament de ${formatBillingPeriod(billingPeriod)} preparat: ${generated} esborranys nous.`
+        : `El tancament de ${formatBillingPeriod(billingPeriod)} ja estava preparat.`,
     )
     await load()
   }
   const savePendingWork = async (input: PendingWorkInput, id?: string) => {
     const scheduledFor = new Date(input.scheduledFor)
     if (Number.isNaN(scheduledFor.getTime()))
-      throw new Error('Selecciona una fecha y hora válidas.')
+      throw new Error('Selecciona una data i una hora vàlides.')
 
     const payload = {
       installation_id: input.installationId,
@@ -481,9 +481,9 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           .maybeSingle()
     if (result.error) throw new Error(result.error.message)
     if (!result.data)
-      throw new Error('El trabajo ya no está pendiente o no tienes permiso para modificarlo.')
+      throw new Error("La feina ja no està pendent o no tens permís per modificar-la.")
 
-    setMessage(id ? 'Trabajo actualizado.' : 'Trabajo programado.')
+    setMessage(id ? 'Feina actualitzada.' : 'Feina programada.')
     await load()
   }
   const deletePendingWork = async (id: string) => {
@@ -496,9 +496,9 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       .maybeSingle()
     if (error) throw new Error(error.message)
     if (!data)
-      throw new Error('El trabajo ya no está pendiente o no tienes permiso para eliminarlo.')
+      throw new Error("La feina ja no està pendent o no tens permís per eliminar-la.")
 
-    setMessage('Trabajo eliminado.')
+    setMessage('Feina eliminada.')
     await load()
   }
   const saveClient = async (client: ClientInput, id?: string) => {
@@ -530,18 +530,18 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       : createClient().from('clients').insert(payload)
     const { error } = await query
     if (error) throw new Error(error.message)
-    setMessage(id ? 'Cliente actualizado.' : 'Cliente creado.')
+    setMessage(id ? 'Client actualitzat.' : 'Client creat.')
     await load()
   }
   const deleteClient = async (client: Client) => {
     if (
       !window.confirm(
-        `¿Eliminar a ${client.legal_name}? También se eliminarán sus instalaciones. Esta acción no se puede deshacer.`,
+        `Voleu eliminar ${client.legal_name}? També se n'eliminaran les instal·lacions. Aquesta acció no es pot desfer.`,
       )
     )
       return
     const { error } = await createClient().from('clients').delete().eq('id', client.id)
-    setMessage(error ? error.message : 'Cliente eliminado.')
+    setMessage(error ? error.message : 'Client eliminat.')
     if (!error) await load()
   }
   const saveInstallation = async (
@@ -564,13 +564,13 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           .insert({ ...payload, client_id: clientId })
     const { error } = await query
     if (error) throw new Error(error.message)
-    setMessage(id ? 'Instalación actualizada.' : 'Instalación añadida.')
+    setMessage(id ? 'Instal·lació actualitzada.' : 'Instal·lació afegida.')
     await load()
   }
   const deleteInstallation = async (installation: Installation) => {
-    if (!window.confirm(`¿Eliminar la instalación «${installation.name}»?`)) return
+    if (!window.confirm(`Voleu eliminar la instal·lació «${installation.name}»?`)) return
     const { error } = await createClient().from('installations').delete().eq('id', installation.id)
-    setMessage(error ? error.message : 'Instalación eliminada.')
+    setMessage(error ? error.message : 'Instal·lació eliminada.')
     if (!error) await load()
   }
   const accountInitials = accountName
@@ -605,7 +605,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           {isAdmin && (
             <Nav
               href="/"
-              label="Resumen"
+              label="Resum"
               icon={<LayoutDashboard size={18} />}
               active={activeView === 'inicio'}
             />
@@ -618,7 +618,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           />
           <Nav
             href="/trabajos"
-            label="Trabajos"
+            label="Feines"
             icon={<CheckCircle2 size={18} />}
             active={activeView === 'trabajos'}
           />
@@ -626,13 +626,13 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             <>
               <Nav
                 href="/clientes"
-                label="Clientes"
+                label="Clients"
                 icon={<Users size={18} />}
                 active={activeView === 'clientes'}
               />
               <Nav
                 href="/facturacion"
-                label="Facturación"
+                label="Facturació"
                 icon={<FileText size={18} />}
                 active={activeView === 'facturacion'}
               />
@@ -640,14 +640,14 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           )}
           <Nav
             href="/inventario"
-            label="Inventario"
+            label="Inventari"
             icon={<Package size={18} />}
             active={activeView === 'inventario'}
           />
           {isAdmin && (
             <Nav
               href="/estadisticas"
-              label="Estadísticas"
+              label="Estadístiques"
               icon={<LayoutDashboard size={18} />}
               active={activeView === 'estadisticas'}
             />
@@ -659,14 +659,14 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
               className="profile-trigger"
               type="button"
               variant="ghost"
-              aria-label={`Abrir menú de ${accountName}`}
+              aria-label={`Obre el menú de ${accountName}`}
             >
               <span className="avatar" aria-hidden="true">
                 {accountInitials || 'CB'}
               </span>
               <span className="profile-summary">
                 <strong>{accountName}</strong>
-                <span>{isAdmin ? 'Administración' : 'Operativa'}</span>
+                <span>{isAdmin ? 'Administració' : 'Operativa'}</span>
               </span>
               <ChevronDown className="profile-chevron" size={16} aria-hidden="true" />
             </Button>
@@ -677,7 +677,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
                 </span>
                 <span>
                   <strong>{accountName}</strong>
-                  <small>{accountEmail || 'Sesión activa'}</small>
+                  <small>{accountEmail || 'Sessió activa'}</small>
                 </span>
               </div>
               <div className="profile-popover-divider" />
@@ -688,7 +688,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
                 disabled={isSigningOut}
               >
                 <LogOut size={16} aria-hidden="true" />
-                {isSigningOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
+                {isSigningOut ? "S'està tancant la sessió…" : 'Tanca la sessió'}
               </button>
               {signOutError && <p className="profile-sign-out-error">{signOutError}</p>}
             </PopoverContent>
@@ -704,13 +704,13 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             <div className="top-actions">
               {activeView === 'inicio' && (
                 <Link className="button accent" href="/agenda">
-                  Ver agenda
+                  Veure agenda
                 </Link>
               )}
               {activeView === 'clientes' && isAdmin && (
                 <button className="button" type="button" onClick={() => setEditingClient('new')}>
                   <Plus size={17} aria-hidden="true" />
-                  Nuevo cliente
+                  Client nou
                 </button>
               )}
               {activeView === 'inventario' && isAdmin && (
@@ -720,7 +720,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
                   onClick={() => setProductCreationVersion((value) => value + 1)}
                 >
                   <Plus size={17} aria-hidden="true" />
-                  Nuevo material
+                  Material nou
                 </button>
               )}
               {activeView === 'estadisticas' && isAdmin && (
@@ -730,7 +730,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
                   onClick={() => setStatisticsReload((value) => value + 1)}
                 >
                   <RefreshCw size={16} aria-hidden="true" />
-                  Actualizar
+                  Actualitza
                 </button>
               )}
             </div>
@@ -813,8 +813,8 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           }}
           title={
             startExceptions.length || requiresExceptionReason
-              ? 'Justificar inicio excepcional'
-              : 'Registrar inicio de visita'
+              ? 'Justifica l'inici excepcional'
+              : 'Registra l'inici de la visita'
           }
           description={
             visitToStart ? (
@@ -832,12 +832,12 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           }
           confirmLabel={
             startingVisit
-              ? 'Obteniendo ubicación…'
+              ? "S'està obtenint la ubicació…"
               : startExceptions.length || requiresExceptionReason
-                ? 'Registrar inicio excepcional'
-                : 'Confirmar y registrar inicio'
+                ? "Registra l'inici excepcional"
+                : "Confirma i registra l'inici"
           }
-          cancelLabel="Cancelar"
+          cancelLabel="Cancel·la"
           pending={startingVisit}
           onConfirm={confirmVisitStart}
         />
@@ -869,32 +869,32 @@ function StartVisitConfirmation({
   return (
     <div className="start-confirmation">
       <p>
-        ¿Confirmas que estás en{' '}
-        <strong>{visit.installations?.address ?? 'la dirección asignada'}</strong> para{' '}
-        {visit.installations?.clients?.legal_name ?? 'este cliente'}?
+        Confirmeu que sou a{' '}
+        <strong>{visit.installations?.address ?? "l'adreça assignada"}</strong> per a{' '}
+        {visit.installations?.clients?.legal_name ?? 'aquest client'}?
       </p>
       <p className="start-confirmation-schedule">Visita prevista: {formatDateTime(scheduledFor)}</p>
       {visit.planning_notes && (
         <aside className="start-confirmation-notes">
-          <strong>Notas de planificación</strong>
+          <strong>Notes de planificació</strong>
           <p>{visit.planning_notes}</p>
         </aside>
       )}
       {warning && (
         <p className="start-confirmation-warning">
           {warning === 'different_day'
-            ? 'Esta visita está programada para otro día. Confirma que corresponde iniciarla ahora.'
-            : 'La hora real difiere más de 90 minutos de la prevista. Confirma que corresponde iniciarla ahora.'}
+            ? 'Aquesta visita està programada per a un altre dia. Confirma que correspon iniciar-la ara.'
+            : "L'hora real difereix més de 90 minuts de la prevista. Confirma que correspon iniciar-la ara."}
         </p>
       )}
       <p className="start-confirmation-location">
         {position
-          ? `Ubicación obtenida con una precisión aproximada de ±${Math.round(position.accuracy)} m.`
-          : 'Al confirmar, el navegador pedirá permiso para registrar tu ubicación precisa y la hora oficial de inicio.'}
+          ? `Ubicació obtinguda amb una precisió aproximada de ±${Math.round(position.accuracy)} m.`
+          : "En confirmar, el navegador demanarà permís per registrar la teva ubicació precisa i l'hora oficial d'inici."}
       </p>
       {mustExplain && (
         <div className="start-exception">
-          <strong>Este inicio necesita justificación</strong>
+          <strong>Aquest inici necessita justificació</strong>
           {exceptions.length > 0 && (
             <ul>
               {exceptions.map((exception) => (
@@ -903,12 +903,12 @@ function StartVisitConfirmation({
             </ul>
           )}
           <label>
-            Motivo de la excepción
+            Motiu de l'excepció
             <textarea
               rows={2}
               value={exceptionReason}
               onChange={(event) => onExceptionReasonChange(event.target.value)}
-              placeholder="Ej. avería urgente, acceso restringido o imprecisión GPS"
+              placeholder="P. ex. avaria urgent, accés restringit o imprecisió GPS"
             />
           </label>
         </div>
@@ -919,15 +919,15 @@ function StartVisitConfirmation({
 }
 function geolocationErrorMessage(error: GeolocationPositionError) {
   if (error.code === error.PERMISSION_DENIED) {
-    return 'Necesitamos el permiso de ubicación para registrar el inicio de la visita.'
+    return "Necessitem el permís d'ubicació per registrar l'inici de la visita."
   }
   if (error.code === error.TIMEOUT) {
-    return 'La ubicación ha tardado demasiado. Comprueba la cobertura e inténtalo de nuevo.'
+    return "La ubicació ha trigat massa. Comprova la cobertura i torna-ho a provar."
   }
-  return 'No se ha podido obtener una ubicación precisa. Activa la ubicación e inténtalo de nuevo.'
+  return "No s'ha pogut obtenir una ubicació precisa. Activa la ubicació i torna-ho a provar."
 }
 function formatDateTime(value: Date) {
-  return new Intl.DateTimeFormat('es-ES', {
+  return new Intl.DateTimeFormat('ca-ES', {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(value)
@@ -982,18 +982,18 @@ function VisitRow({
   return (
     <div className="visit">
       <div className="time">
-        {new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(
+        {new Intl.DateTimeFormat('ca-ES', { hour: '2-digit', minute: '2-digit' }).format(
           new Date(visit.scheduled_for),
         )}
       </div>
       <div>
-        <div className="visit-title">{x?.clients?.legal_name ?? 'Cliente'}</div>
+        <div className="visit-title">{x?.clients?.legal_name ?? 'Client'}</div>
         <div className="visit-meta">
-          {x?.name ?? 'Instalación'} · {x?.address ?? ''}
+          {x?.name ?? 'Instal·lació'} · {x?.address ?? ''}
         </div>
         {isAdmin && (
           <div className="visit-meta">
-            Responsable: {visit.technician?.full_name ?? 'Sin asignar'}
+            Responsable: {visit.technician?.full_name ?? 'Sense assignar'}
           </div>
         )}
       </div>
@@ -1005,15 +1005,15 @@ function VisitRow({
       ) : null}
       {!isAdmin && visit.status === 'in_progress' ? (
         <Link className="badge progress" href={`/agenda/${visit.id}`}>
-          Continuar
+          Continua
         </Link>
       ) : null}
       {!isAdmin && visit.status === 'cancelled' ? (
-        <span className="badge pending">Cancelada</span>
+        <span className="badge pending">Cancel·lada</span>
       ) : null}
       {!isAdmin && visit.status === 'scheduled' ? (
         <button className="badge progress" onClick={() => start(visit)}>
-          Iniciar
+          Inicia
         </button>
       ) : null}
     </div>
@@ -1038,34 +1038,34 @@ function Overview({
       <section className="stats">
         <Stat
           icon={<CalendarDays size={19} />}
-          label="Visitas"
+          label="Visites"
           value={String(visits.length)}
-          foot={`${visits.filter((v) => v.status === 'completed').length} completadas`}
+          foot={`${visits.filter((v) => v.status === 'completed').length} completades`}
         />
         <Stat
           icon={<Users size={19} />}
-          label="Clientes activos"
+          label="Clients actius"
           value={String(clients.filter((client) => client.active).length)}
-          foot={`${clients.length} clientes registrados`}
+          foot={`${clients.length} clients registrats`}
         />
         <Stat
           icon={<FileText size={19} />}
-          label="Facturas pendientes"
+          label="Factures pendents"
           value={String(due.length)}
           foot={money.format(due.reduce((n, i) => n + Number(i.total), 0))}
         />
         <Stat
           icon={<CircleDollarSign size={19} />}
-          label="Facturación"
+          label="Facturació"
           value={money.format(invoices.reduce((n, i) => n + Number(i.total), 0))}
-          foot="Importe total emitido"
+          foot="Import total emès"
         />
       </section>
       <section className="card" style={{ marginTop: 18 }}>
         <div className="card-head">
-          <h3>Próximas visitas</h3>
+          <h3>Properes visites</h3>
           <Link className="card-link" href="/agenda">
-            Ver agenda <ArrowRight size={15} aria-hidden="true" />
+            Veure agenda <ArrowRight size={15} aria-hidden="true" />
           </Link>
         </div>
         {visits.length ? (
@@ -1073,7 +1073,7 @@ function Overview({
             .slice(0, 4)
             .map((v) => <VisitRow key={v.id} visit={v} isAdmin={isAdmin} start={start} />)
         ) : (
-          <p className="overview-visits-empty">No hay visitas asignadas o programadas.</p>
+          <p className="overview-visits-empty">No hi ha visites assignades o programades.</p>
         )}
       </section>
     </>
@@ -1145,11 +1145,11 @@ function Agenda({
     <>
       <section
         className={`calendar-shell calendar-${calendarView}`}
-        aria-label="Calendario de visitas"
+        aria-label="Calendari de visites"
       >
         <header className="calendar-toolbar">
           <div className="calendar-period">
-            <span>Calendario</span>
+            <span>Calendari</span>
             <h3>{calendarPeriodLabel(activeDate, calendarView)}</h3>
           </div>
           <div className="calendar-controls">
@@ -1158,7 +1158,7 @@ function Agenda({
                 type="button"
                 className="calendar-icon-button"
                 onClick={previous}
-                aria-label="Periodo anterior"
+                aria-label="Període anterior"
               >
                 <ChevronLeft size={19} />
               </button>
@@ -1167,22 +1167,22 @@ function Agenda({
                 className="calendar-today"
                 onClick={() => setActiveDate(startOfDay(new Date()))}
               >
-                Hoy
+                Avui
               </button>
               <button
                 type="button"
                 className="calendar-icon-button"
                 onClick={next}
-                aria-label="Periodo siguiente"
+                aria-label="Període següent"
               >
                 <ChevronRight size={19} />
               </button>
             </div>
-            <div className="calendar-view-switch" role="tablist" aria-label="Vista de calendario">
+            <div className="calendar-view-switch" role="tablist" aria-label="Vista de calendari">
               {(
                 [
-                  ['day', 'Día'],
-                  ['week', 'Semana'],
+                  ['day', 'Dia'],
+                  ['week', 'Setmana'],
                   ['month', 'Mes'],
                 ] as [CalendarView, string][]
               ).map(([value, label]) => (
@@ -1258,7 +1258,7 @@ function DayCalendar({
             <CalendarEvent key={visit.id} visit={visit} isAdmin={isAdmin} start={start} timed />
           ))}
           {visits.length === 0 && (
-            <p className="calendar-empty">No hay visitas previstas para este día.</p>
+            <p className="calendar-empty">No hi ha visites previstes per a aquest dia.</p>
           )}
         </div>
       </div>
@@ -1293,7 +1293,7 @@ function WeekCalendar({
             {visitsForDay(visits, day).map((visit) => (
               <CalendarEvent key={visit.id} visit={visit} isAdmin={isAdmin} start={start} compact />
             ))}
-            {visitsForDay(visits, day).length === 0 && <span className="calendar-free">Libre</span>}
+            {visitsForDay(visits, day).length === 0 && <span className="calendar-free">Lliure</span>}
           </div>
         ))}
       </div>
@@ -1317,7 +1317,7 @@ function MonthCalendar({
   return (
     <div className="month-calendar">
       <div className="month-weekdays">
-        {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((day) => (
+        {['Dl.', 'Dt.', 'Dc.', 'Dj.', 'Dv.', 'Ds.', 'Dg.'].map((day) => (
           <span key={day}>{day}</span>
         ))}
       </div>
@@ -1342,7 +1342,7 @@ function MonthCalendar({
                   />
                 ))}
                 {dayVisits.length > 3 && (
-                  <span className="more-events">+{dayVisits.length - 3} más</span>
+                  <span className="more-events">+{dayVisits.length - 3} més</span>
                 )}
               </div>
             </div>
@@ -1373,13 +1373,13 @@ function CalendarEvent({
   const content = (
     <>
       <time>
-        {new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(scheduled)}
+        {new Intl.DateTimeFormat('ca-ES', { hour: '2-digit', minute: '2-digit' }).format(scheduled)}
       </time>
-      <strong>{visit.installations?.clients?.legal_name ?? 'Cliente'}</strong>
-      {!compact && <span>{visit.installations?.name ?? 'Instalación'}</span>}
+      <strong>{visit.installations?.clients?.legal_name ?? 'Client'}</strong>
+      {!compact && <span>{visit.installations?.name ?? 'Instal·lació'}</span>}
       {isAdmin && (
         <span className="event-assignee">
-          Responsable: {visit.technician?.full_name ?? 'Sin asignar'}
+          Responsable: {visit.technician?.full_name ?? 'Sense assignar'}
         </span>
       )}
     </>
@@ -1448,19 +1448,19 @@ function visitsForDay(visits: Visit[], date: Date) {
     .sort((left, right) => left.scheduled_for.localeCompare(right.scheduled_for))
 }
 function dayLabel(date: Date) {
-  return new Intl.DateTimeFormat('es-ES', { weekday: 'short' }).format(date).replace('.', '')
+  return new Intl.DateTimeFormat('ca-ES', { weekday: 'short' }).format(date).replace('.', '')
 }
 function calendarPeriodLabel(date: Date, view: CalendarView) {
   if (view === 'month')
-    return new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(date)
+    return new Intl.DateTimeFormat('ca-ES', { month: 'long', year: 'numeric' }).format(date)
   if (view === 'day')
-    return new Intl.DateTimeFormat('es-ES', {
+    return new Intl.DateTimeFormat('ca-ES', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
     }).format(date)
   const end = addDays(startOfWeek(date), 6)
-  return `${new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' }).format(startOfWeek(date))} — ${new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }).format(end)}`
+  return `${new Intl.DateTimeFormat('ca-ES', { day: 'numeric', month: 'short' }).format(startOfWeek(date))} — ${new Intl.DateTimeFormat('ca-ES', { day: 'numeric', month: 'short', year: 'numeric' }).format(end)}`
 }
 function Billing({
   invoices,
@@ -1490,42 +1490,42 @@ function Billing({
 
   return (
     <>
-      <section className="billing-summary" aria-label="Resumen de facturación">
+      <section className="billing-summary" aria-label="Resum de facturació">
         <div className="billing-summary-card">
           <FileText size={19} aria-hidden="true" />
           <div>
-            <span>Facturado</span>
+            <span>Facturat</span>
             <strong>{money.format(billedTotal)}</strong>
-            <small>{displayedInvoices.length} facturas emitidas</small>
+            <small>{displayedInvoices.length} factures emeses</small>
           </div>
         </div>
         <div className="billing-summary-card pending">
           <CircleDollarSign size={19} aria-hidden="true" />
           <div>
-            <span>Pendiente de cobro</span>
+            <span>Pendent de cobrament</span>
             <strong>{money.format(pendingTotal)}</strong>
-            <small>{pendingInvoices.length} por gestionar</small>
+            <small>{pendingInvoices.length} per gestionar</small>
           </div>
         </div>
         <div className="billing-summary-card paid">
           <CheckCircle2 size={19} aria-hidden="true" />
           <div>
-            <span>Cobradas</span>
+            <span>Cobrades</span>
             <strong>{paidInvoices.length}</strong>
-            <small>facturas conciliadas</small>
+            <small>factures conciliades</small>
           </div>
         </div>
       </section>
       <section className="billing-list-panel" aria-labelledby="invoice-list-title">
         <header className="billing-list-header">
           <div>
-            <span className="billing-list-kicker">Registro de facturas</span>
+            <span className="billing-list-kicker">Registre de factures</span>
             <h3 id="invoice-list-title">
-              {filteredClientName ? `Facturas de ${filteredClientName}` : 'Todas las facturas'}
+              {filteredClientName ? `Factures de ${filteredClientName}` : 'Totes les factures'}
             </h3>
           </div>
           <div className="billing-list-controls">
-            {clientId && <Link href={`/facturacion?mes=${billingPeriod}`}>Ver todas</Link>}
+            {clientId && <Link href={`/facturacion?mes=${billingPeriod}`}>Veure-les totes</Link>}
             <select
               value={billingPeriod}
               onChange={(event) => updateSearchParams({ mes: event.target.value })}
@@ -1546,13 +1546,13 @@ function Billing({
                 setGenerating(false)
               }}
             >
-              {generating ? 'Preparando…' : 'Preparar cierre mensual'}
+              {generating ? "S'està preparant…" : 'Prepara el tancament mensual'}
             </button>
             <span className="billing-list-count">{displayedInvoices.length} en total</span>
           </div>
         </header>
         {displayedInvoices.length ? (
-          <div className="invoice-list" aria-label="Listado de facturas">
+          <div className="invoice-list" aria-label="Llista de factures">
             {displayedInvoices.map((invoice) => {
               const lines = getInvoiceLines(invoice)
               const isPaid = invoice.status === 'paid'
@@ -1568,12 +1568,12 @@ function Billing({
                       {isPaid ? <CheckCircle2 size={20} /> : <FileText size={20} />}
                     </div>
                     <div className="invoice-client">
-                      <span className="invoice-number">{invoice.number ?? 'Borrador'}</span>
-                      <strong>{invoice.clients?.legal_name ?? 'Cliente sin asignar'}</strong>
+                      <span className="invoice-number">{invoice.number ?? 'Esborrany'}</span>
+                      <strong>{invoice.clients?.legal_name ?? 'Client sense assignar'}</strong>
                       <div className="invoice-dates">
-                        <span>Período {formatBillingPeriod(invoice.billing_period)}</span>
-                        <span>Emitida {formatDate(invoice.issued_on)}</span>
-                        <span>Vence {formatDate(invoice.due_on)}</span>
+                        <span>Període {formatBillingPeriod(invoice.billing_period)}</span>
+                        <span>Emesa {formatDate(invoice.issued_on)}</span>
+                        <span>Venç {formatDate(invoice.due_on)}</span>
                       </div>
                     </div>
                   </div>
@@ -1583,7 +1583,7 @@ function Billing({
                       {lineCountLabel}
                     </span>
                     <strong>{lines[0]?.description}</strong>
-                    {lines.length > 1 && <small>+ {lines.length - 1} más</small>}
+                    {lines.length > 1 && <small>+ {lines.length - 1} més</small>}
                   </div>
                   <div className="invoice-amount">
                     <span>Total</span>
@@ -1596,19 +1596,19 @@ function Billing({
                         className="invoice-action"
                         type="button"
                         onClick={() => setPreviewedInvoice(invoice)}
-                        aria-label={`Ver factura ${invoice.number ?? invoice.id}`}
+                        aria-label={`Veure la factura ${invoice.number ?? invoice.id}`}
                       >
                         <Eye size={16} aria-hidden="true" />
-                        <span>Ver</span>
+                        <span>Veure</span>
                       </button>
                       <button
                         className="invoice-action"
                         type="button"
                         onClick={() => downloadInvoice(invoice)}
-                        aria-label={`Descargar factura ${invoice.number ?? invoice.id}`}
+                        aria-label={`Descarrega la factura ${invoice.number ?? invoice.id}`}
                       >
                         <Download size={16} aria-hidden="true" />
-                        <span>Descargar</span>
+                        <span>Descarrega</span>
                       </button>
                     </div>
                     {isPaid ? (
@@ -1622,7 +1622,7 @@ function Billing({
                         type="button"
                         onClick={() => pay(invoice)}
                       >
-                        Marcar cobrada
+                        Marca com a cobrada
                       </button>
                     )}
                   </div>
@@ -1634,8 +1634,8 @@ function Billing({
           <div className="invoice-empty">
             <FileText size={24} aria-hidden="true" />
             <div>
-              <strong>Aún no hay facturas</strong>
-              <p>Prepara el cierre mensual para crear los borradores pendientes de revisión.</p>
+              <strong>Encara no hi ha factures</strong>
+              <p>Prepara el tancament mensual per crear els esborranys pendents de revisió.</p>
             </div>
           </div>
         )}
@@ -1742,19 +1742,19 @@ function Clients({
     <>
       {!isAdmin && (
         <p className="access-note" role="status">
-          Solo los administradores pueden crear o modificar clientes.
+          Només els administradors poden crear o modificar clients.
         </p>
       )}
       <div className="client-toolbar">
         <label className="client-search">
           <Search size={17} aria-hidden="true" />
-          <span className="sr-only">Buscar clientes</span>
+          <span className="sr-only">Cerca clients</span>
           <input
             value={search}
             onChange={(event) => {
               updateFilters({ q: event.target.value })
             }}
-            placeholder="Buscar por nombre"
+            placeholder="Cerca per nom"
           />
         </label>
         <select
@@ -1763,9 +1763,9 @@ function Clients({
             updateFilters({ estado: event.target.value })
           }}
         >
-          <option value="all">Todos los estados</option>
-          <option value="active">Activos</option>
-          <option value="inactive">Inactivos</option>
+          <option value="all">Tots els estats</option>
+          <option value="active">Actius</option>
+          <option value="inactive">Inactius</option>
         </select>
         <select
           value={typeFilter}
@@ -1773,9 +1773,9 @@ function Clients({
             updateFilters({ tipo: event.target.value })
           }}
         >
-          <option value="all">Todos los tipos</option>
+          <option value="all">Tots els tipus</option>
           <option value="residential">Particular</option>
-          <option value="community">Comunidad</option>
+          <option value="community">Comunitat</option>
           <option value="hotel">Hotel</option>
           <option value="business">Empresa</option>
         </select>
@@ -1792,7 +1792,7 @@ function Clients({
               <div>
                 <div className="client-name-row">
                   <h3>{client.legal_name}</h3>
-                  {!client.active && <span className="badge pending">Inactivo</span>}
+                  {!client.active && <span className="badge pending">Inactiu</span>}
                 </div>
                 <p>{client.trade_name || clientTypeLabel(client.client_type)}</p>
               </div>
@@ -1801,7 +1801,7 @@ function Clients({
             <div className="client-contact">
               <span>
                 <UserRound size={15} aria-hidden="true" />
-                {client.contact_name || 'Sin contacto asignado'}
+                {client.contact_name || 'Sense contacte assignat'}
               </span>
               {client.contact_email && (
                 <span>
@@ -1820,10 +1820,10 @@ function Clients({
               <span>
                 <Building2 size={15} aria-hidden="true" />
                 {client.installations.length}{' '}
-                {client.installations.length === 1 ? 'instalación' : 'instalaciones'}
+                {client.installations.length === 1 ? 'instal·lació' : 'instal·lacions'}
               </span>
               <span>
-                Cobro {paymentLabel(client.payment_method)} · {client.payment_terms_days} días
+                Cobrament {paymentLabel(client.payment_method)} · {client.payment_terms_days} dies
               </span>
             </div>
             <div className="client-card-actions">
@@ -1832,14 +1832,14 @@ function Clients({
                 type="button"
                 onClick={() => setSelectedClient(client)}
               >
-                Ver ficha
+                Veure la fitxa
               </button>
               {isAdmin && (
                 <>
                   <button
                     className="icon-action"
                     type="button"
-                    aria-label={`Editar ${client.legal_name}`}
+                aria-label={`Edita ${client.legal_name}`}
                     onClick={() => setEditingClient(client)}
                   >
                     <Pencil size={16} />
@@ -1847,7 +1847,7 @@ function Clients({
                   <button
                     className="icon-action destructive"
                     type="button"
-                    aria-label={`Eliminar ${client.legal_name}`}
+                aria-label={`Elimina ${client.legal_name}`}
                     onClick={() => void onDeleteClient(client)}
                   >
                     <Trash2 size={16} />
@@ -1861,10 +1861,10 @@ function Clients({
       {visibleClients.length === 0 && (
         <div className="empty-results">
           <Users size={25} aria-hidden="true" />
-          <p>No hay clientes que coincidan con la búsqueda.</p>
+          <p>No hi ha clients que coincideixin amb la cerca.</p>
         </div>
       )}
-      <nav className="pagination" aria-label="Paginación de clientes">
+      <nav className="pagination" aria-label="Paginació de clients">
         <button
           className="button secondary"
           type="button"
@@ -1874,7 +1874,7 @@ function Clients({
           Anterior
         </button>
         <span>
-          Página {page + 1} de {pageCount}
+          Pàgina {page + 1} de {pageCount}
         </span>
         <button
           className="button secondary"
@@ -1882,7 +1882,7 @@ function Clients({
           disabled={page + 1 >= pageCount}
           onClick={() => updateSearchParams({ pagina: page + 2 })}
         >
-          Siguiente
+          Següent
         </button>
       </nav>
       {editingClient && (
@@ -1933,11 +1933,11 @@ function Clients({
 }
 
 const clientTypeLabel = (type: ClientType) =>
-  ({ residential: 'Particular', community: 'Comunidad', hotel: 'Hotel', business: 'Empresa' })[type]
+  ({ residential: 'Particular', community: 'Comunitat', hotel: 'Hotel', business: 'Empresa' })[type]
 const paymentLabel = (method: string | null) =>
-  ({ direct_debit: 'domiciliado', transfer: 'por transferencia', card: 'con tarjeta' })[
+  ({ direct_debit: 'domiciliat', transfer: 'per transferència', card: 'amb targeta' })[
     method ?? ''
-  ] ?? 'sin definir'
+  ] ?? 'sense definir'
 const emptyClient: ClientInput = {
   legal_name: '',
   trade_name: null,
@@ -1995,33 +1995,33 @@ function ClientForm({
   }
   return (
     <Modal
-      title={client ? 'Editar cliente' : 'Nuevo cliente'}
-      description="Los campos con asterisco son obligatorios."
+      title={client ? 'Edita el client' : 'Client nou'}
+      description="Els camps amb asterisc són obligatoris."
       onClose={onClose}
     >
       <form className="record-form" onSubmit={submit}>
-        <h3>Datos generales</h3>
+        <h3>Dades generals</h3>
         <div className="form-grid">
-          <Field label="Razón social" required>
+          <Field label="Raó social" required>
             <input
               required
               value={form.legal_name}
               onChange={(e) => update('legal_name', e.target.value)}
             />
           </Field>
-          <Field label="Nombre comercial">
+          <Field label="Nom comercial">
             <input
               value={form.trade_name ?? ''}
               onChange={(e) => update('trade_name', e.target.value)}
             />
           </Field>
-          <Field label="Tipo de cliente">
+          <Field label="Tipus de client">
             <select
               value={form.client_type}
               onChange={(e) => update('client_type', e.target.value as ClientType)}
             >
               <option value="residential">Particular</option>
-              <option value="community">Comunidad</option>
+              <option value="community">Comunitat</option>
               <option value="hotel">Hotel</option>
               <option value="business">Empresa</option>
             </select>
@@ -2030,59 +2030,59 @@ function ClientForm({
             <input value={form.tax_id ?? ''} onChange={(e) => update('tax_id', e.target.value)} />
           </Field>
         </div>
-        <h3>Contacto y facturación</h3>
+        <h3>Contacte i facturació</h3>
         <div className="form-grid">
-          <Field label="Persona de contacto">
+          <Field label="Persona de contacte">
             <input
               value={form.contact_name ?? ''}
               onChange={(e) => update('contact_name', e.target.value)}
             />
           </Field>
-          <Field label="Cargo">
+          <Field label="Càrrec">
             <input
               value={form.contact_role ?? ''}
               onChange={(e) => update('contact_role', e.target.value)}
             />
           </Field>
-          <Field label="Email de contacto">
+          <Field label="Adreça electrònica de contacte">
             <input
               type="email"
               value={form.contact_email ?? ''}
               onChange={(e) => update('contact_email', e.target.value)}
             />
           </Field>
-          <Field label="Teléfono de contacto">
+          <Field label="Telèfon de contacte">
             <input
               type="tel"
               value={form.contact_phone ?? ''}
               onChange={(e) => update('contact_phone', e.target.value)}
             />
           </Field>
-          <Field label="Email de facturación">
+          <Field label="Adreça electrònica de facturació">
             <input
               type="email"
               value={form.billing_email ?? ''}
               onChange={(e) => update('billing_email', e.target.value)}
             />
           </Field>
-          <Field label="Teléfono general">
+          <Field label="Telèfon general">
             <input
               type="tel"
               value={form.phone ?? ''}
               onChange={(e) => update('phone', e.target.value)}
             />
           </Field>
-          <Field label="Frecuencia de cobro">
+          <Field label="Freqüència de cobrament">
             <select
               value={form.billing_frequency}
               onChange={(e) => update('billing_frequency', e.target.value as BillingFrequency)}
             >
               <option value="monthly">Mensual</option>
               <option value="quarterly">Trimestral</option>
-              <option value="per_visit">Por visita</option>
+              <option value="per_visit">Per visita</option>
             </select>
           </Field>
-          <Field label="Plazo de pago (días)">
+          <Field label="Termini de pagament (dies)">
             <input
               type="number"
               min="0"
@@ -2091,25 +2091,25 @@ function ClientForm({
               onChange={(e) => update('payment_terms_days', Number(e.target.value))}
             />
           </Field>
-          <Field label="Método de pago">
+          <Field label="Mètode de pagament">
             <select
               value={form.payment_method ?? ''}
               onChange={(e) => update('payment_method', e.target.value || null)}
             >
-              <option value="">Sin definir</option>
-              <option value="direct_debit">Domiciliación</option>
-              <option value="transfer">Transferencia</option>
-              <option value="card">Tarjeta</option>
+              <option value="">Sense definir</option>
+              <option value="direct_debit">Domiciliació</option>
+              <option value="transfer">Transferència</option>
+              <option value="card">Targeta</option>
             </select>
           </Field>
-          <Field label="Dirección de facturación" className="form-span-2">
+          <Field label="Adreça de facturació" className="form-span-2">
             <input
               value={form.billing_address ?? ''}
               onChange={(e) => update('billing_address', e.target.value)}
             />
           </Field>
         </div>
-        <Field label="Notas internas">
+        <Field label="Notes internes">
           <textarea
             rows={3}
             value={form.notes ?? ''}
@@ -2122,14 +2122,14 @@ function ClientForm({
             checked={form.active}
             onChange={(e) => update('active', e.target.checked)}
           />
-          Cliente activo
+          Client actiu
         </label>
         <div className="modal-foot">
           <button className="button secondary" type="button" onClick={onClose}>
-            Cancelar
+            Cancel·la
           </button>
           <button className="button" disabled={saving} type="submit">
-            {saving ? 'Guardando…' : client ? 'Guardar cambios' : 'Crear cliente'}
+            {saving ? "S'està desant…" : client ? 'Desa els canvis' : 'Crea el client'}
           </button>
         </div>
       </form>
@@ -2163,17 +2163,17 @@ function ClientDetail({
       <div className="client-sheet">
         <div className="sheet-section">
           <div className="sheet-heading">
-            <h3>Contacto</h3>
+            <h3>Contacte</h3>
             {isAdmin && (
               <button className="action-link" type="button" onClick={onEditClient}>
-                Editar ficha
+                Edita la fitxa
               </button>
             )}
           </div>
           <div className="detail-list">
             <p>
               <UserRound size={16} />
-              {client.contact_name || 'Sin persona de contacto'}
+              {client.contact_name || 'Sense persona de contacte'}
               {client.contact_role ? ` · ${client.contact_role}` : ''}
             </p>
             {client.contact_email && (
@@ -2198,11 +2198,11 @@ function ClientDetail({
         </div>
         <div className="sheet-section">
           <div className="sheet-heading">
-            <h3>Instalaciones</h3>
+            <h3>Instal·lacions</h3>
             {isAdmin && (
               <button className="action-link" type="button" onClick={onNewInstallation}>
                 <Plus size={15} />
-                Añadir
+                Afegeix
               </button>
             )}
           </div>
@@ -2221,7 +2221,7 @@ function ClientDetail({
                     <button
                       className="icon-action"
                       type="button"
-                      aria-label={`Editar ${installation.name}`}
+                      aria-label={`Edita ${installation.name}`}
                       onClick={() => onEditInstallation(installation)}
                     >
                       <Pencil size={15} />
@@ -2229,7 +2229,7 @@ function ClientDetail({
                     <button
                       className="icon-action destructive"
                       type="button"
-                      aria-label={`Eliminar ${installation.name}`}
+                      aria-label={`Elimina ${installation.name}`}
                       onClick={() => void onDeleteInstallation(installation)}
                     >
                       <Trash2 size={15} />
@@ -2239,24 +2239,24 @@ function ClientDetail({
               </div>
             ))}
             {client.installations.length === 0 && (
-              <p className="empty-installations">No hay instalaciones registradas.</p>
+              <p className="empty-installations">No hi ha instal·lacions registrades.</p>
             )}
           </div>
         </div>
         <div className="sheet-section compact">
-          <h3>Facturación</h3>
+          <h3>Facturació</h3>
           <p>
             {paymentLabel(client.payment_method)} ·{' '}
             {client.billing_frequency === 'per_visit'
-              ? 'Por visita'
+              ? 'Per visita'
               : client.billing_frequency === 'quarterly'
                 ? 'Trimestral'
                 : 'Mensual'}{' '}
-            · pago a {client.payment_terms_days} días
+            · pagament a {client.payment_terms_days} dies
           </p>
           {isAdmin && (
             <Link className="client-invoices-link" href={`/facturacion?cliente=${client.id}`}>
-              Ver facturas de este cliente
+              Veure les factures d'aquest client
             </Link>
           )}
         </div>
@@ -2332,20 +2332,19 @@ function ClientTimeTracking({ client }: { client: Client }) {
   return (
     <section className="sheet-section time-tracking">
       <div className="sheet-heading">
-        <h3>Control horario</h3>
-        <span>Solo administración</span>
+        <h3>Control horari</h3>
+        <span>Només administració</span>
       </div>
       <p className="time-tracking-intro">
-        Inicios registrados con la hora oficial del servidor y el punto comunicado por el
-        dispositivo.
+        Inicis registrats amb l'hora oficial del servidor i el punt comunicat pel dispositiu.
       </p>
-      {loading && <p className="time-tracking-empty">Cargando registros…</p>}
+      {loading && <p className="time-tracking-empty">S'estan carregant els registres…</p>}
       {error && (
-        <p className="time-tracking-error">No se ha podido cargar el control horario: {error}</p>
+        <p className="time-tracking-error">No s'ha pogut carregar el control horari: {error}</p>
       )}
       {!loading && !error && startedLogs.length === 0 && (
         <p className="time-tracking-empty">
-          Todavía no hay inicios de visita con ubicación registrada.
+          Encara no hi ha inicis de visita amb la ubicació registrada.
         </p>
       )}
       <div className="time-tracking-list">
@@ -2355,18 +2354,18 @@ function ClientTimeTracking({ client }: { client: Client }) {
               <div>
                 <strong>{formatDateTimeWithSeconds(new Date(intervention.started_at!))}</strong>
                 <span>
-                  {visit.installations?.name ?? 'Instalación'} · prevista{' '}
+                  {visit.installations?.name ?? 'Instal·lació'} · prevista{' '}
                   {formatDateTime(new Date(visit.scheduled_for))}
                 </span>
               </div>
               <span className="time-tracking-accuracy">
-                Precisión {Math.round(Number(intervention.start_location_accuracy_m ?? 0))} m
+                Precisió {Math.round(Number(intervention.start_location_accuracy_m ?? 0))} m
               </span>
             </div>
             <VisitStartMap
               latitude={Number(intervention.start_latitude)}
               longitude={Number(intervention.start_longitude)}
-              installationName={visit.installations?.name ?? 'Instalación'}
+              installationName={visit.installations?.name ?? 'Instal·lació'}
             />
           </article>
         ))}
@@ -2391,18 +2390,18 @@ function VisitStartMap({
   return (
     <div className="time-tracking-map">
       <button type="button" onClick={() => setMapOpen((open) => !open)}>
-        <MapPin size={15} aria-hidden="true" /> {mapOpen ? 'Ocultar mapa' : 'Ver punto en el mapa'}
+        <MapPin size={15} aria-hidden="true" /> {mapOpen ? 'Amaga el mapa' : 'Veure el punt al mapa'}
       </button>
       {mapOpen && (
         <>
           <iframe
-            title={`Punto de inicio de ${installationName}`}
+            title={`Punt d'inici de ${installationName}`}
             src={mapUrl}
             loading="lazy"
             referrerPolicy="no-referrer"
           />
           <a href={mapLink} target="_blank" rel="noreferrer">
-            Abrir mapa completo
+            Obre el mapa complet
           </a>
         </>
       )}
@@ -2411,7 +2410,7 @@ function VisitStartMap({
 }
 
 function formatDateTimeWithSeconds(value: Date) {
-  return new Intl.DateTimeFormat('es-ES', {
+  return new Intl.DateTimeFormat('ca-ES', {
     dateStyle: 'medium',
     timeStyle: 'medium',
   }).format(value)
@@ -2435,7 +2434,7 @@ function InstallationForm({
     setForm((current) => ({ ...current, [key]: value }))
   const setCurrentLocation = () => {
     if (!navigator.geolocation) {
-      setLocationError('Este dispositivo no permite obtener la ubicación.')
+      setLocationError("Aquest dispositiu no permet obtenir la ubicació.")
       return
     }
     setLocationError(null)
@@ -2444,7 +2443,7 @@ function InstallationForm({
         update('location_latitude', Number(position.coords.latitude.toFixed(6)))
         update('location_longitude', Number(position.coords.longitude.toFixed(6)))
       },
-      () => setLocationError('No se ha podido obtener la ubicación de la instalación.'),
+      () => setLocationError("No s'ha pogut obtenir la ubicació de la instal·lació."),
       { enableHighAccuracy: true, maximumAge: 0, timeout: 20_000 },
     )
   }
@@ -2459,23 +2458,23 @@ function InstallationForm({
   }
   return (
     <Modal
-      title={installation ? 'Editar instalación' : 'Nueva instalación'}
-      description={`Cliente: ${clientName}`}
+      title={installation ? 'Edita la instal·lació' : 'Instal·lació nova'}
+      description={`Client: ${clientName}`}
       onClose={onClose}
     >
       <form className="record-form" onSubmit={submit}>
         <div className="form-grid">
-          <Field label="Nombre" required>
+          <Field label="Nom" required>
             <input required value={form.name} onChange={(e) => update('name', e.target.value)} />
           </Field>
-          <Field label="Tipo de piscina">
+          <Field label="Tipus de piscina">
             <input
               value={form.pool_type ?? ''}
               onChange={(e) => update('pool_type', e.target.value)}
-              placeholder="Ej. Comunitaria"
+              placeholder="P. ex. comunitària"
             />
           </Field>
-          <Field label="Dirección" required className="form-span-2">
+          <Field label="Adreça" required className="form-span-2">
             <input
               required
               value={form.address}
@@ -2483,7 +2482,7 @@ function InstallationForm({
             />
           </Field>
         </div>
-        <Field label="Instrucciones para la visita">
+        <Field label="Instruccions per a la visita">
           <textarea
             rows={3}
             value={form.instructions ?? ''}
@@ -2493,15 +2492,15 @@ function InstallationForm({
         <div className="installation-location-fields">
           <div className="sheet-heading">
             <div>
-              <h3>Ubicación de la instalación</h3>
-              <p>Opcional. Activa la comprobación de distancia al iniciar una visita.</p>
+              <h3>Ubicació de la instal·lació</h3>
+              <p>Opcional. Activa la comprovació de distància en iniciar una visita.</p>
             </div>
             <button className="button secondary" type="button" onClick={setCurrentLocation}>
-              <MapPin size={15} aria-hidden="true" /> Usar mi ubicación
+              <MapPin size={15} aria-hidden="true" /> Fes servir la meva ubicació
             </button>
           </div>
           <div className="form-grid">
-            <Field label="Latitud">
+          <Field label="Latitud">
               <input
                 type="number"
                 step="0.000001"
@@ -2516,7 +2515,7 @@ function InstallationForm({
                 }
               />
             </Field>
-            <Field label="Longitud">
+          <Field label="Longitud">
               <input
                 type="number"
                 step="0.000001"
@@ -2534,7 +2533,7 @@ function InstallationForm({
           </div>
           {locationError && <p className="installation-location-error">{locationError}</p>}
         </div>
-        <Field label="Notas internas">
+        <Field label="Notes internes">
           <textarea
             rows={3}
             value={form.notes ?? ''}
@@ -2543,10 +2542,10 @@ function InstallationForm({
         </Field>
         <div className="modal-foot">
           <button className="button secondary" type="button" onClick={onClose}>
-            Cancelar
+            Cancel·la
           </button>
           <button className="button" disabled={saving} type="submit">
-            {saving ? 'Guardando…' : installation ? 'Guardar cambios' : 'Añadir instalación'}
+            {saving ? "S'està desant…" : installation ? 'Desa els canvis' : 'Afegeix la instal·lació'}
           </button>
         </div>
       </form>
@@ -2600,7 +2599,7 @@ function Modal({
             <h2>{title}</h2>
             <p>{description}</p>
           </div>
-          <button className="close" type="button" onClick={onClose} aria-label="Cerrar">
+          <button className="close" type="button" onClick={onClose} aria-label="Tanca">
             <X size={19} />
           </button>
         </div>
@@ -2652,15 +2651,15 @@ function AuthScreen() {
     if (isRegister && !result.data.session) {
       setFeedback({
         kind: 'success',
-        text: 'Cuenta creada. Revisa tu correo para confirmarla y después inicia sesión.',
+          text: 'Compte creat. Revisa el teu correu per confirmar-lo i després inicia sessió.',
       })
       return
     }
     setFeedback({
       kind: 'success',
       text: isRegister
-        ? 'Cuenta creada. Ya puedes acceder al panel.'
-        : 'Sesión iniciada. Cargando el panel…',
+        ? 'Compte creat. Ja pots accedir al tauler.'
+        : "Sessió iniciada. S'està carregant el tauler…",
     })
   }
 
@@ -2676,24 +2675,24 @@ function AuthScreen() {
           priority
         />
         <div className="auth-brand-copy">
-          <span className="auth-kicker">Gestión de mantenimiento</span>
-          <h1>Todo el control de tus piscinas, en un solo lugar.</h1>
+          <span className="auth-kicker">Gestió del manteniment</span>
+          <h1>Tot el control de les teves piscines, en un sol lloc.</h1>
           <p>
-            Centraliza visitas, clientes y facturación con datos protegidos y siempre actualizados.
+            Centralitza visites, clients i facturació amb dades protegides i sempre actualitzades.
           </p>
         </div>
         <ul className="auth-benefits">
           <li>
             <CheckCircle2 size={18} aria-hidden="true" />
-            Agenda y partes de trabajo
+            Agenda i informes de treball
           </li>
           <li>
             <CheckCircle2 size={18} aria-hidden="true" />
-            Clientes e instalaciones conectados
+            Clients i instal·lacions connectats
           </li>
           <li>
             <CheckCircle2 size={18} aria-hidden="true" />
-            Facturación y cobros al día
+            Facturació i cobraments al dia
           </li>
         </ul>
       </section>
@@ -2711,16 +2710,16 @@ function AuthScreen() {
           <div className="auth-heading">
             <span className="auth-eyebrow">
               <LockKeyhole size={15} aria-hidden="true" />
-              Área privada
+              Àrea privada
             </span>
-            <h2>{isRegister ? 'Crea tu cuenta' : 'Bienvenido de nuevo'}</h2>
+            <h2>{isRegister ? 'Crea el teu compte' : 'Benvingut de nou'}</h2>
             <p>
               {isRegister
-                ? 'Regístrate para empezar a gestionar tu operativa.'
-                : 'Accede para continuar con tu operativa diaria.'}
+                ? 'Registra't per començar a gestionar la teva operativa.'
+                : 'Accedeix per continuar amb la teva operativa diària.'}
             </p>
           </div>
-          <div className="auth-tabs" role="tablist" aria-label="Opciones de acceso">
+          <div className="auth-tabs" role="tablist" aria-label="Opcions d'accés">
             <button
               type="button"
               className={!isRegister ? 'active' : ''}
@@ -2728,7 +2727,7 @@ function AuthScreen() {
               aria-selected={!isRegister}
               onClick={() => changeMode('login')}
             >
-              Iniciar sesión
+              Inicia sessió
             </button>
             <button
               type="button"
@@ -2737,26 +2736,26 @@ function AuthScreen() {
               aria-selected={isRegister}
               onClick={() => changeMode('register')}
             >
-              Crear cuenta
+              Crea un compte
             </button>
           </div>
           <form className="auth-form" onSubmit={submit} noValidate>
             {isRegister && (
               <label className="auth-field">
-                <span>Nombre completo</span>
+                <span>Nom complet</span>
                 <div className="auth-input">
                   <UserRound size={18} aria-hidden="true" />
                   <input
                     value={name}
                     onChange={(event) => setName(event.target.value)}
                     autoComplete="name"
-                    placeholder="Tu nombre"
+                    placeholder="El teu nom"
                   />
                 </div>
               </label>
             )}
             <label className="auth-field">
-              <span>Correo electrónico</span>
+              <span>Adreça electrònica</span>
               <div className="auth-input">
                 <Mail size={18} aria-hidden="true" />
                 <input
@@ -2770,7 +2769,7 @@ function AuthScreen() {
               </div>
             </label>
             <label className="auth-field">
-              <span>Contraseña</span>
+              <span>Contrasenya</span>
               <div className="auth-input">
                 <LockKeyhole size={18} aria-hidden="true" />
                 <input
@@ -2778,18 +2777,18 @@ function AuthScreen() {
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   autoComplete={isRegister ? 'new-password' : 'current-password'}
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder="Mínim 8 caràcters"
                 />
                 <button
                   className="auth-password-toggle"
                   type="button"
                   onClick={() => setShowPassword((visible) => !visible)}
-                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  aria-label={showPassword ? 'Amaga la contrasenya' : 'Mostra la contrasenya'}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              {isRegister && <small>Usa al menos 8 caracteres.</small>}
+              {isRegister && <small>Fes servir almenys 8 caràcters.</small>}
             </label>
             {feedback && (
               <p
@@ -2800,14 +2799,14 @@ function AuthScreen() {
               </p>
             )}
             <button className="auth-submit" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Comprobando…' : isRegister ? 'Crear cuenta' : 'Entrar al panel'}
+              {isSubmitting ? "S'està comprovant…" : isRegister ? 'Crea el compte' : 'Entra al tauler'}
               <ArrowRight size={18} aria-hidden="true" />
             </button>
           </form>
           <p className="auth-switch">
-            {isRegister ? '¿Ya tienes cuenta?' : '¿Aún no tienes cuenta?'}
+            {isRegister ? 'Ja tens un compte?' : 'Encara no tens un compte?'}
             <button type="button" onClick={() => changeMode(isRegister ? 'login' : 'register')}>
-              {isRegister ? 'Inicia sesión' : 'Crea una ahora'}
+              {isRegister ? 'Inicia sessió' : 'Crea'n un ara'}
             </button>
           </p>
         </div>

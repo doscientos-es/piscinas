@@ -2,13 +2,13 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Concepte Blau · Gestión de piscinas',
+    name: 'Concepte Blau · Gestió de piscines',
     short_name: 'Concepte Blau',
-    description: 'Gestión de mantenimiento, visitas, clientes y facturación de piscinas.',
+    description: 'Gestió del manteniment, visites, clients i facturació de piscines.',
     id: '/',
     start_url: '/',
     scope: '/',
-    lang: 'es',
+    lang: 'ca',
     display: 'standalone',
     background_color: '#f4f8fb',
     theme_color: '#073964',

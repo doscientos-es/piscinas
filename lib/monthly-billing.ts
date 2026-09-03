@@ -11,8 +11,8 @@ export function toBillingPeriodValue(value: Date) {
 }
 
 export function formatBillingPeriod(value: string | null) {
-  if (!value) return 'Sin período asignado'
-  return new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(
+  if (!value) return 'Sense període assignat'
+  return new Intl.DateTimeFormat('ca-ES', { month: 'long', year: 'numeric' }).format(
     new Date(`${value}T12:00:00`),
   )
 }

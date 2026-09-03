@@ -50,7 +50,7 @@ export function buildAdminStatistics(
     const date = new Date(start.getFullYear(), start.getMonth() + index, 1)
     return {
       key: monthKey(date),
-      label: new Intl.DateTimeFormat('es-ES', { month: 'short' }).format(date),
+      label: new Intl.DateTimeFormat('ca-ES', { month: 'short' }).format(date),
       planned: 0,
       completed: 0,
       invoiced: 0,

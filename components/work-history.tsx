@@ -88,10 +88,10 @@ export function WorkHistory({
     updateSearchParams({ pagina: nextPage > 0 ? nextPage + 1 : null })
 
   return (
-    <section className="work-history" aria-label="Trabajos">
+    <section className="work-history" aria-label="Feines">
       <header className="work-history-heading">
         <div>
-          <h2>Trabajos</h2>
+          <h2>Feines</h2>
         </div>
         <div className="work-history-heading-actions">
           {isAdmin && (
@@ -104,7 +104,7 @@ export function WorkHistory({
               }}
             >
               <Plus size={16} aria-hidden="true" />
-              Nuevo trabajo
+              Feina nova
             </button>
           )}
         </div>
@@ -112,37 +112,37 @@ export function WorkHistory({
       <div className="work-history-filters">
         <label className="client-search">
           <Search size={17} aria-hidden="true" />
-          <span className="sr-only">Buscar trabajos</span>
+          <span className="sr-only">Cerca feines</span>
           <input
             value={query}
             onChange={(event) => {
               updateFilters({ q: event.target.value })
             }}
-            placeholder="Cliente, instalación o parte"
+            placeholder="Client, instal·lació o informe"
           />
         </label>
         <select
-          aria-label="Estado"
+          aria-label="Estat"
           value={status}
           onChange={(event) => {
             updateFilters({ estado: event.target.value })
           }}
         >
-          <option value="completed">Finalizados</option>
-          <option value="all">Todos los estados</option>
-          <option value="in_progress">En curso</option>
-          <option value="scheduled">Programados</option>
-          <option value="cancelled">Cancelados</option>
+          <option value="completed">Finalitzades</option>
+          <option value="all">Tots els estats</option>
+          <option value="in_progress">En curs</option>
+          <option value="scheduled">Programades</option>
+          <option value="cancelled">Cancel·lades</option>
         </select>
         {isAdmin && (
           <select
-            aria-label="Técnico"
+            aria-label="Tècnic"
             value={technicianId}
             onChange={(event) => {
               updateFilters({ tecnico: event.target.value })
             }}
           >
-            <option value="">Todo el equipo</option>
+            <option value="">Tot l'equip</option>
             {filterTechnicians.map(([id, name]) => (
               <option key={id} value={id}>
                 {name}
@@ -151,9 +151,9 @@ export function WorkHistory({
           </select>
         )}
         <label>
-          Desde
+          Des de
           <input
-            aria-label="Desde"
+            aria-label="Des de"
             type="date"
             value={from}
             onChange={(event) => {
@@ -162,9 +162,9 @@ export function WorkHistory({
           />
         </label>
         <label>
-          Hasta
+          Fins a
           <input
-            aria-label="Hasta"
+            aria-label="Fins a"
             type="date"
             value={to}
             onChange={(event) => {
@@ -178,23 +178,23 @@ export function WorkHistory({
           <article className="work-history-row" key={visit.id} role="listitem">
             <time>
               <CalendarDays size={16} aria-hidden="true" />
-              {new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short' }).format(
+              {new Intl.DateTimeFormat('ca-ES', { dateStyle: 'medium', timeStyle: 'short' }).format(
                 new Date(visit.scheduled_for),
               )}
             </time>
             <div>
-              <strong>{visit.installations?.clients?.legal_name ?? 'Cliente'}</strong>
+              <strong>{visit.installations?.clients?.legal_name ?? 'Client'}</strong>
               <span>
-                {visit.installations?.name ?? 'Instalación'} ·{' '}
-                {visit.installations?.address ?? 'Sin dirección'}
+                {visit.installations?.name ?? 'Instal·lació'} ·{' '}
+                {visit.installations?.address ?? 'Sense adreça'}
               </span>
-              {visit.planning_notes && <small>Planificación: {visit.planning_notes}</small>}
+              {visit.planning_notes && <small>Planificació: {visit.planning_notes}</small>}
               {visit.interventions?.notes && <small>{visit.interventions.notes}</small>}
             </div>
             {isAdmin && (
               <span className="work-history-technician">
                 <UserRound size={15} aria-hidden="true" />
-                {visit.technician?.full_name ?? 'Sin asignar'}
+                {visit.technician?.full_name ?? 'Sense assignar'}
               </span>
             )}
             <span
@@ -213,7 +213,7 @@ export function WorkHistory({
                   }}
                 >
                   <Pencil size={15} aria-hidden="true" />
-                  Editar
+                  Edita
                 </button>
                 <button
                   className="action-link danger"
@@ -221,7 +221,7 @@ export function WorkHistory({
                   onClick={() => {
                     if (
                       !window.confirm(
-                        '¿Eliminar este trabajo programado? Esta acción no se puede deshacer.',
+                        'Voleu eliminar aquesta feina programada? Aquesta acció no es pot desfer.',
                       )
                     )
                       return
@@ -230,21 +230,21 @@ export function WorkHistory({
                       setOperationError(
                         error instanceof Error
                           ? error.message
-                          : 'No se ha podido eliminar el trabajo.',
+                          : 'No s'ha pogut eliminar la feina.',
                       )
                     })
                   }}
                 >
                   <Trash2 size={15} aria-hidden="true" />
-                  Eliminar
+                  Elimina
                 </button>
               </div>
             ) : visit.status !== 'scheduled' ? (
               <Link className="action-link" href={`/agenda/${visit.id}`}>
-                {visit.status === 'completed' ? 'Ver parte' : 'Ver'}
+                {visit.status === 'completed' ? 'Veure informe' : 'Veure'}
               </Link>
             ) : (
-              <span className="muted">Pendiente</span>
+              <span className="muted">Pendent</span>
             )}
           </article>
         ))}
@@ -253,10 +253,10 @@ export function WorkHistory({
       {visibleVisits.length === 0 && (
         <div className="empty-results">
           <CalendarDays size={25} aria-hidden="true" />
-          <p>No hay trabajos que coincidan con los filtros.</p>
+          <p>No hi ha feines que coincideixin amb els filtres.</p>
         </div>
       )}
-      <nav className="pagination" aria-label="Paginación de trabajos">
+      <nav className="pagination" aria-label="Paginació de feines">
         <button
           className="button secondary"
           type="button"
@@ -266,7 +266,7 @@ export function WorkHistory({
           Anterior
         </button>
         <span>
-          Página {currentPage + 1} de {pageCount}
+          Pàgina {currentPage + 1} de {pageCount}
         </span>
         <button
           className="button secondary"
@@ -274,7 +274,7 @@ export function WorkHistory({
           disabled={currentPage + 1 >= pageCount}
           onClick={() => changePage(currentPage + 1)}
         >
-          Siguiente
+          Següent
         </button>
       </nav>
       {editingVisit && (
@@ -353,7 +353,7 @@ function WorkEditor({
       await onSave({ installationId, technicianId, scheduledFor, planningNotes })
     } catch (saveError) {
       setError(
-        saveError instanceof Error ? saveError.message : 'No se ha podido guardar el trabajo.',
+        saveError instanceof Error ? saveError.message : 'No s'ha pogut desar la feina.',
       )
     } finally {
       setSaving(false)
@@ -364,21 +364,21 @@ function WorkEditor({
     <Dialog open onOpenChange={(open) => !open && !saving && onClose()}>
       <DialogContent className="work-editor-dialog sm:max-w-2xl">
         <DialogHeader className="work-editor-dialog-header">
-          <DialogTitle>{visit === 'new' ? 'Nuevo trabajo' : 'Editar trabajo'}</DialogTitle>
+          <DialogTitle>{visit === 'new' ? 'Feina nova' : 'Edita la feina'}</DialogTitle>
           <DialogDescription>
-            Asigna el cliente, la instalación y la persona responsable de la visita.
+            Assigna el client, la instal·lació i la persona responsable de la visita.
           </DialogDescription>
         </DialogHeader>
         <form className="record-form" onSubmit={(event) => void submit(event)}>
           <div className="form-grid">
             <div className="field form-span-2 work-client-picker">
-              <span>Cliente</span>
+              <span>Client</span>
               <input
                 type="search"
                 value={clientSearch}
                 onChange={(event) => updateClientSearch(event.target.value)}
-                placeholder="Busca por nombre de cliente"
-                aria-label="Buscar cliente"
+                placeholder="Cerca pel nom del client"
+                aria-label="Cerca un client"
                 autoComplete="off"
               />
               {selectedClient ? (
@@ -387,7 +387,7 @@ function WorkEditor({
                     <strong>{selectedClient.name}</strong>
                     <small>
                       {selectedClient.installations.length}{' '}
-                      {selectedClient.installations.length === 1 ? 'instalación' : 'instalaciones'}
+                      {selectedClient.installations.length === 1 ? 'instal·lació' : 'instal·lacions'}
                     </small>
                   </span>
                   <button
@@ -395,11 +395,11 @@ function WorkEditor({
                     className="action-link"
                     onClick={() => updateClientSearch('')}
                   >
-                    Cambiar
+                    Canvia
                   </button>
                 </div>
               ) : clientSearch.trim() ? (
-                <div className="work-client-options" aria-label="Clientes encontrados">
+                <div className="work-client-options" aria-label="Clients trobats">
                   {matchingClients.length ? (
                     matchingClients.map((client) => (
                       <button
@@ -411,23 +411,23 @@ function WorkEditor({
                         <strong>{client.name}</strong>
                         <small>
                           {client.installations.length}{' '}
-                          {client.installations.length === 1 ? 'instalación' : 'instalaciones'}
+                          {client.installations.length === 1 ? 'instal·lació' : 'instal·lacions'}
                         </small>
                       </button>
                     ))
                   ) : (
-                    <p>No hay clientes que coincidan con la búsqueda.</p>
+                    <p>No hi ha clients que coincideixin amb la cerca.</p>
                   )}
                 </div>
               ) : (
                 <p className="work-client-hint">
-                  Busca y selecciona el cliente antes de elegir la instalación.
+                  Cerca i selecciona el client abans de triar la instal·lació.
                 </p>
               )}
             </div>
             {selectedClient?.installations.length === 1 ? (
               <div className="field form-span-2">
-                <span>Instalación</span>
+                <span>Instal·lació</span>
                 <div className="work-installation-selected">
                   <strong>{selectedClient.installations[0].name}</strong>
                   <small>{selectedClient.installations[0].address}</small>
@@ -435,14 +435,14 @@ function WorkEditor({
               </div>
             ) : selectedClient ? (
               <label className="field form-span-2">
-                <span>Instalación</span>
+                <span>Instal·lació</span>
                 <select
                   value={installationId}
                   onChange={(event) => setInstallationId(event.target.value)}
                   required
                 >
                   <option value="" disabled>
-                    Selecciona una instalación
+                    Selecciona una instal·lació
                   </option>
                   {selectedClient.installations.map((installation) => (
                     <option key={installation.id} value={installation.id}>
@@ -453,19 +453,19 @@ function WorkEditor({
               </label>
             ) : (
               <div className="field form-span-2 work-installation-prompt">
-                <span>Instalación</span>
-                <p>Selecciona primero un cliente.</p>
+                <span>Instal·lació</span>
+                <p>Selecciona primer un client.</p>
               </div>
             )}
             <label className="field">
-              <span>Técnico</span>
+              <span>Tècnic</span>
               <select
                 value={technicianId}
                 onChange={(event) => setTechnicianId(event.target.value)}
                 required
               >
                 <option value="" disabled>
-                  Selecciona un técnico
+                  Selecciona un tècnic
                 </option>
                 {technicians.map((technician) => (
                   <option key={technician.id} value={technician.id}>
@@ -475,7 +475,7 @@ function WorkEditor({
               </select>
             </label>
             <label className="field form-span-2">
-              <span>Fecha y hora</span>
+              <span>Data i hora</span>
               <input
                 type="datetime-local"
                 value={scheduledFor}
@@ -485,31 +485,31 @@ function WorkEditor({
             </label>
             <label className="field form-span-2">
               <span>
-                Notas para el técnico <em>Opcional</em>
+                Notes per al tècnic <em>Opcional</em>
               </span>
               <textarea
                 rows={3}
                 value={planningNotes}
                 onChange={(event) => setPlanningNotes(event.target.value)}
-                placeholder="Ej.: Revisar la bomba y avisar antes de acceder al cuarto técnico."
+                placeholder="P. ex.: Revisa la bomba i avisa abans d'accedir al quart tècnic."
               />
               <small className="work-planning-notes-help">
-                El técnico las verá antes de iniciar el trabajo.
+                El tècnic les veurà abans d'iniciar la feina.
               </small>
             </label>
           </div>
           {unavailable && (
             <p className="form-error">
-              Selecciona un cliente, una instalación y un técnico para programar el trabajo.
+              Selecciona un client, una instal·lació i un tècnic per programar la feina.
             </p>
           )}
           {error && <p className="form-error">{error}</p>}
           <DialogFooter className="work-editor-dialog-footer">
             <DialogClose variant="outline" disabled={saving}>
-              Cancelar
+              Cancel·la
             </DialogClose>
             <Button type="submit" disabled={saving || unavailable}>
-              {saving ? 'Guardando…' : visit === 'new' ? 'Programar trabajo' : 'Guardar cambios'}
+              {saving ? 'S'està desant…' : visit === 'new' ? 'Programa la feina' : 'Desa els canvis'}
             </Button>
           </DialogFooter>
         </form>
@@ -527,10 +527,10 @@ function toDateTimeLocal(value: string) {
 function statusLabel(status: string) {
   return (
     {
-      scheduled: 'Programado',
-      in_progress: 'En curso',
-      completed: 'Finalizado',
-      cancelled: 'Cancelado',
-    }[status] ?? 'Sin estado'
+      scheduled: 'Programada',
+      in_progress: 'En curs',
+      completed: 'Finalitzada',
+      cancelled: 'Cancel·lada',
+    }[status] ?? 'Sense estat'
   )
 }

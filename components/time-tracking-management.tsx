@@ -74,47 +74,47 @@ export function TimeTrackingManagement() {
       .update(settings)
       .eq('id', true)
     setSaving(false)
-    setMessage(error ? error.message : 'Política de control horario actualizada.')
+    setMessage(error ? error.message : 'S'ha actualitzat la política de control horari.')
   }
 
   return (
     <section className="tracking-management">
       <div className="tracking-management-heading">
         <div>
-          <span className="eyebrow">Configuración operativa</span>
-          <h3>Política de control horario</h3>
-          <p>Se aplica en servidor a todos los nuevos inicios de visita.</p>
+          <span className="eyebrow">Configuració operativa</span>
+          <h3>Política de control horari</h3>
+          <p>S'aplica al servidor a tots els nous inicis de visita.</p>
         </div>
         <Settings2 size={21} aria-hidden="true" />
       </div>
       <div className="tracking-policy-grid">
         <TrackingNumberField
-          label="Margen de inicio anticipado"
-          suffix="minutos"
+          label="Marge d'inici anticipat"
+          suffix="minuts"
           value={settings.early_start_tolerance_minutes}
           min={0}
           max={240}
           onChange={(value) => update('early_start_tolerance_minutes', value)}
         />
         <TrackingNumberField
-          label="Retraso permitido"
-          suffix="minutos"
+          label="Retard permès"
+          suffix="minuts"
           value={settings.late_start_tolerance_minutes}
           min={0}
           max={480}
           onChange={(value) => update('late_start_tolerance_minutes', value)}
         />
         <TrackingNumberField
-          label="Radio de instalación"
-          suffix="metros"
+          label="Radi de la instal·lació"
+          suffix="metres"
           value={settings.geofence_radius_m}
           min={25}
           max={5000}
           onChange={(value) => update('geofence_radius_m', value)}
         />
         <TrackingNumberField
-          label="Precisión GPS mínima"
-          suffix="metros"
+          label="Precisió GPS mínima"
+          suffix="metres"
           value={settings.max_location_accuracy_m}
           min={10}
           max={5000}
@@ -126,33 +126,33 @@ export function TimeTrackingManagement() {
             checked={settings.require_exception_reason}
             onChange={(event) => update('require_exception_reason', event.target.checked)}
           />
-          Exigir motivo si hay una excepción
+          Exigeix un motiu si hi ha una excepció
         </label>
         <button className="button tracking-policy-save" type="button" disabled={saving} onClick={save}>
-          <Save size={16} aria-hidden="true" /> {saving ? 'Guardando…' : 'Guardar política'}
+          <Save size={16} aria-hidden="true" /> {saving ? 'S'està desant…' : 'Desa la política'}
         </button>
       </div>
       {message && <p className="tracking-policy-message">{message}</p>}
 
       <div className="tracking-incidents-heading">
         <div>
-          <h3>Inicios que requieren revisión</h3>
-          <p>Últimos inicios fuera de política, con su justificación declarada.</p>
+          <h3>Inicis que requereixen revisió</h3>
+          <p>Últims inicis fora de política, amb la justificació declarada.</p>
         </div>
         <AlertTriangle size={20} aria-hidden="true" />
       </div>
-      {loading && <p className="tracking-incidents-empty">Cargando incidencias…</p>}
+      {loading && <p className="tracking-incidents-empty">S'estan carregant les incidències…</p>}
       {!loading && events.length === 0 && (
-        <p className="tracking-incidents-empty">No hay inicios excepcionales registrados.</p>
+        <p className="tracking-incidents-empty">No hi ha inicis excepcionals registrats.</p>
       )}
       <div className="tracking-incidents-list">
         {events.map((event) => (
           <article className="tracking-incident" key={event.id}>
             <div>
-              <strong>{event.visits?.installations?.clients?.legal_name ?? 'Cliente'}</strong>
+              <strong>{event.visits?.installations?.clients?.legal_name ?? 'Client'}</strong>
               <span>
-                {event.visits?.installations?.name ?? 'Instalación'} · {formatDateTime(event.recorded_at)} ·{' '}
-                {event.technician?.full_name ?? 'Técnico'}
+                {event.visits?.installations?.name ?? 'Instal·lació'} · {formatDateTime(event.recorded_at)} ·{' '}
+                {event.technician?.full_name ?? 'Tècnic'}
               </span>
             </div>
             <ul>
@@ -163,9 +163,9 @@ export function TimeTrackingManagement() {
             {event.exception_reason && <p>“{event.exception_reason}”</p>}
             <small>
               {event.distance_to_installation_m !== null
-                ? `${Math.round(Number(event.distance_to_installation_m))} m de la instalación`
-                : 'Instalación sin punto de referencia'}
-              {' · '}precisión ±{Math.round(Number(event.location_accuracy_m ?? 0))} m
+                ? `${Math.round(Number(event.distance_to_installation_m))} m de la instal·lació`
+                : 'Instal·lació sense punt de referència'}
+              {' · '}precisió ±{Math.round(Number(event.location_accuracy_m ?? 0))} m
             </small>
           </article>
         ))}
@@ -207,7 +207,7 @@ function TrackingNumberField({
 }
 
 function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'medium' }).format(
+  return new Intl.DateTimeFormat('ca-ES', { dateStyle: 'medium', timeStyle: 'medium' }).format(
     new Date(value),
   )
 }

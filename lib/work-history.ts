@@ -87,10 +87,10 @@ export function groupWorkInstallationsByClient(installations: WorkInstallation[]
     .map((client) => ({
       ...client,
       installations: [...client.installations].sort((left, right) =>
-        `${left.name} ${left.address}`.localeCompare(`${right.name} ${right.address}`, 'es'),
+        `${left.name} ${left.address}`.localeCompare(`${right.name} ${right.address}`, 'ca'),
       ),
     }))
-    .sort((left, right) => left.name.localeCompare(right.name, 'es'))
+    .sort((left, right) => left.name.localeCompare(right.name, 'ca'))
 }
 
 export function normalizeWorkPlanningNotes(value: string) {
