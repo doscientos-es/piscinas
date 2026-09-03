@@ -25,16 +25,63 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 
 import { InvoicePreview } from '@/components/invoice-preview'
-import { VisitReport } from '@/components/visit-report'
 import { validateAuthInput, type AuthMode } from '@/lib/auth-validation'
 import { downloadInvoice, type Invoice } from '@/lib/invoice-template'
 import { createClient } from '@/lib/supabase/client'
 
-export function DemoApp({ view }: { view: View }) {
+type View = 'inicio' | 'agenda' | 'facturacion' | 'clientes' | 'parte'
+type Visit = {
+  id: string
+  scheduled_for: string
+  status: string
+  installations: { name: string; address: string; clients: { legal_name: string } } | null
+}
+type Installation = {
+  id: string
+  name: string
+  address: string
+  pool_type: string | null
+  instructions: string | null
+  notes: string | null
+}
+type Client = {
+  id: string
+  legal_name: string
+  trade_name: string | null
+  tax_id: string | null
+  billing_email: string | null
+  phone: string | null
+  billing_address: string | null
+  payment_method: string | null
+  notes: string | null
+  contact_name: string | null
+  contact_role: string | null
+  contact_email: string | null
+  contact_phone: string | null
+  client_type: ClientType
+  billing_frequency: BillingFrequency
+  payment_terms_days: number
+  active: boolean
+  installations: Installation[]
+}
+type ClientType = 'residential' | 'community' | 'hotel' | 'business'
+type BillingFrequency = 'monthly' | 'quarterly' | 'per_visit'
+type ClientInput = Omit<Client, 'id' | 'installations'>
+type InstallationInput = Omit<Installation, 'id'>
+const money = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' })
+const titles: Record<View, string> = {
+  inicio: 'Resumen operativo',
+  agenda: 'Agenda de visitas',
+  facturacion: 'Facturación y cobros',
+  clientes: 'Clientes e instalaciones',
+  parte: 'Parte de visita',
+}
+
+export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
+  const router = useRouter()
   const [ready, setReady] = useState(false)
   const [signedIn, setSignedIn] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -108,23 +155,14 @@ export function DemoApp({ view }: { view: View }) {
   }, [load])
   if (!ready) return <main className="empty-state">Cargando tu operativa…</main>
   if (!signedIn) return <AuthScreen />
-  const complete = async (visit: Visit) => {
-    const s = createClient()
-    const { error } = await s.from('visits').update({ status: 'completed' }).eq('id', visit.id)
-    if (!error)
-      await s
-        .from('interventions')
-        .upsert(
-          {
-            visit_id: visit.id,
-            started_at: new Date().toISOString(),
-            completed_at: new Date().toISOString(),
-            customer_notice_status: 'not_sent',
-          },
-          { onConflict: 'visit_id' },
-        )
-    setMessage(error ? error.message : 'Parte de trabajo cerrado.')
-    await load()
+  const start = async (visit: Visit) => {
+    setMessage(null)
+    const { error } = await createClient().rpc('start_visit', { p_visit_id: visit.id })
+    if (error) {
+      setMessage(error.message)
+      return
+    }
+    router.push(`/agenda/${visit.id}`)
   }
   const pay = async (invoice: Invoice) => {
     const { error } = await createClient()
@@ -523,598 +561,6 @@ function Clients({
         <p className="access-note" role="status">
           La ficha ampliada se activará automáticamente al aplicar la migración de Supabase.
           Mientras tanto, el CRUD básico e instalaciones siguen disponibles.
-        </p>
-      )}
-      <div className="client-toolbar">
-        <label className="client-search">
-          <Search size={17} aria-hidden="true" />
-          <span className="sr-only">Buscar clientes</span>
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar por nombre, contacto o email"
-          />
-        </label>
-        <span>
-          {visibleClients.length} de {clients.length} clientes
-        </span>
-      </div>
-      <div className="clients-grid">
-        {visibleClients.map((client) => (
-          <article className={`client-card ${client.active ? '' : 'is-inactive'}`} key={client.id}>
-            <div className="client-card-head">
-              <div>
-                <div className="client-name-row">
-                  <h3>{client.legal_name}</h3>
-                  {!client.active && <span className="badge pending">Inactivo</span>}
-                </div>
-                <p>{client.trade_name || clientTypeLabel(client.client_type)}</p>
-              </div>
-              <span className="client-type">{clientTypeLabel(client.client_type)}</span>
-            </div>
-            <div className="client-contact">
-              <span>
-                <UserRound size={15} aria-hidden="true" />
-                {client.contact_name || 'Sin contacto asignado'}
-              </span>
-              {client.contact_email && (
-                <span>
-                  <Mail size={15} aria-hidden="true" />
-                  {client.contact_email}
-                </span>
-              )}
-              {client.contact_phone && (
-                <span>
-                  <Phone size={15} aria-hidden="true" />
-                  {client.contact_phone}
-                </span>
-              )}
-            </div>
-            <div className="client-details">
-              <span>
-                <Building2 size={15} aria-hidden="true" />
-                {client.installations.length}{' '}
-                {client.installations.length === 1 ? 'instalación' : 'instalaciones'}
-              </span>
-              <span>
-                Cobro {paymentLabel(client.payment_method)} · {client.payment_terms_days} días
-              </span>
-            </div>
-            <div className="client-card-actions">
-              <button
-                className="action-link"
-                type="button"
-                onClick={() => setSelectedClient(client)}
-              >
-                Ver ficha
-              </button>
-              {isAdmin && (
-                <>
-                  <button
-                    className="icon-action"
-                    type="button"
-                    aria-label={`Editar ${client.legal_name}`}
-                    onClick={() => setEditingClient(client)}
-                  >
-                    <Pencil size={16} />
-                  </button>
-                  <button
-                    className="icon-action destructive"
-                    type="button"
-                    aria-label={`Eliminar ${client.legal_name}`}
-                    onClick={() => void onDeleteClient(client)}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </>
-              )}
-            </div>
-          </article>
-        ))}
-      </div>
-      {visibleClients.length === 0 && (
-        <div className="empty-results">
-          <Users size={25} aria-hidden="true" />
-          <p>No hay clientes que coincidan con la búsqueda.</p>
-        </div>
-      )}
-      {editingClient && (
-        <ClientForm
-          client={editingClient === 'new' ? undefined : editingClient}
-          onClose={() => setEditingClient(null)}
-          onSave={async (input) => {
-            await onSaveClient(input, editingClient === 'new' ? undefined : editingClient.id)
-            setEditingClient(null)
-          }}
-        />
-      )}
-      {selectedClient && (
-        <ClientDetail
-          client={selectedClient}
-          isAdmin={isAdmin}
-          onClose={() => setSelectedClient(null)}
-          onEditClient={() => {
-            setSelectedClient(null)
-            setEditingClient(selectedClient)
-          }}
-          onNewInstallation={() => setEditingInstallation('new')}
-          onEditInstallation={(installation) => setEditingInstallation(installation)}
-          onDeleteInstallation={async (installation) => {
-            await onDeleteInstallation(installation)
-            setSelectedClient(null)
-          }}
-        />
-      )}
-      {selectedClient && editingInstallation && (
-        <InstallationForm
-          installation={editingInstallation === 'new' ? undefined : editingInstallation}
-          clientName={selectedClient.legal_name}
-          onClose={() => setEditingInstallation(null)}
-          onSave={async (input) => {
-            await onSaveInstallation(
-              selectedClient.id,
-              input,
-              editingInstallation === 'new' ? undefined : editingInstallation.id,
-            )
-            setEditingInstallation(null)
-            setSelectedClient(null)
-          }}
-        />
-      )}
-    </>
-  )
-}
-
-export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
-  const router = useRouter()
-  const [ready, setReady] = useState(false)
-  const [signedIn, setSignedIn] = useState(false)
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [visits, setVisits] = useState<Visit[]>([])
-  const [invoices, setInvoices] = useState<Invoice[]>([])
-  const [clients, setClients] = useState<Client[]>([])
-  const [message, setMessage] = useState<string | null>(null)
-  const load = useCallback(async () => {
-    const s = createClient()
-    const [v, i, c, session] = await Promise.all([
-      s
-        .from('visits')
-        .select('id,scheduled_for,status,installations(name,address,clients(legal_name))')
-        .order('scheduled_for'),
-      s
-        .from('invoices')
-        .select(
-          'id,number,status,subtotal,vat_total,total,issued_on,due_on,clients(legal_name,tax_id,billing_email,billing_address),invoice_lines(id,description,quantity,unit_price,vat_rate,line_total)',
-        )
-        .order('created_at', { ascending: false }),
-      s
-        .from('clients')
-        .select(
-          'id,legal_name,trade_name,tax_id,billing_email,phone,billing_address,payment_method,notes,contact_name,contact_role,contact_email,contact_phone,client_type,billing_frequency,payment_terms_days,active,installations(id,name,address,pool_type,instructions,notes)',
-        )
-        .order('legal_name'),
-      s.auth.getUser(),
-    ])
-    const error = v.error || i.error || c.error
-    if (error) {
-      setMessage(error.message)
-      return
-    }
-    if (session.data.user) {
-      const profile = await s
-        .from('profiles')
-        .select('role')
-        .eq('id', session.data.user.id)
-        .maybeSingle()
-      setIsAdmin(profile.data?.role === 'admin')
-    }
-    setVisits((v.data ?? []) as unknown as Visit[])
-    setInvoices((i.data ?? []) as unknown as Invoice[])
-    setClients((c.data ?? []) as unknown as Client[])
-  }, [])
-  useEffect(() => {
-    const s = createClient()
-    s.auth.getSession().then(({ data }) => {
-      setSignedIn(Boolean(data.session))
-      setReady(true)
-      if (data.session) void load()
-    })
-    const { data } = s.auth.onAuthStateChange((_event, session) => {
-      setSignedIn(Boolean(session))
-      if (session) void load()
-    })
-    return () => data.subscription.unsubscribe()
-  }, [load])
-  if (!ready) return <main className="empty-state">Cargando tu operativa…</main>
-  if (!signedIn) return <AuthScreen />
-  const start = async (visit: Visit) => {
-    setMessage(null)
-    const { error } = await createClient().rpc('start_visit', { p_visit_id: visit.id })
-    if (error) {
-      setMessage(error.message)
-      return
-    }
-    router.push(`/agenda/${visit.id}`)
-  }
-  const pay = async (invoice: Invoice) => {
-    const { error } = await createClient()
-      .from('invoices')
-      .update({ status: 'paid', paid_at: new Date().toISOString() })
-      .eq('id', invoice.id)
-    setMessage(error ? error.message : 'Factura marcada como cobrada.')
-    await load()
-  }
-  const saveClient = async (client: ClientInput, id?: string) => {
-    const payload = {
-      ...client,
-      legal_name: client.legal_name.trim(),
-      payment_terms_days: Number(client.payment_terms_days),
-      trade_name: blankToNull(client.trade_name),
-      tax_id: blankToNull(client.tax_id),
-      billing_email: blankToNull(client.billing_email),
-      phone: blankToNull(client.phone),
-      billing_address: blankToNull(client.billing_address),
-      notes: blankToNull(client.notes),
-      contact_name: blankToNull(client.contact_name),
-      contact_role: blankToNull(client.contact_role),
-      contact_email: blankToNull(client.contact_email),
-      contact_phone: blankToNull(client.contact_phone),
-    }
-    const query = id
-      ? createClient().from('clients').update(payload).eq('id', id)
-      : createClient().from('clients').insert(payload)
-    const { error } = await query
-    if (error) throw new Error(error.message)
-    setMessage(id ? 'Cliente actualizado.' : 'Cliente creado.')
-    await load()
-  }
-  const deleteClient = async (client: Client) => {
-    if (
-      !window.confirm(
-        `¿Eliminar a ${client.legal_name}? También se eliminarán sus instalaciones. Esta acción no se puede deshacer.`,
-      )
-    )
-      return
-    const { error } = await createClient().from('clients').delete().eq('id', client.id)
-    setMessage(error ? error.message : 'Cliente eliminado.')
-    if (!error) await load()
-  }
-  const saveInstallation = async (
-    clientId: string,
-    installation: InstallationInput,
-    id?: string,
-  ) => {
-    const payload = {
-      ...installation,
-      name: installation.name.trim(),
-      address: installation.address.trim(),
-      pool_type: blankToNull(installation.pool_type),
-      instructions: blankToNull(installation.instructions),
-      notes: blankToNull(installation.notes),
-    }
-    const query = id
-      ? createClient().from('installations').update(payload).eq('id', id)
-      : createClient()
-          .from('installations')
-          .insert({ ...payload, client_id: clientId })
-    const { error } = await query
-    if (error) throw new Error(error.message)
-    setMessage(id ? 'Instalación actualizada.' : 'Instalación añadida.')
-    await load()
-  }
-  const deleteInstallation = async (installation: Installation) => {
-    if (!window.confirm(`¿Eliminar la instalación «${installation.name}»?`)) return
-    const { error } = await createClient().from('installations').delete().eq('id', installation.id)
-    setMessage(error ? error.message : 'Instalación eliminada.')
-    if (!error) await load()
-  }
-  return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <Image
-            src="/concepte-blau-logo.png"
-            alt="Concepte Blau"
-            width={450}
-            height={111}
-            priority
-          />
-        </div>
-        <nav className="nav">
-          <Nav
-            href="/"
-            label="Resumen"
-            icon={<LayoutDashboard size={18} />}
-            active={view === 'inicio'}
-          />
-          <Nav
-            href="/agenda"
-            label="Agenda"
-            icon={<CalendarDays size={18} />}
-            active={view === 'agenda' || view === 'parte'}
-          />
-          <Nav
-            href="/clientes"
-            label="Clientes"
-            icon={<Users size={18} />}
-            active={view === 'clientes'}
-          />
-          <Nav
-            href="/facturacion"
-            label="Facturación"
-            icon={<FileText size={18} />}
-            active={view === 'facturacion'}
-          />
-        </nav>
-        <button className="profile" onClick={() => void createClient().auth.signOut()}>
-          <div className="avatar">CB</div>
-          <span>Cerrar sesión</span>
-          <LogOut size={16} />
-        </button>
-      </aside>
-      <main className="main">
-        <header className="topbar">
-          <div>
-            <span className="eyebrow">Concepte Blau · Operativa diaria</span>
-            <h1>{titles[view]}</h1>
-          </div>
-        </header>
-        <div className="content">
-          {message && (
-            <p className="toast" role="status">
-              {message}
-            </p>
-          )}
-          {view === 'inicio' && (
-            <Overview visits={visits} invoices={invoices} clients={clients} start={start} />
-          )}
-          {view === 'agenda' && <Agenda visits={visits} start={start} />}
-          {view === 'parte' && visitId && <VisitReport visitId={visitId} />}
-          {view === 'facturacion' && <Billing invoices={invoices} pay={pay} />}
-          {view === 'clientes' && (
-            <Clients
-              clients={clients}
-              isAdmin={isAdmin}
-              onSaveClient={saveClient}
-              onDeleteClient={deleteClient}
-              onSaveInstallation={saveInstallation}
-              onDeleteInstallation={deleteInstallation}
-            />
-          )}
-        </div>
-      </main>
-    </div>
-  )
-}
-const blankToNull = (value: string | null) => value?.trim() || null
-function Nav({
-  href,
-  label,
-  icon,
-  active,
-}: {
-  href: string
-  label: string
-  icon: ReactNode
-  active: boolean
-}) {
-  return (
-    <Link href={href} aria-current={active ? 'page' : undefined}>
-      {icon}
-      <span>{label}</span>
-    </Link>
-  )
-}
-function VisitRow({ visit, start }: { visit: Visit; start: (v: Visit) => void }) {
-  const x = visit.installations
-  return (
-    <div className="visit">
-      <div className="time">
-        {new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(
-          new Date(visit.scheduled_for),
-        )}
-      </div>
-      <div>
-        <div className="visit-title">{x?.clients?.legal_name ?? 'Cliente'}</div>
-        <div className="visit-meta">
-          {x?.name ?? 'Instalación'} · {x?.address ?? ''}
-        </div>
-      </div>
-      {visit.status === 'completed' ? (
-        <span className="badge ok">Completada</span>
-      ) : visit.status === 'in_progress' ? (
-        <Link className="badge progress" href={`/agenda/${visit.id}`}>
-          Continuar
-        </Link>
-      ) : visit.status === 'cancelled' ? (
-        <span className="badge pending">Cancelada</span>
-      ) : (
-        <button className="badge progress" onClick={() => start(visit)}>
-          Iniciar
-        </button>
-      )}
-    </div>
-  )
-}
-function Overview({
-  visits,
-  invoices,
-  clients,
-  start,
-}: {
-  visits: Visit[]
-  invoices: Invoice[]
-  clients: Client[]
-  start: (v: Visit) => void
-}) {
-  const due = invoices.filter((i) => i.status !== 'paid')
-  return (
-    <>
-      <section className="intro">
-        <div>
-          <h2>Planifica la jornada y mantén cada instalación al día.</h2>
-          <p>
-            Revisa las visitas previstas, inicia el parte desde la agenda y controla los cobros
-            pendientes.
-          </p>
-        </div>
-        <Link className="button accent" href="/agenda">
-          Ver agenda
-        </Link>
-      </section>
-      <section className="stats">
-        <Stat
-          label="Visitas"
-          value={String(visits.length)}
-          foot={`${visits.filter((v) => v.status === 'completed').length} completadas`}
-        />
-        <Stat
-          label="Clientes activos"
-          value={String(clients.filter((client) => client.active).length)}
-          foot={`${clients.length} clientes registrados`}
-        />
-        <Stat
-          label="Facturas pendientes"
-          value={String(due.length)}
-          foot={money.format(due.reduce((n, i) => n + Number(i.total), 0))}
-        />
-        <Stat
-          label="Facturación"
-          value={money.format(invoices.reduce((n, i) => n + Number(i.total), 0))}
-          foot="Importe total emitido"
-        />
-      </section>
-      <section className="card" style={{ marginTop: 18 }}>
-        <div className="card-head">
-          <h3>Próximas visitas</h3>
-        </div>
-        {visits.map((v) => (
-          <VisitRow key={v.id} visit={v} start={start} />
-        ))}
-      </section>
-    </>
-  )
-}
-function Stat({ label, value, foot }: { label: string; value: string; foot: string }) {
-  return (
-    <div className="stat">
-      <div className="stat-label">{label}</div>
-      <div className="stat-value">{value}</div>
-      <div className="stat-foot">{foot}</div>
-    </div>
-  )
-}
-function Agenda({ visits, start }: { visits: Visit[]; start: (v: Visit) => void }) {
-  return (
-    <>
-      <section className="intro">
-        <div>
-          <h2>Organiza las visitas de mantenimiento.</h2>
-          <p>Inicia cada faena para registrar la hora real y abrir su parte de trabajo.</p>
-        </div>
-      </section>
-      <section className="agenda-list">
-        {visits.map((v) => (
-          <VisitRow key={v.id} visit={v} start={start} />
-        ))}
-      </section>
-    </>
-  )
-}
-function Billing({ invoices, pay }: { invoices: Invoice[]; pay: (i: Invoice) => void }) {
-  const [previewedInvoice, setPreviewedInvoice] = useState<Invoice | null>(null)
-  return (
-    <>
-      <section className="intro">
-        <div>
-          <h2>Facturación persistente</h2>
-          <p>Consulta, descarga o guarda en PDF cada factura con los datos de su cliente.</p>
-        </div>
-      </section>
-      <div className="invoice-list">
-        {invoices.map((i) => (
-          <div className="invoice" key={i.id}>
-            <div>
-              <strong>{i.clients?.legal_name ?? 'Cliente'}</strong>
-              <span>
-                {i.number ?? 'Borrador'} · {i.issued_on ?? 'Sin emitir'}
-              </span>
-            </div>
-            <span className="invoice-total">{money.format(Number(i.total))}</span>
-            <div className="invoice-actions">
-              <button className="action-link" type="button" onClick={() => setPreviewedInvoice(i)}>
-                Ver factura
-              </button>
-              <button className="action-link" type="button" onClick={() => downloadInvoice(i)}>
-                <Download size={15} aria-hidden="true" />
-                Descargar
-              </button>
-            </div>
-            {i.status === 'paid' ? (
-              <span className="badge ok">Cobrada</span>
-            ) : (
-              <button className="badge progress" onClick={() => pay(i)}>
-                Marcar cobrada
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-      {previewedInvoice && (
-        <InvoicePreview
-          invoice={previewedInvoice}
-          onClose={() => setPreviewedInvoice(null)}
-          onDownload={downloadInvoice}
-        />
-      )}
-    </>
-  )
-}
-function Clients({
-  clients,
-  isAdmin,
-  onSaveClient,
-  onDeleteClient,
-  onSaveInstallation,
-  onDeleteInstallation,
-}: {
-  clients: Client[]
-  isAdmin: boolean
-  onSaveClient: (client: ClientInput, id?: string) => Promise<void>
-  onDeleteClient: (client: Client) => Promise<void>
-  onSaveInstallation: (
-    clientId: string,
-    installation: InstallationInput,
-    id?: string,
-  ) => Promise<void>
-  onDeleteInstallation: (installation: Installation) => Promise<void>
-}) {
-  const [search, setSearch] = useState('')
-  const [editingClient, setEditingClient] = useState<Client | null | 'new'>(null)
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
-  const [editingInstallation, setEditingInstallation] = useState<Installation | 'new' | null>(null)
-  const visibleClients = clients.filter((client) =>
-    `${client.legal_name} ${client.trade_name ?? ''} ${client.contact_name ?? ''} ${client.billing_email ?? ''}`
-      .toLocaleLowerCase('es')
-      .includes(search.toLocaleLowerCase('es')),
-  )
-  return (
-    <>
-      <section className="intro client-intro">
-        <div>
-          <h2>Clientes e instalaciones</h2>
-          <p>Ficha completa, contactos, condiciones de cobro e instalaciones por cliente.</p>
-        </div>
-        {isAdmin && (
-          <button className="button" type="button" onClick={() => setEditingClient('new')}>
-            <Plus size={17} aria-hidden="true" />
-            Nuevo cliente
-          </button>
-        )}
-      </section>
-      {!isAdmin && (
-        <p className="access-note" role="status">
-          Solo los administradores pueden crear o modificar clientes.
         </p>
       )}
       <div className="client-toolbar">
