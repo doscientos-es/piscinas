@@ -23,6 +23,7 @@ import {
   Pencil,
   Phone,
   Plus,
+  RefreshCw,
   Search,
   Trash2,
   UserRound,
@@ -115,6 +116,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   const [clients, setClients] = useState<Client[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [inventorySchemaReady, setInventorySchemaReady] = useState(true)
+  const [statisticsReload, setStatisticsReload] = useState(0)
   const [message, setMessage] = useState<string | null>(null)
   const [visitToStart, setVisitToStart] = useState<Visit | null>(null)
   const [editingClient, setEditingClient] = useState<Client | null | 'new'>(null)
@@ -445,6 +447,16 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
                 Nuevo cliente
               </button>
             )}
+            {view === 'estadisticas' && isAdmin && (
+              <button
+                className="button secondary analytics-refresh"
+                type="button"
+                onClick={() => setStatisticsReload((value) => value + 1)}
+              >
+                <RefreshCw size={16} aria-hidden="true" />
+                Actualizar
+              </button>
+            )}
           </div>
         </header>
         <div className="content">
@@ -465,7 +477,9 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           {view === 'agenda' && <Agenda visits={visits} isAdmin={isAdmin} start={requestStart} />}
           {view === 'parte' && visitId && <VisitReport visitId={visitId} readOnly={isAdmin} />}
           {view === 'facturacion' && <Billing invoices={invoices} pay={pay} />}
-          {view === 'estadisticas' && <AdminStatistics isAdmin={isAdmin} />}
+          {view === 'estadisticas' && (
+            <AdminStatistics isAdmin={isAdmin} reloadVersion={statisticsReload} />
+          )}
           {view === 'clientes' && (
             <Clients
               clients={clients}

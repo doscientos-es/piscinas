@@ -1,7 +1,7 @@
 'use client'
 
 import * as echarts from 'echarts'
-import { CalendarDays, CheckCircle2, CircleDollarSign, Clock3, RefreshCw } from 'lucide-react'
+import { CalendarDays, CheckCircle2, CircleDollarSign, Clock3 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import {
@@ -14,13 +14,24 @@ import {
 import { createClient } from '@/lib/supabase/client'
 
 const money = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' })
-const colours = { primary: '#0879ae', cyan: '#13b8e8', green: '#159957', amber: '#d48b16', red: '#d34e4e' }
+const colours = {
+  primary: '#0879ae',
+  cyan: '#13b8e8',
+  green: '#159957',
+  amber: '#d48b16',
+  red: '#d34e4e',
+}
 
-export function AdminStatistics({ isAdmin }: { isAdmin: boolean }) {
+export function AdminStatistics({
+  isAdmin,
+  reloadVersion,
+}: {
+  isAdmin: boolean
+  reloadVersion: number
+}) {
   const [statistics, setStatistics] = useState<AdminStatistics | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [reload, setReload] = useState(0)
 
   useEffect(() => {
     if (!isAdmin) {
@@ -70,7 +81,7 @@ export function AdminStatistics({ isAdmin }: { isAdmin: boolean }) {
     return () => {
       active = false
     }
-  }, [isAdmin, reload])
+  }, [isAdmin, reloadVersion])
 
   const options = useMemo(() => (statistics ? chartOptions(statistics) : null), [statistics])
   if (!isAdmin) {
@@ -85,23 +96,18 @@ export function AdminStatistics({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <section className="analytics-page">
-      <header className="analytics-intro">
-        <div>
-          <span className="eyebrow">Administración</span>
-          <h2>Estadísticas operativas</h2>
-          <p>Visitas, puntualidad de inicio y facturación de los últimos seis meses.</p>
-        </div>
-        <button className="button secondary analytics-refresh" type="button" onClick={() => setReload((value) => value + 1)}>
-          <RefreshCw size={16} aria-hidden="true" /> Actualizar
-        </button>
-      </header>
-
       {loading && <div className="analytics-loading">Preparando indicadores…</div>}
-      {error && <div className="analytics-error">No se han podido cargar las estadísticas: {error}</div>}
+      {error && (
+        <div className="analytics-error">No se han podido cargar las estadísticas: {error}</div>
+      )}
       {statistics && options && (
         <>
           <div className="analytics-kpis">
-            <Metric icon={<CalendarDays size={19} />} label="Visitas previstas" value={String(statistics.totals.planned)} />
+            <Metric
+              icon={<CalendarDays size={19} />}
+              label="Visitas previstas"
+              value={String(statistics.totals.planned)}
+            />
             <Metric
               icon={<CheckCircle2 size={19} />}
               label="Visitas completadas"
@@ -165,10 +171,22 @@ export function AdminStatistics({ isAdmin }: { isAdmin: boolean }) {
   )
 }
 
-function Metric({ icon, label, value, detail }: { icon: ReactNode; label: string; value: string; detail?: string }) {
+function Metric({
+  icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: ReactNode
+  label: string
+  value: string
+  detail?: string
+}) {
   return (
     <article className="analytics-kpi">
-      <span className="analytics-kpi-icon" aria-hidden="true">{icon}</span>
+      <span className="analytics-kpi-icon" aria-hidden="true">
+        {icon}
+      </span>
       <span>{label}</span>
       <strong>{value}</strong>
       {detail && <small>{detail}</small>}
@@ -196,39 +214,115 @@ function EChart({ option, label }: { option: echarts.EChartsOption; label: strin
 function chartOptions(statistics: AdminStatistics) {
   const labels = statistics.months.map((month) => month.label.replace('.', ''))
   const axis = { axisLine: { lineStyle: { color: '#d9e6ec' } }, axisLabel: { color: '#678293' } }
-  const tooltip = { trigger: 'axis' as const, borderColor: '#dce9ef', textStyle: { color: '#17384d' } }
+  const tooltip = {
+    trigger: 'axis' as const,
+    borderColor: '#dce9ef',
+    textStyle: { color: '#17384d' },
+  }
   return {
     activity: {
-      aria: { enabled: true }, tooltip, grid: { top: 18, right: 12, bottom: 26, left: 32 },
-      legend: { bottom: 0, textStyle: { color: '#577284' } }, xAxis: { type: 'category', data: labels, ...axis },
+      aria: { enabled: true },
+      tooltip,
+      grid: { top: 18, right: 12, bottom: 26, left: 32 },
+      legend: { bottom: 0, textStyle: { color: '#577284' } },
+      xAxis: { type: 'category', data: labels, ...axis },
       yAxis: { type: 'value', minInterval: 1, ...axis },
       series: [
-        { name: 'Planificadas', type: 'bar', data: statistics.months.map((month) => month.planned), itemStyle: { color: colours.cyan, borderRadius: [5, 5, 0, 0] } },
-        { name: 'Completadas', type: 'bar', data: statistics.months.map((month) => month.completed), itemStyle: { color: colours.green, borderRadius: [5, 5, 0, 0] } },
+        {
+          name: 'Planificadas',
+          type: 'bar',
+          data: statistics.months.map((month) => month.planned),
+          itemStyle: { color: colours.cyan, borderRadius: [5, 5, 0, 0] },
+        },
+        {
+          name: 'Completadas',
+          type: 'bar',
+          data: statistics.months.map((month) => month.completed),
+          itemStyle: { color: colours.green, borderRadius: [5, 5, 0, 0] },
+        },
       ],
     } satisfies echarts.EChartsOption,
     status: {
-      aria: { enabled: true }, tooltip: { trigger: 'item' }, legend: { bottom: 0, textStyle: { color: '#577284' } },
-      series: [{ type: 'pie', radius: ['48%', '72%'], label: { show: false }, data: [
-        { name: 'Completadas', value: statistics.status.completed, itemStyle: { color: colours.green } },
-        { name: 'En curso', value: statistics.status.in_progress, itemStyle: { color: colours.primary } },
-        { name: 'Programadas', value: statistics.status.scheduled, itemStyle: { color: colours.cyan } },
-        { name: 'Canceladas', value: statistics.status.cancelled, itemStyle: { color: colours.red } },
-      ] }],
+      aria: { enabled: true },
+      tooltip: { trigger: 'item' },
+      legend: { bottom: 0, textStyle: { color: '#577284' } },
+      series: [
+        {
+          type: 'pie',
+          radius: ['48%', '72%'],
+          label: { show: false },
+          data: [
+            {
+              name: 'Completadas',
+              value: statistics.status.completed,
+              itemStyle: { color: colours.green },
+            },
+            {
+              name: 'En curso',
+              value: statistics.status.in_progress,
+              itemStyle: { color: colours.primary },
+            },
+            {
+              name: 'Programadas',
+              value: statistics.status.scheduled,
+              itemStyle: { color: colours.cyan },
+            },
+            {
+              name: 'Canceladas',
+              value: statistics.status.cancelled,
+              itemStyle: { color: colours.red },
+            },
+          ],
+        },
+      ],
     } satisfies echarts.EChartsOption,
     punctuality: {
-      aria: { enabled: true }, tooltip, grid: { top: 18, right: 12, bottom: 30, left: 38 },
+      aria: { enabled: true },
+      tooltip,
+      grid: { top: 18, right: 12, bottom: 30, left: 38 },
       xAxis: { type: 'category', data: ['Antes', 'En hora', '16–90 min', '>90 min'], ...axis },
       yAxis: { type: 'value', minInterval: 1, ...axis },
-      series: [{ type: 'bar', data: [statistics.punctuality.early, statistics.punctuality.onTime, statistics.punctuality.late, statistics.punctuality.exception], itemStyle: { borderRadius: [5, 5, 0, 0], color: (params: { dataIndex: number }) => [colours.primary, colours.green, colours.amber, colours.red][params.dataIndex] } }],
+      series: [
+        {
+          type: 'bar',
+          data: [
+            statistics.punctuality.early,
+            statistics.punctuality.onTime,
+            statistics.punctuality.late,
+            statistics.punctuality.exception,
+          ],
+          itemStyle: {
+            borderRadius: [5, 5, 0, 0],
+            color: (params: { dataIndex: number }) =>
+              [colours.primary, colours.green, colours.amber, colours.red][params.dataIndex],
+          },
+        },
+      ],
     } satisfies echarts.EChartsOption,
     billing: {
-      aria: { enabled: true }, tooltip, grid: { top: 18, right: 12, bottom: 26, left: 52 },
-      legend: { bottom: 0, textStyle: { color: '#577284' } }, xAxis: { type: 'category', data: labels, ...axis },
-      yAxis: { type: 'value', axisLabel: { formatter: (value: number) => `${value} €`, color: '#678293' }, axisLine: axis.axisLine },
+      aria: { enabled: true },
+      tooltip,
+      grid: { top: 18, right: 12, bottom: 26, left: 52 },
+      legend: { bottom: 0, textStyle: { color: '#577284' } },
+      xAxis: { type: 'category', data: labels, ...axis },
+      yAxis: {
+        type: 'value',
+        axisLabel: { formatter: (value: number) => `${value} €`, color: '#678293' },
+        axisLine: axis.axisLine,
+      },
       series: [
-        { name: 'Emitido', type: 'bar', data: statistics.months.map((month) => month.invoiced), itemStyle: { color: colours.primary, borderRadius: [5, 5, 0, 0] } },
-        { name: 'Cobrado', type: 'bar', data: statistics.months.map((month) => month.collected), itemStyle: { color: colours.green, borderRadius: [5, 5, 0, 0] } },
+        {
+          name: 'Emitido',
+          type: 'bar',
+          data: statistics.months.map((month) => month.invoiced),
+          itemStyle: { color: colours.primary, borderRadius: [5, 5, 0, 0] },
+        },
+        {
+          name: 'Cobrado',
+          type: 'bar',
+          data: statistics.months.map((month) => month.collected),
+          itemStyle: { color: colours.green, borderRadius: [5, 5, 0, 0] },
+        },
       ],
     } satisfies echarts.EChartsOption,
   }
