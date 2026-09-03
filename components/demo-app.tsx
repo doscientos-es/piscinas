@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 
 import { InvoicePreview } from '@/components/invoice-preview'
@@ -302,9 +303,9 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             </p>
           )}
           {view === 'inicio' && (
-            <Overview visits={visits} invoices={invoices} clients={clients} complete={complete} />
+            <Overview visits={visits} invoices={invoices} clients={clients} complete={start} />
           )}
-          {view === 'agenda' && <Agenda visits={visits} complete={complete} />}
+          {view === 'agenda' && <Agenda visits={visits} complete={start} />}
           {view === 'facturacion' && <Billing invoices={invoices} pay={pay} />}
           {view === 'clientes' && (
             <Clients
