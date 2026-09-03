@@ -162,6 +162,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   const [products, setProducts] = useState<Product[]>([])
   const [inventorySchemaReady, setInventorySchemaReady] = useState(true)
   const [productCreationVersion, setProductCreationVersion] = useState(0)
+  const [workCreationVersion, setWorkCreationVersion] = useState(0)
   const [statisticsReload, setStatisticsReload] = useState(0)
   const [message, setMessage] = useState<string | null>(null)
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -712,6 +713,16 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
                   Client nou
                 </button>
               )}
+              {activeView === 'trabajos' && isAdmin && (
+                <button
+                  className="button"
+                  type="button"
+                  onClick={() => setWorkCreationVersion((value) => value + 1)}
+                >
+                  <Plus size={17} aria-hidden="true" />
+                  Feina nova
+                </button>
+              )}
               {activeView === 'inventario' && isAdmin && (
                 <button
                   className="button inventory-create"
@@ -761,6 +772,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
               isAdmin={isAdmin}
               onSavePendingWork={savePendingWork}
               onDeletePendingWork={deletePendingWork}
+              creationVersion={workCreationVersion}
             />
           )}
           {activeView === 'parte' && visitId && (

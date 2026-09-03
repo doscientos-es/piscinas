@@ -1,7 +1,6 @@
 'use client'
 
 import {
-  Button,
   Dialog,
   DialogClose,
   DialogContent,
@@ -10,10 +9,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@doscientos/ui'
-import { CalendarDays, Pencil, Plus, Search, Trash2, UserRound } from 'lucide-react'
+import { CalendarDays, Pencil, Search, Trash2, UserRound } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import type { SearchParamUpdates } from '@/lib/search-params'
 import { usePersistentSearchParams } from '@/lib/use-persistent-search-params'
@@ -38,6 +37,7 @@ type WorkHistoryProps = {
   isAdmin: boolean
   onSavePendingWork: (input: PendingWorkInput, id?: string) => Promise<void>
   onDeletePendingWork: (id: string) => Promise<void>
+  creationVersion: number
 }
 
 export function WorkHistory({
@@ -47,6 +47,7 @@ export function WorkHistory({
   isAdmin,
   onSavePendingWork,
   onDeletePendingWork,
+  creationVersion,
 }: WorkHistoryProps) {
   const searchParams = useSearchParams()
   const updateSearchParams = usePersistentSearchParams()
@@ -69,6 +70,13 @@ export function WorkHistory({
   const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage - 1 : 0
   const [editingVisit, setEditingVisit] = useState<WorkHistoryVisit | 'new' | null>(null)
   const [operationError, setOperationError] = useState<string | null>(null)
+  const handledCreationVersion = useRef(creationVersion)
+  useEffect(() => {
+    if (creationVersion === handledCreationVersion.current) return
+    handledCreationVersion.current = creationVersion
+    setOperationError(null)
+    setEditingVisit('new')
+  }, [creationVersion])
   const filterTechnicians = useMemo(() => {
     const names = new Map<string, string>()
     for (const technician of technicians) names.set(technician.id, technician.full_name)
@@ -89,26 +97,6 @@ export function WorkHistory({
 
   return (
     <section className="work-history" aria-label="Feines">
-      <header className="work-history-heading">
-        <div>
-          <h2>Feines</h2>
-        </div>
-        <div className="work-history-heading-actions">
-          {isAdmin && (
-            <button
-              className="button"
-              type="button"
-              onClick={() => {
-                setOperationError(null)
-                setEditingVisit('new')
-              }}
-            >
-              <Plus size={16} aria-hidden="true" />
-              Feina nova
-            </button>
-          )}
-        </div>
-      </header>
       <div className="work-history-filters">
         <label className="client-search">
           <Search size={17} aria-hidden="true" />
