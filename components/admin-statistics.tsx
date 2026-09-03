@@ -125,7 +125,7 @@ export function AdminStatistics({
               icon={<CircleDollarSign size={19} />}
               label="Facturació emesa"
               value={money.format(statistics.totals.invoiced)}
-              detail={`${money.format(statistics.totals.collected)} cobrado`}
+              detail={`${money.format(statistics.totals.collected)} cobrat`}
             />
           </div>
           <div className="analytics-grid">
