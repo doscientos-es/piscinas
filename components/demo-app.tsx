@@ -39,8 +39,9 @@ import { AdminStatistics } from '@/components/admin-statistics'
 import { Inventory, type Product } from '@/components/inventory'
 import { InvoicePreview } from '@/components/invoice-preview'
 import { VisitReport } from '@/components/visit-report'
+import { WorkHistory } from '@/components/work-history'
 import { getAgendaVisitAction } from '@/lib/agenda-access'
-import { type AccountRole } from '@/lib/app-access'
+import { canAccessAppView, type AccountRole } from '@/lib/app-access'
 import { validateAuthInput, type AuthMode } from '@/lib/auth-validation'
 import { downloadInvoice, formatDate, getInvoiceLines, type Invoice } from '@/lib/invoice-template'
 import { isLocationSchemaPending } from '@/lib/location-schema-compatibility'
@@ -155,19 +156,45 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     useState<TimeTrackingPolicy>(defaultTimeTrackingPolicy)
   const load = useCallback(async () => {
     const s = createClient()
-    const [v, i, p, settings, session] = await Promise.all([
+    const { data: userData, error: userError } = await s.auth.getUser()
+    if (userError || !userData.user) {
+      setMessage(userError?.message ?? 'No se ha podido identificar la sesión.')
+      return
+    }
+    const profile = await s
+      .from('profiles')
+      .select('role,full_name')
+      .eq('id', userData.user.id)
+      .maybeSingle()
+    if (profile.error || !profile.data) {
+      setMessage(profile.error?.message ?? 'No se ha encontrado el perfil de acceso.')
+      return
+    }
+    const accountRole = profile.data.role as AccountRole
+    setRole(accountRole)
+    const metadataName = userData.user.user_metadata.full_name
+    const fallbackName =
+      typeof metadataName === 'string' ? metadataName.trim() : userData.user.email?.split('@')[0]
+    setAccountName(profile.data.full_name?.trim() || fallbackName || 'Tu cuenta')
+    setAccountEmail(userData.user.email ?? '')
+
+    const invoicesRequest =
+      accountRole === 'admin'
+        ? s
+            .from('invoices')
+            .select(
+              'id,number,status,subtotal,vat_total,total,issued_on,due_on,clients(legal_name,tax_id,billing_email,billing_address),invoice_lines(id,description,quantity,unit_price,vat_rate,line_total)',
+            )
+            .order('created_at', { ascending: false })
+        : Promise.resolve({ data: [], error: null })
+    const [v, i, p, settings] = await Promise.all([
       s
         .from('visits')
         .select(
-          'id,scheduled_for,status,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,location_latitude,location_longitude,clients(legal_name))',
+          'id,scheduled_for,status,technician_id,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,location_latitude,location_longitude,clients(legal_name)),interventions(completed_at,notes)',
         )
         .order('scheduled_for'),
-      s
-        .from('invoices')
-        .select(
-          'id,number,status,subtotal,vat_total,total,issued_on,due_on,clients(legal_name,tax_id,billing_email,billing_address),invoice_lines(id,description,quantity,unit_price,vat_rate,line_total)',
-        )
-        .order('created_at', { ascending: false }),
+      invoicesRequest,
       s
         .from('products')
         .select(
@@ -181,26 +208,28 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
         )
         .eq('id', true)
         .maybeSingle(),
-      s.auth.getUser(),
     ])
     const locationSchemaPending = isLocationSchemaPending(v.error?.message)
     const visitResponse = locationSchemaPending
       ? await s
           .from('visits')
           .select(
-            'id,scheduled_for,status,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,clients(legal_name))',
+            'id,scheduled_for,status,technician_id,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,clients(legal_name)),interventions(completed_at,notes)',
           )
           .order('scheduled_for')
       : v
-    const extendedClients = await s
-      .from('clients')
-      .select(
-        'id,legal_name,trade_name,tax_id,billing_email,phone,billing_address,payment_method,notes,contact_name,contact_role,contact_email,contact_phone,client_type,billing_frequency,payment_terms_days,active,installations(id,name,address,pool_type,instructions,notes,location_latitude,location_longitude)',
-      )
-      .order('legal_name')
+    const extendedClients =
+      accountRole === 'admin'
+        ? await s
+            .from('clients')
+            .select(
+              'id,legal_name,trade_name,tax_id,billing_email,phone,billing_address,payment_method,notes,contact_name,contact_role,contact_email,contact_phone,client_type,billing_frequency,payment_terms_days,active,installations(id,name,address,pool_type,instructions,notes,location_latitude,location_longitude)',
+            )
+            .order('legal_name')
+        : null
     const migrationPending =
-      extendedClients.error?.message.includes('column clients.trade_name does not exist') ||
-      isLocationSchemaPending(extendedClients.error?.message)
+      extendedClients?.error?.message.includes('column clients.trade_name does not exist') ||
+      isLocationSchemaPending(extendedClients?.error?.message)
     const clientResponse = migrationPending
       ? await s
           .from('clients')
@@ -208,26 +237,11 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             'id,legal_name,tax_id,billing_email,phone,billing_address,payment_method,notes,installations(id,name,address,pool_type,instructions,notes)',
           )
           .order('legal_name')
-      : extendedClients
+      : (extendedClients ?? { data: [], error: null })
     setClientSchemaReady(!migrationPending)
     const inventoryMigrationPending = p.error?.message.includes(
       'column products.minimum_stock does not exist',
     )
-    if (session.data.user) {
-      const profile = await s
-        .from('profiles')
-        .select('role,full_name')
-        .eq('id', session.data.user.id)
-        .maybeSingle()
-      setIsAdmin(profile.data?.role === 'admin')
-      const metadataName = session.data.user.user_metadata.full_name
-      const fallbackName =
-        typeof metadataName === 'string'
-          ? metadataName.trim()
-          : session.data.user.email?.split('@')[0]
-      setAccountName(profile.data?.full_name?.trim() || fallbackName || 'Tu cuenta')
-      setAccountEmail(session.data.user.email ?? '')
-    }
     const error =
       visitResponse.error ||
       i.error ||
@@ -260,15 +274,21 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       if (session) {
         void load()
       } else {
-        setIsAdmin(false)
+        setRole(null)
         setAccountName('Tu cuenta')
         setAccountEmail('')
       }
     })
     return () => data.subscription.unsubscribe()
   }, [load])
+  useEffect(() => {
+    if (role && !canAccessAppView(role, view)) router.replace('/agenda')
+  }, [role, router, view])
   if (!ready) return <main className="empty-state">Cargando tu operativa…</main>
   if (!signedIn) return <AuthScreen />
+  if (!role) return <main className="empty-state">Cargando tus permisos…</main>
+  const isAdmin = role === 'admin'
+  const activeView = canAccessAppView(role, view) ? view : 'agenda'
   const signOut = async () => {
     if (isSigningOut) return
 
@@ -481,43 +501,55 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             priority
           />
         </div>
-        <nav className={`nav ${isAdmin ? 'nav-admin' : ''}`}>
-          <Nav
-            href="/"
-            label="Resumen"
-            icon={<LayoutDashboard size={18} />}
-            active={view === 'inicio'}
-          />
+        <nav className={`nav ${isAdmin ? 'nav-admin' : 'nav-worker'}`}>
+          {isAdmin && (
+            <Nav
+              href="/"
+              label="Resumen"
+              icon={<LayoutDashboard size={18} />}
+              active={activeView === 'inicio'}
+            />
+          )}
           <Nav
             href="/agenda"
             label="Agenda"
             icon={<CalendarDays size={18} />}
-            active={view === 'agenda' || view === 'parte'}
+            active={activeView === 'agenda' || activeView === 'parte'}
           />
           <Nav
-            href="/clientes"
-            label="Clientes"
-            icon={<Users size={18} />}
-            active={view === 'clientes'}
+            href="/trabajos"
+            label="Trabajos"
+            icon={<CheckCircle2 size={18} />}
+            active={activeView === 'trabajos'}
           />
-          <Nav
-            href="/facturacion"
-            label="Facturación"
-            icon={<FileText size={18} />}
-            active={view === 'facturacion'}
-          />
+          {isAdmin && (
+            <>
+              <Nav
+                href="/clientes"
+                label="Clientes"
+                icon={<Users size={18} />}
+                active={activeView === 'clientes'}
+              />
+              <Nav
+                href="/facturacion"
+                label="Facturación"
+                icon={<FileText size={18} />}
+                active={activeView === 'facturacion'}
+              />
+            </>
+          )}
           <Nav
             href="/inventario"
             label="Inventario"
             icon={<Package size={18} />}
-            active={view === 'inventario'}
+            active={activeView === 'inventario'}
           />
           {isAdmin && (
             <Nav
               href="/estadisticas"
               label="Estadísticas"
               icon={<LayoutDashboard size={18} />}
-              active={view === 'estadisticas'}
+              active={activeView === 'estadisticas'}
             />
           )}
         </nav>
@@ -563,25 +595,25 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           </PopoverTrigger>
         </div>
       </aside>
-      <main className={view === 'agenda' ? 'main agenda-main' : 'main'}>
-        {view !== 'agenda' && (
+      <main className={activeView === 'agenda' ? 'main agenda-main' : 'main'}>
+        {activeView !== 'agenda' && (
           <header className="topbar">
             <div>
-              <h1>{titles[view]}</h1>
+              <h1>{titles[activeView]}</h1>
             </div>
             <div className="top-actions">
-              {view === 'inicio' && (
+              {activeView === 'inicio' && (
                 <Link className="button accent" href="/agenda">
                   Ver agenda
                 </Link>
               )}
-              {view === 'clientes' && isAdmin && (
+              {activeView === 'clientes' && isAdmin && (
                 <button className="button" type="button" onClick={() => setEditingClient('new')}>
                   <Plus size={17} aria-hidden="true" />
                   Nuevo cliente
                 </button>
               )}
-              {view === 'inventario' && isAdmin && (
+              {activeView === 'inventario' && isAdmin && (
                 <button
                   className="button inventory-create"
                   type="button"
@@ -591,7 +623,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
                   Nuevo material
                 </button>
               )}
-              {view === 'estadisticas' && isAdmin && (
+              {activeView === 'estadisticas' && isAdmin && (
                 <button
                   className="button secondary analytics-refresh"
                   type="button"
@@ -604,13 +636,13 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             </div>
           </header>
         )}
-        <div className={view === 'agenda' ? 'content agenda-content' : 'content'}>
+        <div className={activeView === 'agenda' ? 'content agenda-content' : 'content'}>
           {message && (
             <p className="toast" role="status">
               {message}
             </p>
           )}
-          {view === 'inicio' && (
+          {activeView === 'inicio' && (
             <Overview
               visits={visits}
               invoices={invoices}
@@ -619,13 +651,18 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
               start={requestStart}
             />
           )}
-          {view === 'agenda' && <Agenda visits={visits} isAdmin={isAdmin} start={requestStart} />}
-          {view === 'parte' && visitId && <VisitReport visitId={visitId} readOnly={isAdmin} />}
-          {view === 'facturacion' && <Billing invoices={invoices} pay={pay} />}
-          {view === 'estadisticas' && (
+          {activeView === 'agenda' && (
+            <Agenda visits={visits} isAdmin={isAdmin} start={requestStart} />
+          )}
+          {activeView === 'trabajos' && <WorkHistory visits={visits} isAdmin={isAdmin} />}
+          {activeView === 'parte' && visitId && (
+            <VisitReport visitId={visitId} readOnly={isAdmin} />
+          )}
+          {activeView === 'facturacion' && <Billing invoices={invoices} pay={pay} />}
+          {activeView === 'estadisticas' && (
             <AdminStatistics isAdmin={isAdmin} reloadVersion={statisticsReload} />
           )}
-          {view === 'clientes' && (
+          {activeView === 'clientes' && (
             <Clients
               clients={clients}
               isAdmin={isAdmin}
@@ -638,7 +675,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
               onDeleteInstallation={deleteInstallation}
             />
           )}
-          {view === 'inventario' && (
+          {activeView === 'inventario' && (
             <Inventory
               products={products}
               isAdmin={isAdmin}
