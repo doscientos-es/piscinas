@@ -2,33 +2,33 @@
 
 import { Button, ConfirmDialog, PopoverContent, PopoverTrigger } from '@doscientos/ui'
 import {
-  ArrowRight,
-  Building2,
-  CalendarDays,
-  CheckCircle2,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  CircleDollarSign,
-  Download,
-  Eye,
-  EyeOff,
-  FileText,
-  LayoutDashboard,
-  LockKeyhole,
-  LogOut,
-  Mail,
-  MapPin,
-  Package,
-  Pencil,
-  Phone,
-  Plus,
-  RefreshCw,
-  Search,
-  Trash2,
-  UserRound,
-  Users,
-  X,
+    ArrowRight,
+    Building2,
+    CalendarDays,
+    CheckCircle2,
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    CircleDollarSign,
+    Download,
+    Eye,
+    EyeOff,
+    FileText,
+    LayoutDashboard,
+    LockKeyhole,
+    LogOut,
+    Mail,
+    MapPin,
+    Package,
+    Pencil,
+    Phone,
+    Plus,
+    RefreshCw,
+    Search,
+    Trash2,
+    UserRound,
+    Users,
+    X,
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -46,20 +46,24 @@ import { validateAuthInput, type AuthMode } from '@/lib/auth-validation'
 import { downloadInvoice, formatDate, getInvoiceLines, type Invoice } from '@/lib/invoice-template'
 import { isLocationSchemaPending } from '@/lib/location-schema-compatibility'
 import {
-  filterInvoicesByBillingPeriod,
-  formatBillingPeriod,
-  getBillingPeriodOptions,
-  getPreviousBillingPeriod,
-  toBillingPeriodValue,
+    filterInvoicesByBillingPeriod,
+    formatBillingPeriod,
+    getBillingPeriodOptions,
+    getPreviousBillingPeriod,
+    toBillingPeriodValue,
 } from '@/lib/monthly-billing'
 import { createClient } from '@/lib/supabase/client'
+import { usePersistentSearchParams } from '@/lib/use-persistent-search-params'
 import {
-  defaultTimeTrackingPolicy,
-  getStartExceptions,
-  startExceptionLabel,
-  type StartException,
-  type TimeTrackingPolicy,
-  type TrackingCoordinates,
+    defaultTimeTrackingPolicy,
+    getStartExceptions,
+    startExceptionLabel,
+    type StartException,
+    type TimeTrackingPolicy,
+    type TrackingCoordinates,
+} from '@/lib/time-tracking-policy'
+import { getVisitStartWarning } from '@/lib/visit-start-validation'
+import type { PendingWorkInput, WorkInstallation, WorkTechnician } from '@/lib/work-history'
 } from '@/lib/time-tracking-policy'
 import { getVisitStartWarning } from '@/lib/visit-start-validation'
 import type { PendingWorkInput, WorkInstallation, WorkTechnician } from '@/lib/work-history'
@@ -244,7 +248,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             .order('legal_name')
         : null
     const migrationPending =
-      extendedClients?.error?.message.includes('column clients.trade_name does not exist') ||
+      isClientExtensionSchemaPending(extendedClients?.error?.message) ||
       isLocationSchemaPending(extendedClients?.error?.message)
     const clientResponse = migrationPending
       ? await s
@@ -1448,10 +1452,11 @@ function Billing({
   clientId: string | null
   generateMonthlyInvoices: (billingPeriod: string) => Promise<void>
 }) {
+  const searchParams = useSearchParams()
+  const updateSearchParams = usePersistentSearchParams()
   const [previewedInvoice, setPreviewedInvoice] = useState<Invoice | null>(null)
-  const [billingPeriod, setBillingPeriod] = useState(
-    toBillingPeriodValue(getPreviousBillingPeriod()),
-  )
+  const billingPeriod =
+    searchParams.get('mes') ?? toBillingPeriodValue(getPreviousBillingPeriod())
   const [generating, setGenerating] = useState(false)
   const clientInvoices = clientId
     ? invoices.filter((invoice) => invoice.client_id === clientId)
@@ -1500,10 +1505,10 @@ function Billing({
             </h3>
           </div>
           <div className="billing-list-controls">
-            {clientId && <Link href="/facturacion">Ver todas</Link>}
+            {clientId && <Link href={`/facturacion?mes=${billingPeriod}`}>Ver todas</Link>}
             <select
               value={billingPeriod}
-              onChange={(event) => setBillingPeriod(event.target.value)}
+              onChange={(event) => updateSearchParams({ mes: event.target.value })}
             >
               {getBillingPeriodOptions().map((period) => (
                 <option key={period.value} value={period.value}>
@@ -1701,12 +1706,6 @@ function Clients({
       {!isAdmin && (
         <p className="access-note" role="status">
           Solo los administradores pueden crear o modificar clientes.
-        </p>
-      )}
-      {!clientSchemaReady && (
-        <p className="access-note" role="status">
-          La ficha ampliada se activará automáticamente al aplicar la migración de Supabase.
-          Mientras tanto, el CRUD básico e instalaciones siguen disponibles.
         </p>
       )}
       <div className="client-toolbar">

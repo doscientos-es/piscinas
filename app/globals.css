@@ -8449,3 +8449,19 @@ textarea:focus-visible {
   color: #617d8f;
   font-size: 13px;
 }
+
+/* Keep every button variant legible when the shared hover rule is applied. */
+@media (hover: hover) {
+  .button:hover:not(:disabled) {
+    background: #075f8a;
+    color: #fff;
+  }
+  .button.secondary:hover:not(:disabled) {
+    background: #eef8fc;
+    color: var(--primary);
+  }
+  .button.accent:hover:not(:disabled) {
+    background: linear-gradient(135deg, #39cef2, #14addb);
+    color: #032a4b;
+  }
+}

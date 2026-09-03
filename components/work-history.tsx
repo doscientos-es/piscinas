@@ -2,8 +2,11 @@
 
 import { CalendarDays, Pencil, Plus, Search, Trash2, UserRound, X } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { useMemo, useState } from 'react'
 
+import type { SearchParamUpdates } from '@/lib/search-params'
+import { usePersistentSearchParams } from '@/lib/use-persistent-search-params'
 import {
   canManagePendingWork,
   filterWorkHistory,
@@ -35,12 +38,25 @@ export function WorkHistory({
   onSavePendingWork,
   onDeletePendingWork,
 }: WorkHistoryProps) {
-  const [query, setQuery] = useState('')
-  const [status, setStatus] = useState('completed')
-  const [technicianId, setTechnicianId] = useState('')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
-  const [page, setPage] = useState(0)
+  const searchParams = useSearchParams()
+  const updateSearchParams = usePersistentSearchParams()
+  const query = searchParams.get('q') ?? ''
+  const statusParam = searchParams.get('estado')
+  const status =
+    statusParam === 'all' ||
+    statusParam === 'completed' ||
+    statusParam === 'in_progress' ||
+    statusParam === 'scheduled' ||
+    statusParam === 'cancelled'
+      ? statusParam
+      : isAdmin
+        ? 'scheduled'
+        : 'completed'
+  const technicianId = searchParams.get('tecnico') ?? ''
+  const from = searchParams.get('desde') ?? ''
+  const to = searchParams.get('hasta') ?? ''
+  const requestedPage = Number(searchParams.get('pagina') ?? '1')
+  const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage - 1 : 0
   const [editingVisit, setEditingVisit] = useState<WorkHistoryVisit | 'new' | null>(null)
   const [operationError, setOperationError] = useState<string | null>(null)
   const filterTechnicians = useMemo(() => {
@@ -52,13 +68,14 @@ export function WorkHistory({
     }
     return Array.from(names.entries())
   }, [technicians, visits])
-  useEffect(() => {
-    if (isAdmin) setStatus('scheduled')
-  }, [isAdmin])
   const results = filterWorkHistory(visits, { query, status, technicianId, from, to })
   const pageCount = Math.max(1, Math.ceil(results.length / pageSize))
-  const visibleVisits = paginateWorkHistory(results, Math.min(page, pageCount - 1), pageSize)
-  const resetPage = () => setPage(0)
+  const currentPage = Math.min(page, pageCount - 1)
+  const visibleVisits = paginateWorkHistory(results, currentPage, pageSize)
+  const updateFilters = (updates: SearchParamUpdates) =>
+    updateSearchParams({ ...updates, pagina: null })
+  const changePage = (nextPage: number) =>
+    updateSearchParams({ pagina: nextPage > 0 ? nextPage + 1 : null })
 
   return (
     <section className="work-history" aria-label="Trabajos">
@@ -89,8 +106,7 @@ export function WorkHistory({
           <input
             value={query}
             onChange={(event) => {
-              setQuery(event.target.value)
-              resetPage()
+              updateFilters({ q: event.target.value })
             }}
             placeholder="Cliente, instalación o parte"
           />
@@ -99,8 +115,7 @@ export function WorkHistory({
           aria-label="Estado"
           value={status}
           onChange={(event) => {
-            setStatus(event.target.value)
-            resetPage()
+            updateFilters({ estado: event.target.value })
           }}
         >
           <option value="completed">Finalizados</option>
@@ -114,8 +129,7 @@ export function WorkHistory({
             aria-label="Técnico"
             value={technicianId}
             onChange={(event) => {
-              setTechnicianId(event.target.value)
-              resetPage()
+              updateFilters({ tecnico: event.target.value })
             }}
           >
             <option value="">Todo el equipo</option>
@@ -133,8 +147,7 @@ export function WorkHistory({
             type="date"
             value={from}
             onChange={(event) => {
-              setFrom(event.target.value)
-              resetPage()
+              updateFilters({ desde: event.target.value })
             }}
           />
         </label>
@@ -145,8 +158,7 @@ export function WorkHistory({
             type="date"
             value={to}
             onChange={(event) => {
-              setTo(event.target.value)
-              resetPage()
+              updateFilters({ hasta: event.target.value })
             }}
           />
         </label>
@@ -237,19 +249,19 @@ export function WorkHistory({
         <button
           className="button secondary"
           type="button"
-          disabled={page === 0}
-          onClick={() => setPage((value) => value - 1)}
+          disabled={currentPage === 0}
+          onClick={() => changePage(currentPage - 1)}
         >
           Anterior
         </button>
         <span>
-          Página {Math.min(page + 1, pageCount)} de {pageCount}
+          Página {currentPage + 1} de {pageCount}
         </span>
         <button
           className="button secondary"
           type="button"
-          disabled={page + 1 >= pageCount}
-          onClick={() => setPage((value) => value + 1)}
+          disabled={currentPage + 1 >= pageCount}
+          onClick={() => changePage(currentPage + 1)}
         >
           Siguiente
         </button>
