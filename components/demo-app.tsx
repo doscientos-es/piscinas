@@ -422,7 +422,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
               start={requestStart}
             />
           )}
-          {view === 'agenda' && <Agenda visits={visits} isAdmin={isAdmin} start={requestStart} />}
+          {view === 'agenda' && <Agenda visits={visits} start={requestStart} />}
           {view === 'parte' && visitId && <VisitReport visitId={visitId} readOnly={isAdmin} />}
           {view === 'facturacion' && <Billing invoices={invoices} pay={pay} />}
           {view === 'clientes' && (
@@ -604,15 +604,6 @@ function Overview({
   const due = invoices.filter((i) => i.status !== 'paid')
   return (
     <>
-      <section className="intro">
-        <div>
-          <h2>Planifica la jornada y mantén cada instalación al día.</h2>
-          <p>
-            Revisa las visitas previstas, cierra los partes completados y controla los cobros
-            pendientes.
-          </p>
-        </div>
-      </section>
       <section className="stats">
         <Stat
           icon={<CalendarDays size={19} />}
@@ -676,15 +667,7 @@ function Stat({
 }
 type CalendarView = 'day' | 'week' | 'month'
 
-function Agenda({
-  visits,
-  isAdmin,
-  start,
-}: {
-  visits: Visit[]
-  isAdmin: boolean
-  start: (v: Visit) => void
-}) {
+function Agenda({ visits, start }: { visits: Visit[]; start: (v: Visit) => void }) {
   const [calendarView, setCalendarView] = useState<CalendarView>('week')
   const [activeDate, setActiveDate] = useState(() => startOfDay(new Date()))
   useEffect(() => {
@@ -714,20 +697,6 @@ function Agenda({
 
   return (
     <>
-      <section className="agenda-intro">
-        <div>
-          <span className="eyebrow">Planificación operativa</span>
-          <p>
-            {isAdmin
-              ? 'Supervisa las visitas de todo el equipo y comprueba quién tiene asignada cada faena.'
-              : 'Consulta tus visitas por día, semana o mes y abre el parte cuando empieces la faena.'}
-          </p>
-        </div>
-        <span className="agenda-count">
-          <CalendarDays size={17} /> {visits.length} visitas programadas
-        </span>
-      </section>
-
       <section
         className={`calendar-shell calendar-${calendarView}`}
         aria-label="Calendario de visitas"
@@ -1056,11 +1025,6 @@ function Billing({ invoices, pay }: { invoices: Invoice[]; pay: (i: Invoice) => 
 
   return (
     <>
-      <section className="intro">
-        <div>
-          <p>Consulta cada factura, sus conceptos y el estado de cobro de un vistazo.</p>
-        </div>
-      </section>
       <section className="billing-summary" aria-label="Resumen de facturación">
         <div className="billing-summary-card">
           <FileText size={19} aria-hidden="true" />
@@ -1266,11 +1230,6 @@ function Clients({
   const pageCount = Math.max(1, Math.ceil(total / pageSize))
   return (
     <>
-      <section className="intro client-intro">
-        <div>
-          <p>Ficha completa, contactos, condiciones de cobro e instalaciones por cliente.</p>
-        </div>
-      </section>
       {!isAdmin && (
         <p className="access-note" role="status">
           Solo los administradores pueden crear o modificar clientes.
