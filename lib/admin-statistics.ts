@@ -83,7 +83,7 @@ export function buildAdminStatistics(
   for (const invoice of invoices) {
     if (!invoice.issued_on) continue
     const issuedOn = new Date(`${invoice.issued_on}T12:00:00`)
-    if (!isInPeriod(issuedOn, start, end) || invoice.status === 'void') continue
+    if (!isInPeriod(issuedOn, start, end) || ['draft', 'void'].includes(invoice.status)) continue
     const month = byMonth.get(monthKey(issuedOn))
     if (!month) continue
     const total = Number(invoice.total)

@@ -34,6 +34,7 @@ describe('buildAdminStatistics', () => {
       [
         { issued_on: '2026-09-04', status: 'paid', total: 121 },
         { issued_on: '2026-09-18', status: 'issued', total: 80 },
+        { issued_on: '2026-09-19', status: 'draft', total: 70 },
         { issued_on: '2026-09-19', status: 'void', total: 25 },
       ],
       now,
