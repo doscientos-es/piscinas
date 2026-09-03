@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "Concepte Blau · Gestión de piscinas", template: "%s · Concepte Blau" },
-  description: "Demo local para gestionar mantenimiento de piscinas.",
+  description: "Gestión de mantenimiento, visitas, clientes y facturación de piscinas.",
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#2a4227" };
