@@ -164,6 +164,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   const [productCreationVersion, setProductCreationVersion] = useState(0)
   const [workCreationVersion, setWorkCreationVersion] = useState(0)
   const [statisticsReload, setStatisticsReload] = useState(0)
+  const [isPreparingBilling, setIsPreparingBilling] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [signOutError, setSignOutError] = useState<string | null>(null)
@@ -456,6 +457,17 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     )
     await load()
   }
+  const prepareMonthlyInvoices = async () => {
+    const billingPeriod =
+      searchParams.get('mes') ?? toBillingPeriodValue(getPreviousBillingPeriod())
+
+    setIsPreparingBilling(true)
+    try {
+      await generateMonthlyInvoices(billingPeriod)
+    } finally {
+      setIsPreparingBilling(false)
+    }
+  }
   const savePendingWork = async (input: PendingWorkInput, id?: string) => {
     const scheduledFor = new Date(input.scheduledFor)
     if (Number.isNaN(scheduledFor.getTime()))
@@ -723,6 +735,17 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
                   Feina nova
                 </button>
               )}
+              {activeView === 'facturacion' && isAdmin && (
+                <button
+                  className="button"
+                  type="button"
+                  disabled={isPreparingBilling}
+                  onClick={() => void prepareMonthlyInvoices()}
+                >
+                  <FileText size={17} aria-hidden="true" />
+                  {isPreparingBilling ? "S'està preparant…" : 'Prepara el tancament'}
+                </button>
+              )}
               {activeView === 'inventario' && isAdmin && (
                 <button
                   className="button inventory-create"
@@ -783,7 +806,6 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
               invoices={invoices}
               pay={pay}
               clientId={searchParams.get('cliente')}
-              generateMonthlyInvoices={generateMonthlyInvoices}
             />
           )}
           {activeView === 'estadisticas' && (
@@ -1478,18 +1500,15 @@ function Billing({
   invoices,
   pay,
   clientId,
-  generateMonthlyInvoices,
 }: {
   invoices: Invoice[]
   pay: (i: Invoice) => void
   clientId: string | null
-  generateMonthlyInvoices: (billingPeriod: string) => Promise<void>
 }) {
   const searchParams = useSearchParams()
   const updateSearchParams = usePersistentSearchParams()
   const [previewedInvoice, setPreviewedInvoice] = useState<Invoice | null>(null)
   const billingPeriod = searchParams.get('mes') ?? toBillingPeriodValue(getPreviousBillingPeriod())
-  const [generating, setGenerating] = useState(false)
   const clientInvoices = clientId
     ? invoices.filter((invoice) => invoice.client_id === clientId)
     : invoices
@@ -1548,18 +1567,6 @@ function Billing({
                 </option>
               ))}
             </select>
-            <button
-              className="button secondary"
-              type="button"
-              disabled={generating}
-              onClick={async () => {
-                setGenerating(true)
-                await generateMonthlyInvoices(billingPeriod)
-                setGenerating(false)
-              }}
-            >
-              {generating ? "S'està preparant…" : 'Prepara el tancament mensual'}
-            </button>
             <span className="billing-list-count">{displayedInvoices.length} en total</span>
           </div>
         </header>
