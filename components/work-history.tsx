@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  Button,
   Dialog,
   DialogClose,
   DialogContent,
