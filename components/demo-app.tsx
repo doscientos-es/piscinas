@@ -1,6 +1,6 @@
 'use client'
 
-import { ConfirmDialog, PopoverContent, PopoverTrigger } from '@doscientos/ui'
+import { Button, ConfirmDialog, PopoverContent, PopoverTrigger } from '@doscientos/ui'
 import {
   ArrowRight,
   Building2,
@@ -412,9 +412,10 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
         </nav>
         <div className="profile">
           <PopoverTrigger>
-            <button
+            <Button
               className="profile-trigger"
               type="button"
+              variant="ghost"
               aria-label={`Abrir menú de ${accountName}`}
             >
               <span className="avatar" aria-hidden="true">
@@ -425,7 +426,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
                 <span>{isAdmin ? 'Administración' : 'Operativa'}</span>
               </span>
               <ChevronDown className="profile-chevron" size={16} aria-hidden="true" />
-            </button>
+            </Button>
             <PopoverContent placement="top start" className="profile-popover">
               <div className="profile-popover-header">
                 <span className="avatar profile-popover-avatar" aria-hidden="true">
