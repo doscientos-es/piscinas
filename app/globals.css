@@ -8506,7 +8506,17 @@ textarea:focus-visible {
 }
 
 /* Work editor uses the shared, focus-managed dialog primitive. */
+[data-slot='dialog-overlay']:has(.work-editor-dialog) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 3vw, 32px);
+}
 .work-editor-dialog {
+  inline-size: min(720px, 100%);
+  max-inline-size: calc(100vw - clamp(24px, 6vw, 64px));
+  max-block-size: calc(100dvh - clamp(24px, 6vw, 64px));
+  margin: 0;
   padding: 20px;
 }
 .work-editor-dialog-header {
