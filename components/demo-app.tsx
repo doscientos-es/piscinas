@@ -1,6 +1,6 @@
 'use client'
 
-import { PopoverContent, PopoverTrigger } from '@doscientos/ui'
+import { ConfirmDialog, PopoverContent, PopoverTrigger } from '@doscientos/ui'
 import {
   ArrowRight,
   Building2,
@@ -38,6 +38,7 @@ import { VisitReport } from '@/components/visit-report'
 import { validateAuthInput, type AuthMode } from '@/lib/auth-validation'
 import { downloadInvoice, formatDate, getInvoiceLines, type Invoice } from '@/lib/invoice-template'
 import { createClient } from '@/lib/supabase/client'
+import { getVisitStartWarning } from '@/lib/visit-start-validation'
 
 type View = 'inicio' | 'agenda' | 'facturacion' | 'clientes' | 'parte'
 type Visit = {
@@ -99,6 +100,9 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [message, setMessage] = useState<string | null>(null)
+  const [visitToStart, setVisitToStart] = useState<Visit | null>(null)
+  const [startingVisit, setStartingVisit] = useState(false)
+  const [startError, setStartError] = useState<string | null>(null)
   const load = useCallback(async () => {
     const s = createClient()
     const [v, i, session] = await Promise.all([
@@ -177,14 +181,43 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   }, [load])
   if (!ready) return <main className="empty-state">Cargando tu operativa…</main>
   if (!signedIn) return <AuthScreen />
-  const start = async (visit: Visit) => {
+  const requestStart = (visit: Visit) => {
     setMessage(null)
-    const { error } = await createClient().rpc('start_visit', { p_visit_id: visit.id })
+    setStartError(null)
+    setVisitToStart(visit)
+  }
+  const recordVisitStart = async (visit: Visit, position: GeolocationPosition) => {
+    const { error } = await createClient().rpc('start_visit', {
+      p_visit_id: visit.id,
+      p_start_latitude: position.coords.latitude,
+      p_start_longitude: position.coords.longitude,
+      p_start_accuracy_m: position.coords.accuracy,
+      p_start_outside_schedule_confirmed: Boolean(getVisitStartWarning(visit.scheduled_for)),
+    })
+    setStartingVisit(false)
     if (error) {
-      setMessage(error.message)
+      setStartError(error.message)
       return
     }
+    setVisitToStart(null)
     router.push(`/agenda/${visit.id}`)
+  }
+  const confirmVisitStart = () => {
+    if (!visitToStart || startingVisit) return
+    if (!navigator.geolocation) {
+      setStartError('Este dispositivo no permite obtener la ubicación necesaria para iniciar.')
+      return
+    }
+    setStartingVisit(true)
+    setStartError(null)
+    navigator.geolocation.getCurrentPosition(
+      (position) => void recordVisitStart(visitToStart, position),
+      (error) => {
+        setStartingVisit(false)
+        setStartError(geolocationErrorMessage(error))
+      },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20_000 },
+    )
   }
   const pay = async (invoice: Invoice) => {
     const { error } = await createClient()
@@ -364,9 +397,9 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             </p>
           )}
           {view === 'inicio' && (
-            <Overview visits={visits} invoices={invoices} clients={clients} start={start} />
+            <Overview visits={visits} invoices={invoices} clients={clients} start={requestStart} />
           )}
-          {view === 'agenda' && <Agenda visits={visits} start={start} />}
+          {view === 'agenda' && <Agenda visits={visits} start={requestStart} />}
           {view === 'parte' && visitId && <VisitReport visitId={visitId} />}
           {view === 'facturacion' && <Billing invoices={invoices} pay={pay} />}
           {view === 'clientes' && (
@@ -382,8 +415,76 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           )}
         </div>
       </main>
+      <ConfirmDialog
+        open={Boolean(visitToStart)}
+        onOpenChange={(open) => {
+          if (!open && !startingVisit) setVisitToStart(null)
+        }}
+        title="Registrar inicio de visita"
+        description={
+          visitToStart ? (
+            <StartVisitConfirmation
+              visit={visitToStart}
+              warning={getVisitStartWarning(visitToStart.scheduled_for)}
+              error={startError}
+            />
+          ) : undefined
+        }
+        confirmLabel={startingVisit ? 'Obteniendo ubicación…' : 'Confirmar y registrar inicio'}
+        cancelLabel="Cancelar"
+        pending={startingVisit}
+        onConfirm={confirmVisitStart}
+      />
     </div>
   )
+}
+function StartVisitConfirmation({
+  visit,
+  warning,
+  error,
+}: {
+  visit: Visit
+  warning: ReturnType<typeof getVisitStartWarning>
+  error: string | null
+}) {
+  const scheduledFor = new Date(visit.scheduled_for)
+  return (
+    <div className="start-confirmation">
+      <p>
+        ¿Confirmas que estás en{' '}
+        <strong>{visit.installations?.address ?? 'la dirección asignada'}</strong> para{' '}
+        {visit.installations?.clients?.legal_name ?? 'este cliente'}?
+      </p>
+      <p className="start-confirmation-schedule">Visita prevista: {formatDateTime(scheduledFor)}</p>
+      {warning && (
+        <p className="start-confirmation-warning">
+          {warning === 'different_day'
+            ? 'Esta visita está programada para otro día. Confirma que corresponde iniciarla ahora.'
+            : 'La hora real difiere más de 90 minutos de la prevista. Confirma que corresponde iniciarla ahora.'}
+        </p>
+      )}
+      <p className="start-confirmation-location">
+        Al confirmar, el navegador pedirá permiso para registrar tu ubicación precisa y la hora
+        oficial de inicio.
+      </p>
+      {error && <p className="start-confirmation-error">{error}</p>}
+    </div>
+  )
+}
+function geolocationErrorMessage(error: GeolocationPositionError) {
+  if (error.code === error.PERMISSION_DENIED) {
+    return 'Necesitamos el permiso de ubicación para registrar el inicio de la visita.'
+  }
+  if (error.code === error.TIMEOUT) {
+    return 'La ubicación ha tardado demasiado. Comprueba la cobertura e inténtalo de nuevo.'
+  }
+  return 'No se ha podido obtener una ubicación precisa. Activa la ubicación e inténtalo de nuevo.'
+}
+function formatDateTime(value: Date) {
+  return new Intl.DateTimeFormat('es-ES', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(value)
 }
 const blankToNull = (value: string | null) => value?.trim() || null
 const normalizeClient = (client: Partial<Client>): Client => ({
@@ -1615,9 +1716,153 @@ function ClientDetail({
             · pago a {client.payment_terms_days} días
           </p>
         </div>
+        {isAdmin && <ClientTimeTracking client={client} />}
       </div>
     </Modal>
   )
+}
+
+type TimeTrackingVisit = {
+  id: string
+  scheduled_for: string
+  installations: { name: string } | null
+  interventions: {
+    started_at: string | null
+    start_latitude: number | null
+    start_longitude: number | null
+    start_location_accuracy_m: number | null
+  }[]
+}
+
+function ClientTimeTracking({ client }: { client: Client }) {
+  const [logs, setLogs] = useState<TimeTrackingVisit[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    const installationIds = client.installations.map((installation) => installation.id)
+    if (installationIds.length === 0) {
+      setLogs([])
+      setLoading(false)
+      return () => {
+        active = false
+      }
+    }
+    const loadTimeTracking = async () => {
+      setLoading(true)
+      const result = await createClient()
+        .from('visits')
+        .select(
+          'id,scheduled_for,installations(name),interventions(started_at,start_latitude,start_longitude,start_location_accuracy_m)',
+        )
+        .in('installation_id', installationIds)
+        .order('scheduled_for', { ascending: false })
+      if (!active) return
+      if (result.error) {
+        setError(result.error.message)
+      } else {
+        setLogs((result.data ?? []) as unknown as TimeTrackingVisit[])
+        setError(null)
+      }
+      setLoading(false)
+    }
+    void loadTimeTracking()
+    return () => {
+      active = false
+    }
+  }, [client])
+
+  const startedLogs = logs.flatMap((visit) => {
+    const intervention = visit.interventions[0]
+    if (
+      !intervention?.started_at ||
+      intervention.start_latitude === null ||
+      intervention.start_longitude === null
+    ) {
+      return []
+    }
+    return [{ visit, intervention }]
+  })
+
+  return (
+    <section className="sheet-section time-tracking">
+      <div className="sheet-heading">
+        <h3>Control horario</h3>
+        <span>Solo administración</span>
+      </div>
+      <p className="time-tracking-intro">
+        Inicios registrados con la hora oficial del servidor y el punto comunicado por el
+        dispositivo.
+      </p>
+      {loading && <p className="time-tracking-empty">Cargando registros…</p>}
+      {error && (
+        <p className="time-tracking-error">No se ha podido cargar el control horario: {error}</p>
+      )}
+      {!loading && !error && startedLogs.length === 0 && (
+        <p className="time-tracking-empty">
+          Todavía no hay inicios de visita con ubicación registrada.
+        </p>
+      )}
+      <div className="time-tracking-list">
+        {startedLogs.map(({ visit, intervention }) => (
+          <article className="time-tracking-entry" key={visit.id}>
+            <div className="time-tracking-entry-head">
+              <div>
+                <strong>{formatDateTimeWithSeconds(new Date(intervention.started_at!))}</strong>
+                <span>
+                  {visit.installations?.name ?? 'Instalación'} · prevista{' '}
+                  {formatDateTime(new Date(visit.scheduled_for))}
+                </span>
+              </div>
+              <span className="time-tracking-accuracy">
+                Precisión {Math.round(Number(intervention.start_location_accuracy_m ?? 0))} m
+              </span>
+            </div>
+            <VisitStartMap
+              latitude={Number(intervention.start_latitude)}
+              longitude={Number(intervention.start_longitude)}
+              installationName={visit.installations?.name ?? 'Instalación'}
+            />
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function VisitStartMap({
+  latitude,
+  longitude,
+  installationName,
+}: {
+  latitude: number
+  longitude: number
+  installationName: string
+}) {
+  const offset = 0.004
+  const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${longitude - offset}%2C${latitude - offset}%2C${longitude + offset}%2C${latitude + offset}&layer=mapnik&marker=${latitude}%2C${longitude}`
+  const mapLink = `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`
+  return (
+    <div className="time-tracking-map">
+      <iframe
+        title={`Punto de inicio de ${installationName}`}
+        src={mapUrl}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+      />
+      <a href={mapLink} target="_blank" rel="noreferrer">
+        <MapPin size={15} aria-hidden="true" /> Abrir punto en el mapa
+      </a>
+    </div>
+  )
+}
+
+function formatDateTimeWithSeconds(value: Date) {
+  return new Intl.DateTimeFormat('es-ES', {
+    dateStyle: 'medium',
+    timeStyle: 'medium',
+  }).format(value)
 }
 
 function InstallationForm({

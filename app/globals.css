@@ -6768,6 +6768,122 @@ textarea:focus-visible {
   }
 }
 
+/* Attendance confirmation and the administrator-only location log. */
+.start-confirmation {
+  display: grid;
+  gap: 10px;
+  color: #4d6c80;
+  line-height: 1.5;
+}
+.start-confirmation p {
+  margin: 0;
+}
+.start-confirmation strong {
+  color: var(--foreground);
+}
+.start-confirmation-schedule {
+  font-size: 13px;
+  font-weight: 700;
+}
+.start-confirmation-warning,
+.start-confirmation-error {
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+.start-confirmation-warning {
+  border: 1px solid #f0d493;
+  background: #fff8e7;
+  color: #7a5712;
+}
+.start-confirmation-location {
+  font-size: 13px;
+}
+.start-confirmation-error {
+  border: 1px solid #f2c4c4;
+  background: #fff1f1;
+  color: #9d2828;
+}
+.time-tracking .sheet-heading > span {
+  color: #6c8696;
+  font-size: 11px;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.time-tracking-intro,
+.time-tracking-empty,
+.time-tracking-error {
+  margin: 10px 0 0;
+  color: #5d7789;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.time-tracking-error {
+  color: #a52323;
+}
+.time-tracking-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+.time-tracking-entry {
+  overflow: hidden;
+  border: 1px solid #dce9ef;
+  border-radius: 12px;
+  background: #fff;
+}
+.time-tracking-entry-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+}
+.time-tracking-entry-head strong,
+.time-tracking-entry-head span {
+  display: block;
+}
+.time-tracking-entry-head strong {
+  color: var(--foreground);
+  font-size: 14px;
+}
+.time-tracking-entry-head div > span {
+  margin-top: 3px;
+  color: #617d8f;
+  font-size: 12px;
+}
+.time-tracking-accuracy {
+  flex: none;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #eef8fc;
+  color: #39718d;
+  font-size: 11px;
+  font-weight: 700;
+}
+.time-tracking-map iframe {
+  display: block;
+  width: 100%;
+  height: 170px;
+  border: 0;
+}
+.time-tracking-map a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 9px 12px 11px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 750;
+  text-decoration: none;
+}
+@media (max-width: 520px) {
+  .time-tracking-entry-head {
+    display: grid;
+  }
+}
+
 /* Native-style navigation keeps primary destinations within thumb reach on mobile. */
 @media (max-width: 880px) {
   .app-shell {
