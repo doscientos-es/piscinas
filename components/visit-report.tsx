@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { createClient } from '@/lib/supabase/client'
 import { buildVisitNotes, standardVisitChecks } from '@/lib/visit-checklist'
+import { getInitialVisitReportState } from '@/lib/visit-report-state'
 import { validateVisitCompletion, type ProductUsageInput } from '@/lib/visit-validation'
 
 type Product = {
@@ -40,7 +41,7 @@ type VisitDetail = {
     completed_at: string | null
     notes: string | null
     intervention_products: ExistingConsumption[]
-  }[]
+  } | null
 }
 
 const money = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' })
@@ -89,15 +90,11 @@ export function VisitReport({
       setError('No tienes acceso a esta visita o ya no existe.')
     } else {
       const detail = visitResult.data as unknown as VisitDetail
+      const initialReportState = getInitialVisitReportState(detail.interventions)
       setVisit(detail)
       setProducts((productsResult.data ?? []) as Product[])
-      setNotes(detail.interventions[0]?.notes ?? '')
-      setUsages(
-        (detail.interventions[0]?.intervention_products ?? []).map((usage) => ({
-          productId: usage.product_id,
-          quantity: Number(usage.quantity),
-        })),
-      )
+      setNotes(initialReportState.notes)
+      setUsages(initialReportState.usages)
     }
     setLoading(false)
   }, [visitId])
@@ -108,7 +105,7 @@ export function VisitReport({
 
   const selectedProductIds = new Set(usages.map((usage) => usage.productId))
   const availableProducts = products.filter((product) => !selectedProductIds.has(product.id))
-  const intervention = visit?.interventions[0]
+  const intervention = visit?.interventions
   const isClosed = visit?.status === 'completed'
 
   function addProduct() {

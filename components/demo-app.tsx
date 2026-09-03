@@ -19,8 +19,8 @@ import {
   LogOut,
   Mail,
   MapPin,
-  Pencil,
   Package,
+  Pencil,
   Phone,
   Plus,
   Search,
@@ -34,8 +34,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 
-import { InvoicePreview } from '@/components/invoice-preview'
+import { AdminStatistics } from '@/components/admin-statistics'
 import { Inventory, type Product } from '@/components/inventory'
+import { InvoicePreview } from '@/components/invoice-preview'
 import { VisitReport } from '@/components/visit-report'
 import { getAgendaVisitAction } from '@/lib/agenda-access'
 import { validateAuthInput, type AuthMode } from '@/lib/auth-validation'
@@ -43,7 +44,14 @@ import { downloadInvoice, formatDate, getInvoiceLines, type Invoice } from '@/li
 import { createClient } from '@/lib/supabase/client'
 import { getVisitStartWarning } from '@/lib/visit-start-validation'
 
-type View = 'inicio' | 'agenda' | 'facturacion' | 'clientes' | 'inventario' | 'parte'
+type View =
+  | 'inicio'
+  | 'agenda'
+  | 'facturacion'
+  | 'clientes'
+  | 'inventario'
+  | 'estadisticas'
+  | 'parte'
 type Visit = {
   id: string
   scheduled_for: string
@@ -90,6 +98,7 @@ const titles: Record<View, string> = {
   facturacion: 'Facturación y cobros',
   clientes: 'Clientes e instalaciones',
   inventario: 'Inventario de materiales',
+  estadisticas: 'Estadísticas',
   parte: 'Parte de visita',
 }
 
@@ -128,7 +137,9 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
         .order('created_at', { ascending: false }),
       s
         .from('products')
-        .select('id,name,reference,category,unit,sale_price,cost_price,stock_quantity,minimum_stock,active')
+        .select(
+          'id,name,reference,category,unit,sale_price,cost_price,stock_quantity,minimum_stock,active',
+        )
         .order('name'),
       s.auth.getUser(),
     ])
@@ -168,7 +179,8 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       setAccountName(profile.data?.full_name?.trim() || fallbackName || 'Tu cuenta')
       setAccountEmail(session.data.user.email ?? '')
     }
-    const error = v.error || i.error || clientResponse.error || (inventoryMigrationPending ? null : p.error)
+    const error =
+      v.error || i.error || clientResponse.error || (inventoryMigrationPending ? null : p.error)
     if (error) {
       setMessage(error.message)
       return
@@ -337,7 +349,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             priority
           />
         </div>
-        <nav className="nav">
+        <nav className={`nav ${isAdmin ? 'nav-admin' : ''}`}>
           <Nav
             href="/"
             label="Resumen"
@@ -368,6 +380,14 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             icon={<Package size={18} />}
             active={view === 'inventario'}
           />
+          {isAdmin && (
+            <Nav
+              href="/estadisticas"
+              label="Estadísticas"
+              icon={<LayoutDashboard size={18} />}
+              active={view === 'estadisticas'}
+            />
+          )}
         </nav>
         <div className="profile">
           <PopoverTrigger>
@@ -442,11 +462,10 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
               start={requestStart}
             />
           )}
-          {view === 'agenda' && (
-            <Agenda visits={visits} isAdmin={isAdmin} start={requestStart} />
-          )}
+          {view === 'agenda' && <Agenda visits={visits} isAdmin={isAdmin} start={requestStart} />}
           {view === 'parte' && visitId && <VisitReport visitId={visitId} readOnly={isAdmin} />}
           {view === 'facturacion' && <Billing invoices={invoices} pay={pay} />}
+          {view === 'estadisticas' && <AdminStatistics isAdmin={isAdmin} />}
           {view === 'clientes' && (
             <Clients
               clients={clients}
