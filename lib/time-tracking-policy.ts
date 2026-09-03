@@ -87,8 +87,8 @@ function toRadians(value: number) {
 
 export const startExceptionLabel: Record<StartException, string> = {
   different_day: 'La visita està programada per a un altre dia',
-  too_early: 'L'inici és anterior a la franja permesa',
-  too_late: 'L'inici supera el retard permès',
+  too_early: "L'inici és anterior a la franja permesa",
+  too_late: "L'inici supera el retard permès",
   outside_geofence: 'La ubicació queda fora del radi de la instal·lació',
   low_accuracy: 'La precisió de la ubicació és insuficient',
 }

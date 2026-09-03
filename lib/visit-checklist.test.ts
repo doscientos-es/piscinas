@@ -19,7 +19,7 @@ describe('buildVisitNotes', () => {
     expect(buildVisitNotes('', ['desconegut'])).toBe('')
   })
 
-  it('separa les verificacions desades de les notes lliures de l'informe', () => {
+  it("separa les verificacions desades de les notes lliures de l'informe", () => {
     expect(
       parseVisitNotes(
         "Feines realitzades:\n• He netejat el filtre o n'he fet un rentat\n• He mesurat i ajustat el pH\n\nL'aigua estava una mica tèrbola.",
