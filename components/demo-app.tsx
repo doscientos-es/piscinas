@@ -212,7 +212,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
         ? s
             .from('invoices')
             .select(
-              'id,client_id,number,status,subtotal,vat_total,total,issued_on,due_on,billing_period,clients(legal_name,tax_id,billing_email,billing_address),invoice_lines(id,description,quantity,unit_price,vat_rate,line_total)',
+              'id,client_id,number,status,subtotal,vat_total,total,issued_on,due_on,billing_period,clients(legal_name,tax_id,billing_email,billing_address),invoice_lines(id,sort_order,description,quantity,unit_price,vat_rate,line_total)',
             )
             .order('created_at', { ascending: false })
         : Promise.resolve({ data: [], error: null })

@@ -7,6 +7,7 @@ export type InvoiceClient = {
 
 export type InvoiceLine = {
   id: string
+  sort_order?: number
   description: string
   quantity: number
   unit_price: number
@@ -41,7 +42,10 @@ export function formatDate(value: string | null) {
 }
 
 export function getInvoiceLines(invoice: Invoice): InvoiceLine[] {
-  if (invoice.invoice_lines.length > 0) return invoice.invoice_lines
+  if (invoice.invoice_lines.length > 0)
+    return [...invoice.invoice_lines].sort(
+      (left, right) => (left.sort_order ?? Number.MAX_SAFE_INTEGER) - (right.sort_order ?? Number.MAX_SAFE_INTEGER),
+    )
 
   return [
     {
