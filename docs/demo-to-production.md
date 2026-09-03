@@ -24,10 +24,10 @@ La interfaz actual permite iniciar sesión, consultar agenda, clientes y factura
 
 ### Operativa de técnicos
 
-1. Construir el parte completo: inicio/fin, checklist por plantilla, cloro/pH/alcalinidad, incidencias, reparación, observaciones, productos y fotos.
+1. Ampliar el parte ya operativo —inicio/fin, descripción y productos— con checklist por plantilla, cloro/pH/alcalinidad, incidencias, reparación y fotos.
 2. Diseñar la agenda recurrente de contratos de una o dos visitas semanales, incluyendo reprogramaciones, cancelaciones y excepciones.
 3. Mantener la interfaz de campo muy guiada: piscina identificable, acciones grandes, escasa escritura y comportamiento validado en tableta.
-4. Al cerrar una intervención, crear de forma transaccional los conceptos facturables de productos y extras, conservando precio, IVA y trazabilidad del parte.
+4. Extender el cierre transaccional de consumos con los extras de trabajo, manteniendo precio, IVA y trazabilidad del parte.
 
 ### Facturación, cobro y comunicación
 

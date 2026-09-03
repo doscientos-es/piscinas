@@ -40,14 +40,15 @@
 ## Alcance demostrable hoy
 
 1. Registro e inicio de sesión con Supabase; el primer perfil creado obtiene el rol de administración en el entorno de demo.
-2. Consulta de agenda de visitas vinculada a instalación y cliente, y cierre básico del parte.
-3. Consulta de clientes, instalaciones y método de cobro.
-4. Consulta de facturas y marcado manual de factura como cobrada.
-5. Persistencia de estas acciones en Supabase con datos de ejemplo y políticas RLS de base.
+2. Inicio de una visita desde la agenda, con registro de hora real y apertura de su parte de trabajo.
+3. Cierre de parte con descripción obligatoria y productos de stock, descontando existencias y dejando conceptos pendientes de facturar.
+4. Consulta de clientes, instalaciones y método de cobro.
+5. Consulta de facturas y marcado manual de factura como cobrada.
+6. Persistencia de estas acciones en Supabase con datos de ejemplo y políticas RLS de base.
 
 ## Límites explícitos de la demo
 
-- El cierre del parte aún no captura desde la interfaz tareas, lecturas, productos, incidencias ni fotos, aunque el modelo de datos contempla gran parte de ello.
+- El parte aún no captura desde la interfaz checklist, lecturas, incidencias, reparaciones ni fotos; la descripción y los productos sí se guardan.
 - No hay generación por lote de facturas, cálculo de cuota más extras, PDF fiscal, numeración definitiva ni prevención transaccional de duplicados.
 - No están conectados email, WhatsApp, SMS, banco/SEPA, datáfono, almacenamiento de fotos ni importación de Excel.
 - La gestión de roles y permisos es una base técnica de demostración; el alta pública no es el flujo previsto para producción.
