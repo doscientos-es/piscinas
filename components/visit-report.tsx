@@ -29,6 +29,7 @@ type VisitDetail = {
   id: string
   status: string
   scheduled_for: string
+  planning_notes: string | null
   installations: {
     name: string
     address: string
@@ -82,7 +83,7 @@ export function VisitReport({
       supabase
         .from('visits')
         .select(
-          `id,status,scheduled_for,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,instructions,clients(legal_name)),interventions(${interventionFields})`,
+          `id,status,scheduled_for,planning_notes,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,instructions,clients(legal_name)),interventions(${interventionFields})`,
         )
         .eq('id', visitId)
         .maybeSingle(),
@@ -209,6 +210,12 @@ export function VisitReport({
         <aside className="visit-instructions">
           <strong>Indicaciones de acceso</strong>
           <p>{installation.instructions}</p>
+        </aside>
+      )}
+      {visit.planning_notes && (
+        <aside className="visit-instructions visit-planning-notes">
+          <strong>Notas de planificación</strong>
+          <p>{visit.planning_notes}</p>
         </aside>
       )}
       {error && (

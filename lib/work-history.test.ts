@@ -4,6 +4,7 @@ import {
   canManagePendingWork,
   filterWorkHistory,
   groupWorkInstallationsByClient,
+  normalizeWorkPlanningNotes,
   paginateWorkHistory,
   type WorkHistoryVisit,
   type WorkInstallation,
@@ -15,6 +16,7 @@ const visits: WorkHistoryVisit[] = [
     installation_id: 'installation-1',
     scheduled_for: '2026-08-10T08:00:00.000Z',
     status: 'completed',
+    planning_notes: 'Comprobar el dosificador antes de iniciar.',
     technician_id: 'tech-1',
     technician: { full_name: 'Ana' },
     interventions: { completed_at: '2026-08-10T09:00:00.000Z', notes: 'Limpieza' },
@@ -29,6 +31,7 @@ const visits: WorkHistoryVisit[] = [
     installation_id: 'installation-2',
     scheduled_for: '2026-08-20T08:00:00.000Z',
     status: 'cancelled',
+    planning_notes: null,
     technician_id: 'tech-2',
     technician: { full_name: 'Bruno' },
     interventions: null,
@@ -49,6 +52,15 @@ describe('work history', () => {
         technicianId: 'tech-1',
         from: '2026-08-01',
         to: '2026-08-15',
+      }),
+    ).toEqual([visits[0]])
+    expect(
+      filterWorkHistory(visits, {
+        query: 'dosificador',
+        status: 'all',
+        technicianId: '',
+        from: '',
+        to: '',
       }),
     ).toEqual([visits[0]])
   })
@@ -108,5 +120,12 @@ describe('work history', () => {
         installations: [installations[1]],
       },
     ])
+  })
+
+  it('normaliza las notas opcionales de planificación antes de guardarlas', () => {
+    expect(normalizeWorkPlanningNotes('  Revisar la bomba antes de empezar.  ')).toBe(
+      'Revisar la bomba antes de empezar.',
+    )
+    expect(normalizeWorkPlanningNotes('   ')).toBeNull()
   })
 })

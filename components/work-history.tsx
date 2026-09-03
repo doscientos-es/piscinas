@@ -1,6 +1,16 @@
 'use client'
 
-import { CalendarDays, Pencil, Plus, Search, Trash2, UserRound, X } from 'lucide-react'
+import {
+  Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@doscientos/ui'
+import { CalendarDays, Pencil, Plus, Search, Trash2, UserRound } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useMemo, useState } from 'react'
@@ -178,6 +188,7 @@ export function WorkHistory({
                 {visit.installations?.name ?? 'Instalación'} ·{' '}
                 {visit.installations?.address ?? 'Sin dirección'}
               </span>
+              {visit.planning_notes && <small>Planificación: {visit.planning_notes}</small>}
               {visit.interventions?.notes && <small>{visit.interventions.notes}</small>}
             </div>
             {isAdmin && (
@@ -307,6 +318,9 @@ function WorkEditor({
   const [scheduledFor, setScheduledFor] = useState(
     visit === 'new' ? '' : toDateTimeLocal(visit.scheduled_for),
   )
+  const [planningNotes, setPlanningNotes] = useState(
+    visit === 'new' ? '' : (visit.planning_notes ?? ''),
+  )
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const clients = useMemo(() => groupWorkInstallationsByClient(installations), [installations])
@@ -336,7 +350,7 @@ function WorkEditor({
     setSaving(true)
     setError(null)
     try {
-      await onSave({ installationId, technicianId, scheduledFor })
+      await onSave({ installationId, technicianId, scheduledFor, planningNotes })
     } catch (saveError) {
       setError(
         saveError instanceof Error ? saveError.message : 'No se ha podido guardar el trabajo.',
@@ -347,22 +361,14 @@ function WorkEditor({
   }
 
   return (
-    <div className="modal-backdrop" role="presentation">
-      <section
-        className="modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="work-editor-title"
-      >
-        <div className="modal-head">
-          <div>
-            <span className="eyebrow">Planificación</span>
-            <h2 id="work-editor-title">{visit === 'new' ? 'Nuevo trabajo' : 'Editar trabajo'}</h2>
-          </div>
-          <button className="close" type="button" onClick={onClose} aria-label="Cerrar">
-            <X size={20} aria-hidden="true" />
-          </button>
-        </div>
+    <Dialog open onOpenChange={(open) => !open && !saving && onClose()}>
+      <DialogContent className="work-editor-dialog sm:max-w-2xl">
+        <DialogHeader className="work-editor-dialog-header">
+          <DialogTitle>{visit === 'new' ? 'Nuevo trabajo' : 'Editar trabajo'}</DialogTitle>
+          <DialogDescription>
+            Asigna el cliente, la instalación y la persona responsable de la visita.
+          </DialogDescription>
+        </DialogHeader>
         <form className="record-form" onSubmit={(event) => void submit(event)}>
           <div className="form-grid">
             <div className="field form-span-2 work-client-picker">
@@ -477,6 +483,20 @@ function WorkEditor({
                 required
               />
             </label>
+            <label className="field form-span-2">
+              <span>
+                Notas para el técnico <em>Opcional</em>
+              </span>
+              <textarea
+                rows={3}
+                value={planningNotes}
+                onChange={(event) => setPlanningNotes(event.target.value)}
+                placeholder="Ej.: Revisar la bomba y avisar antes de acceder al cuarto técnico."
+              />
+              <small className="work-planning-notes-help">
+                El técnico las verá antes de iniciar el trabajo.
+              </small>
+            </label>
           </div>
           {unavailable && (
             <p className="form-error">
@@ -484,17 +504,17 @@ function WorkEditor({
             </p>
           )}
           {error && <p className="form-error">{error}</p>}
-          <div className="modal-foot">
-            <button className="button secondary" type="button" onClick={onClose} disabled={saving}>
+          <DialogFooter className="work-editor-dialog-footer">
+            <DialogClose variant="outline" disabled={saving}>
               Cancelar
-            </button>
-            <button className="button" type="submit" disabled={saving || unavailable}>
+            </DialogClose>
+            <Button type="submit" disabled={saving || unavailable}>
               {saving ? 'Guardando…' : visit === 'new' ? 'Programar trabajo' : 'Guardar cambios'}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </section>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

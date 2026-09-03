@@ -8456,6 +8456,56 @@ textarea:focus-visible {
   font-size: 13px;
 }
 
+/* Work editor uses the shared, focus-managed dialog primitive. */
+.work-editor-dialog {
+  padding: 20px;
+}
+.work-editor-dialog-header {
+  padding-right: 42px;
+}
+.work-editor-dialog [data-slot='dialog-title'] {
+  color: #183d56;
+  font-family: var(--font-sans);
+  font-size: 19px;
+  font-weight: 760;
+  letter-spacing: -0.025em;
+}
+.work-editor-dialog [data-slot='dialog-close'] {
+  top: 12px;
+  right: 12px;
+}
+.work-editor-dialog .record-form {
+  gap: 18px;
+}
+.work-editor-dialog-footer {
+  margin: 0 -20px -20px;
+}
+.work-planning-notes-help {
+  color: #617d8f;
+  font-size: 12px;
+  font-weight: 500;
+}
+.start-confirmation-notes {
+  display: grid;
+  gap: 4px;
+  padding: 11px 12px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+  background: #f3fafc;
+}
+.start-confirmation-notes strong {
+  color: #183d56;
+  font-size: 13px;
+}
+.start-confirmation-notes p {
+  color: #46677d;
+  font-size: 13px;
+}
+.visit-planning-notes {
+  border-left-color: #527387;
+  background: #f5f8fa;
+}
+
 /* Keep every button variant legible when the shared hover rule is applied. */
 @media (hover: hover) {
   .button:hover:not(:disabled) {

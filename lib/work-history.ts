@@ -3,6 +3,7 @@ export type WorkHistoryVisit = {
   installation_id: string
   scheduled_for: string
   status: string
+  planning_notes: string | null
   technician_id: string | null
   technician: { full_name: string } | null
   installations: { name: string; address: string; clients: { legal_name: string } | null } | null
@@ -26,6 +27,7 @@ export type PendingWorkInput = {
   installationId: string
   technicianId: string
   scheduledFor: string
+  planningNotes: string
 }
 
 export function canManagePendingWork(isAdmin: boolean, status: string) {
@@ -50,6 +52,7 @@ export function filterWorkHistory(visits: WorkHistoryVisit[], filters: WorkHisto
         visit.installations?.name,
         visit.installations?.address,
         visit.technician?.full_name,
+        visit.planning_notes,
         visit.interventions?.notes,
       ]
         .filter(Boolean)
@@ -88,6 +91,10 @@ export function groupWorkInstallationsByClient(installations: WorkInstallation[]
       ),
     }))
     .sort((left, right) => left.name.localeCompare(right.name, 'es'))
+}
+
+export function normalizeWorkPlanningNotes(value: string) {
+  return value.trim() || null
 }
 
 function normalize(value: string) {

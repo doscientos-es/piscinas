@@ -67,7 +67,12 @@ import {
 } from '@/lib/time-tracking-policy'
 import { usePersistentSearchParams } from '@/lib/use-persistent-search-params'
 import { getVisitStartWarning } from '@/lib/visit-start-validation'
-import type { PendingWorkInput, WorkInstallation, WorkTechnician } from '@/lib/work-history'
+import {
+  normalizeWorkPlanningNotes,
+  type PendingWorkInput,
+  type WorkInstallation,
+  type WorkTechnician,
+} from '@/lib/work-history'
 
 type View =
   | 'inicio'
@@ -83,6 +88,7 @@ type Visit = {
   installation_id: string
   scheduled_for: string
   status: string
+  planning_notes: string | null
   technician_id: string | null
   technician: { full_name: string } | null
   installations: {
@@ -211,7 +217,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       s
         .from('visits')
         .select(
-          'id,installation_id,scheduled_for,status,technician_id,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,location_latitude,location_longitude,clients(legal_name)),interventions(completed_at,notes)',
+          'id,installation_id,scheduled_for,status,planning_notes,technician_id,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,location_latitude,location_longitude,clients(legal_name)),interventions(completed_at,notes)',
         )
         .order('scheduled_for'),
       invoicesRequest,
@@ -235,7 +241,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       ? await s
           .from('visits')
           .select(
-            'id,installation_id,scheduled_for,status,technician_id,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,clients(legal_name)),interventions(completed_at,notes)',
+            'id,installation_id,scheduled_for,status,planning_notes,technician_id,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,clients(legal_name)),interventions(completed_at,notes)',
           )
           .order('scheduled_for')
       : v
@@ -458,6 +464,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       installation_id: input.installationId,
       technician_id: input.technicianId,
       scheduled_for: scheduledFor.toISOString(),
+      planning_notes: normalizeWorkPlanningNotes(input.planningNotes),
     }
     const result = id
       ? await createClient()
@@ -867,6 +874,12 @@ function StartVisitConfirmation({
         {visit.installations?.clients?.legal_name ?? 'este cliente'}?
       </p>
       <p className="start-confirmation-schedule">Visita prevista: {formatDateTime(scheduledFor)}</p>
+      {visit.planning_notes && (
+        <aside className="start-confirmation-notes">
+          <strong>Notas de planificación</strong>
+          <p>{visit.planning_notes}</p>
+        </aside>
+      )}
       {warning && (
         <p className="start-confirmation-warning">
           {warning === 'different_day'
