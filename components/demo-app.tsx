@@ -20,6 +20,7 @@ import {
   Mail,
   MapPin,
   Pencil,
+  Package,
   Phone,
   Plus,
   Search,
@@ -34,6 +35,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 
 import { InvoicePreview } from '@/components/invoice-preview'
+import { Inventory, type Product } from '@/components/inventory'
 import { VisitReport } from '@/components/visit-report'
 import { getAgendaVisitAction } from '@/lib/agenda-access'
 import { validateAuthInput, type AuthMode } from '@/lib/auth-validation'
@@ -41,7 +43,7 @@ import { downloadInvoice, formatDate, getInvoiceLines, type Invoice } from '@/li
 import { createClient } from '@/lib/supabase/client'
 import { getVisitStartWarning } from '@/lib/visit-start-validation'
 
-type View = 'inicio' | 'agenda' | 'facturacion' | 'clientes' | 'parte'
+type View = 'inicio' | 'agenda' | 'facturacion' | 'clientes' | 'inventario' | 'parte'
 type Visit = {
   id: string
   scheduled_for: string
@@ -87,6 +89,7 @@ const titles: Record<View, string> = {
   agenda: 'Agenda de visitas',
   facturacion: 'Facturación y cobros',
   clientes: 'Clientes e instalaciones',
+  inventario: 'Inventario de materiales',
   parte: 'Parte de visita',
 }
 
@@ -101,6 +104,8 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   const [visits, setVisits] = useState<Visit[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [clients, setClients] = useState<Client[]>([])
+  const [products, setProducts] = useState<Product[]>([])
+  const [inventorySchemaReady, setInventorySchemaReady] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
   const [visitToStart, setVisitToStart] = useState<Visit | null>(null)
   const [editingClient, setEditingClient] = useState<Client | null | 'new'>(null)
@@ -108,7 +113,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   const [startError, setStartError] = useState<string | null>(null)
   const load = useCallback(async () => {
     const s = createClient()
-    const [v, i, session] = await Promise.all([
+    const [v, i, p, session] = await Promise.all([
       s
         .from('visits')
         .select(
@@ -121,6 +126,10 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           'id,number,status,subtotal,vat_total,total,issued_on,due_on,clients(legal_name,tax_id,billing_email,billing_address),invoice_lines(id,description,quantity,unit_price,vat_rate,line_total)',
         )
         .order('created_at', { ascending: false }),
+      s
+        .from('products')
+        .select('id,name,reference,category,unit,sale_price,cost_price,stock_quantity,minimum_stock,active')
+        .order('name'),
       s.auth.getUser(),
     ])
     const extendedClients = await s
@@ -141,6 +150,9 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           .order('legal_name')
       : extendedClients
     setClientSchemaReady(!migrationPending)
+    const inventoryMigrationPending = p.error?.message.includes(
+      'column products.minimum_stock does not exist',
+    )
     if (session.data.user) {
       const profile = await s
         .from('profiles')
@@ -156,7 +168,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       setAccountName(profile.data?.full_name?.trim() || fallbackName || 'Tu cuenta')
       setAccountEmail(session.data.user.email ?? '')
     }
-    const error = v.error || i.error || clientResponse.error
+    const error = v.error || i.error || clientResponse.error || (inventoryMigrationPending ? null : p.error)
     if (error) {
       setMessage(error.message)
       return
@@ -164,6 +176,8 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     setVisits((v.data ?? []) as unknown as Visit[])
     setInvoices((i.data ?? []) as unknown as Invoice[])
     setClients((clientResponse.data ?? []).map((client) => normalizeClient(client)) as Client[])
+    setProducts((p.data ?? []) as Product[])
+    setInventorySchemaReady(!inventoryMigrationPending)
   }, [])
   useEffect(() => {
     const s = createClient()
@@ -348,6 +362,12 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             icon={<FileText size={18} />}
             active={view === 'facturacion'}
           />
+          <Nav
+            href="/inventario"
+            label="Inventario"
+            icon={<Package size={18} />}
+            active={view === 'inventario'}
+          />
         </nav>
         <div className="profile">
           <PopoverTrigger>
@@ -436,6 +456,14 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
               onDeleteClient={deleteClient}
               onSaveInstallation={saveInstallation}
               onDeleteInstallation={deleteInstallation}
+            />
+          )}
+          {view === 'inventario' && (
+            <Inventory
+              products={products}
+              isAdmin={isAdmin}
+              schemaReady={inventorySchemaReady}
+              onRefresh={load}
             />
           )}
         </div>
