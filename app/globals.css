@@ -8526,6 +8526,18 @@ textarea:focus-visible {
 .work-editor-dialog .record-form {
   gap: 18px;
 }
+.work-editor-dialog,
+.work-editor-dialog .record-form,
+.work-editor-dialog .form-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.work-editor-dialog-header,
+.work-editor-dialog .record-form {
+  grid-column: 1 / -1;
+}
+.work-editor-dialog .form-span-2 {
+  grid-column: auto;
+}
 .work-editor-dialog-footer {
   margin: 0 -20px -20px;
 }
