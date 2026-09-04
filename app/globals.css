@@ -8710,9 +8710,9 @@ body {
 .topbar {
   height: 76px;
   padding: 0 44px;
-  border-bottom: 1px solid rgb(219 228 232 / 80%);
-  background: rgb(248 250 251 / 78%);
-  backdrop-filter: blur(14px);
+  border-bottom: 0;
+  background: transparent;
+  backdrop-filter: none;
 }
 
 .topbar h1,
