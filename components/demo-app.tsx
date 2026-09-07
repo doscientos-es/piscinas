@@ -1045,12 +1045,10 @@ function Overview({
 
   return (
     <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-5">
-      <section className="relative isolate overflow-hidden rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm sm:px-6">
-        <div className="absolute -right-20 -top-24 -z-10 size-64 rounded-full bg-violet-100/70 blur-3xl" aria-hidden="true" />
-        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+      <section >
+         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-700">Centre de control</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-[28px]">
+           <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-[28px]">
             Bon dia, {accountName}
           </h2>
           <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-500">
