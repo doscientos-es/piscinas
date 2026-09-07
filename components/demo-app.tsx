@@ -59,13 +59,8 @@ import { validateAuthInput } from '@/lib/auth-validation'
 import {
   downloadInvoice,
   formatDate,
-  formatMoney,
   getInvoiceLines,
-  getInvoiceStatusLabel,
-  getMonthlyInvoiceBreakdown,
   type Invoice,
-  type InvoiceLine,
-  type MonthlyInvoiceBreakdown,
 } from '@/lib/invoice-template'
 import {
   isClientExtensionSchemaPending,
@@ -1036,69 +1031,103 @@ function Overview({
   const weeklyVisits = futureVisits.filter(
     (visit) => new Date(visit.scheduled_for) < addDays(today, 7),
   )
+  const activeClients = clients.filter((client) => client.active)
+  const activeInstallations = activeClients.reduce(
+    (total, client) => total + client.installations.length,
+    0,
+  )
+  const inProgressVisits = operationalVisits.filter((visit) => visit.status === 'in_progress')
   const currentDate = new Intl.DateTimeFormat('ca-ES', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   }).format(now)
   const attentionCount = unassignedVisits.length + overdueVisits.length + lowStock.length + overdueInvoices.length
+  const daySummary = todayVisits.length
+    ? `${todayVisits.length} ${todayVisits.length === 1 ? 'visita prevista' : 'visites previstes'} per avui.`
+    : weeklyVisits.length
+      ? `No tens visites avui. Hi ha ${weeklyVisits.length} planificades durant els propers 7 dies.`
+      : 'No hi ha visites pendents de planificar.'
 
   return (
-    <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-5">
-      <section >
-         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-        <div>
-           <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-[28px]">
-            Bon dia, {accountName}
-          </h2>
-          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-500">
-            Tot el que necessites per planificar el dia i anticipar les incidències operatives.
-          </p>
+    <div className="overview-page">
+      <section className="overview-hero" aria-labelledby="overview-title">
+        <div className="overview-hero-copy">
+          <span className="overview-eyebrow">Centre de control</span>
+          <h2 id="overview-title">Bon dia, {accountName}</h2>
+          <p>{daySummary}</p>
         </div>
-        <time
-          className="inline-flex w-fit shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs font-semibold capitalize text-slate-600"
-          dateTime={now.toISOString()}
-        >
-          <CalendarDays size={15} aria-hidden="true" className="text-violet-600" />
-          {currentDate}
-        </time>
+        <div className="overview-hero-meta">
+          <span className={`overview-health ${attentionCount ? 'needs-attention' : 'on-track'}`}>
+            <span aria-hidden="true" />
+            {attentionCount ? `${attentionCount} per revisar` : 'Operativa al dia'}
+          </span>
+          <time dateTime={now.toISOString()}>
+            <CalendarDays size={14} aria-hidden="true" />
+            {currentDate}
+          </time>
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadors operatius">
-        <Stat icon={<CalendarDays size={17} />} label="Agenda d'avui" value={String(todayVisits.length)} foot={`${operationalVisits.length} visites obertes`} href="/agenda" />
-        <Stat icon={<AlertTriangle size={17} />} label="Per assignar" value={String(unassignedVisits.length)} foot={unassignedVisits.length ? 'Requereixen planificació' : 'Tot assignat'} href="/agenda" tone={unassignedVisits.length ? 'warning' : 'success'} />
-        <Stat icon={<Package size={17} />} label="Estoc crític" value={String(lowStock.length)} foot={lowStock.length ? 'Materials sota mínim' : 'Estoc controlat'} href="/inventario?stock=low" tone={lowStock.length ? 'warning' : 'success'} />
-        <Stat icon={<CircleDollarSign size={17} />} label="Per cobrar" value={money.format(due.reduce((total, invoice) => total + Number(invoice.total), 0))} foot={`${overdueInvoices.length} factures vençudes`} href="/facturacion" tone={overdueInvoices.length ? 'danger' : 'default'} />
+      <section className="overview-metrics" aria-label="Indicadors operatius">
+        <OverviewMetric
+          href="/agenda"
+          icon={<CalendarDays size={16} />}
+          label="Avui"
+          value={String(todayVisits.length)}
+          detail={inProgressVisits.length ? `${inProgressVisits.length} en curs` : 'visites previstes'}
+        />
+        <OverviewMetric
+          href="/agenda"
+          icon={<ArrowRight size={16} />}
+          label="Propers 7 dies"
+          value={String(weeklyVisits.length)}
+          detail="visites planificades"
+        />
+        <OverviewMetric
+          href="/clientes"
+          icon={<Users size={16} />}
+          label="Cartera activa"
+          value={String(activeClients.length)}
+          detail={`${activeInstallations} instal·lacions`}
+        />
+        <OverviewMetric
+          href="/facturacion"
+          icon={<CircleDollarSign size={16} />}
+          label="Per cobrar"
+          value={money.format(due.reduce((total, invoice) => total + Number(invoice.total), 0))}
+          detail={overdueInvoices.length ? `${overdueInvoices.length} vençudes` : `${due.length} pendents`}
+          tone={overdueInvoices.length ? 'danger' : 'default'}
+        />
       </section>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(17rem,0.85fr)]">
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+      <div className="overview-panels">
+        <section className="overview-panel overview-visits-panel" aria-labelledby="upcoming-visits-title">
+          <div className="overview-panel-head">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-400">{todayVisits.length ? 'Operativa d’avui' : 'Planificació'}</p>
-              <h3 className="mt-1.5 text-base font-semibold tracking-tight text-slate-950">{todayVisits.length ? "Agenda d'avui" : 'Properes visites'}</h3>
+              <span>{todayVisits.length ? 'Operativa d’avui' : 'Planificació'}</span>
+              <h3 id="upcoming-visits-title">{todayVisits.length ? "Agenda d'avui" : 'Properes visites'}</h3>
             </div>
-            <Link className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold text-violet-700 transition-colors hover:bg-violet-50 hover:text-violet-800" href="/agenda">
-              Veure agenda <ArrowRight size={14} aria-hidden="true" />
+            <Link className="overview-panel-link" href="/agenda">
+              Agenda <ArrowRight size={14} aria-hidden="true" />
             </Link>
           </div>
           {displayedVisits.length ? (
-            displayedVisits.map((visit) => <VisitRow key={visit.id} visit={visit} isAdmin={isAdmin} start={start} />)
+            displayedVisits.slice(0, 3).map((visit) => <VisitRow key={visit.id} visit={visit} isAdmin={isAdmin} start={start} />)
           ) : (
-            <p className="py-8 text-center text-sm text-slate-500">No hi ha visites assignades o programades.</p>
+            <p className="overview-empty">No hi ha visites assignades o programades.</p>
           )}
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-label="Requereix atenció">
-          <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+        <section className="overview-panel overview-attention-panel" aria-labelledby="attention-title">
+          <div className="overview-panel-head">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-400">Seguiment</p>
-              <h3 className="mt-1.5 text-base font-semibold tracking-tight text-slate-950">Requereix atenció</h3>
+              <span>Seguiment</span>
+              <h3 id="attention-title">Prioritats</h3>
             </div>
-            <span className="inline-grid h-7 min-w-7 place-items-center rounded-full bg-violet-50 px-2 text-xs font-bold tabular-nums text-violet-700">{attentionCount}</span>
+            <span className="overview-alert-count">{attentionCount}</span>
           </div>
-          <div className="mt-3 divide-y divide-slate-100">
+          <div className="overview-alerts">
             {unassignedVisits.length > 0 && <OverviewAlert href="/agenda" icon={<AlertTriangle size={16} />} title={`${unassignedVisits.length} visites sense assignar`} detail="Assigna un tècnic abans de la visita." tone="warning" />}
             {overdueVisits.length > 0 && <OverviewAlert href="/agenda" icon={<CalendarDays size={16} />} title={`${overdueVisits.length} visites pendents de tancar`} detail="Revisa els parts que ja han vençut." tone="danger" />}
             {lowStock.length > 0 && <OverviewAlert href="/inventario?stock=low" icon={<Package size={16} />} title={`${lowStock.length} materials amb estoc baix`} detail="Consulta les existències i planifica la reposició." tone="warning" />}
@@ -1112,10 +1141,6 @@ function Overview({
                 </span>
               </div>
             )}
-          </div>
-          <div className="mt-3 flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2.5 text-xs text-slate-500">
-            <span>Pròxims 7 dies</span>
-            <strong className="font-semibold text-slate-800">{weeklyVisits.length} visites planificades</strong>
           </div>
         </section>
       </div>
@@ -1137,48 +1162,33 @@ function OverviewAlert({ href, icon, title, detail, tone }: { href: string; icon
   )
 }
 
-function Stat({
+function OverviewMetric({
   icon,
   label,
   value,
-  foot,
+  detail,
   href,
   tone = 'default',
 }: {
   icon: ReactNode
   label: string
   value: string
-  foot: string
-  href?: string
-  tone?: 'default' | 'warning' | 'success' | 'danger'
+  detail: string
+  href: string
+  tone?: 'default' | 'danger'
 }) {
-  const iconClass = {
-    default: 'bg-violet-50 text-violet-700',
-    warning: 'bg-amber-50 text-amber-700',
-    success: 'bg-emerald-50 text-emerald-700',
-    danger: 'bg-rose-50 text-rose-700',
-  }[tone]
-  const content = (
-    <>
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-xs font-medium text-slate-500">{label}</div>
-        <span className={`grid size-7 place-items-center rounded-md ${iconClass}`} aria-hidden="true">
-          {icon}
-        </span>
-      </div>
-      <div className="mt-4 text-2xl font-semibold tracking-tight text-slate-950 tabular-nums">{value}</div>
-      <div className="mt-1 text-xs text-slate-500">{foot}</div>
-    </>
-  )
-  return href ? (
-    <Link
-      className="group flex min-h-36 flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md"
-      href={href}
-    >
-      {content}
+  return (
+    <Link className={`overview-metric ${tone === 'danger' ? 'is-danger' : ''}`} href={href}>
+      <span className="overview-metric-icon" aria-hidden="true">
+        {icon}
+      </span>
+      <span className="overview-metric-content">
+        <span>{label}</span>
+        <strong>{value}</strong>
+        <small>{detail}</small>
+      </span>
+      <ArrowRight className="overview-metric-arrow" size={15} aria-hidden="true" />
     </Link>
-  ) : (
-    <div className="flex min-h-36 flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm">{content}</div>
   )
 }
 type CalendarView = 'day' | 'week' | 'month'
