@@ -8928,6 +8928,16 @@ body {
   inline-size: min(760px, 100%);
 }
 
+.modal.client-form-modal {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.client-form-modal > [data-slot='dialog-header'],
+.client-form-modal > .record-form {
+  grid-column: 1 / -1;
+  min-inline-size: 0;
+}
+
 @media (max-width: 520px) {
   .modal-backdrop {
     align-items: flex-start;

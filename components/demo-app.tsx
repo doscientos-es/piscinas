@@ -1878,6 +1878,7 @@ function ClientForm({
       title={client ? 'Edita el client' : 'Client nou'}
       description="Els camps amb asterisc són obligatoris."
       onClose={onClose}
+      className="client-form-modal"
     >
       <form className="record-form" onSubmit={submit}>
         <h3>Dades generals</h3>
@@ -2464,15 +2465,19 @@ function Modal({
   description,
   onClose,
   children,
+  className,
 }: {
   title: string
   description: string
   onClose: () => void
   children: ReactNode
+  className?: string
 }) {
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="modal client-modal max-h-[calc(100dvh-2rem)] max-w-[min(760px,calc(100vw-2rem))]">
+      <DialogContent
+        className={`modal client-modal max-h-[calc(100dvh-2rem)] max-w-[min(760px,calc(100vw-2rem))] ${className ?? ''}`}
+      >
         <DialogHeader className="modal-title pr-10">
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
