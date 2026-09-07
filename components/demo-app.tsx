@@ -502,14 +502,15 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
         `Voleu eliminar ${client.legal_name}? També se n'eliminaran les instal·lacions. Aquesta acció no es pot desfer.`,
       )
     )
-      return
+      return false
     const { error } = await createClient().from('clients').delete().eq('id', client.id)
     if (error) {
       toast.error("No s'ha pogut eliminar el client", { description: error.message })
-      return
+      return false
     }
     toast.success('Client eliminat', { description: client.legal_name })
     await load()
+    return true
   }
   const saveInstallation = async (
     clientId: string,
@@ -1912,7 +1913,7 @@ function Clients({
   editingClient: Client | null | 'new'
   setEditingClient: (client: Client | null | 'new') => void
   onSaveClient: (client: ClientInput, id?: string) => Promise<void>
-  onDeleteClient: (client: Client) => Promise<void>
+  onDeleteClient: (client: Client) => Promise<boolean>
   onSaveInstallation: (
     clientId: string,
     installation: InstallationInput,
@@ -2034,9 +2035,6 @@ function Clients({
             role="listitem"
           >
             <div className="client-card-head">
-              <span className="client-avatar" aria-hidden="true">
-                {client.legal_name.trim().slice(0, 2).toUpperCase()}
-              </span>
               <div>
                 <div className="client-name-row">
                   <h3>{client.legal_name}</h3>
@@ -2089,30 +2087,6 @@ function Clients({
               >
                 <Eye size={16} aria-hidden="true" />
               </Button>
-              {isAdmin && (
-                <>
-                  <Button
-                    className="icon-action"
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`Edita ${client.legal_name}`}
-                    onClick={() => setEditingClient(client)}
-                  >
-                    <Pencil size={16} />
-                  </Button>
-                  <Button
-                    className="icon-action destructive"
-                    type="button"
-                    variant="destructive"
-                    size="icon-sm"
-                    aria-label={`Elimina ${client.legal_name}`}
-                    onClick={() => void onDeleteClient(client)}
-                  >
-                    <Trash2 size={16} />
-                  </Button>
-                </>
-              )}
             </div>
           </article>
         ))}
@@ -2162,6 +2136,9 @@ function Clients({
           onEditClient={() => {
             setSelectedClient(null)
             setEditingClient(selectedClient)
+          }}
+          onDeleteClient={async () => {
+            if (await onDeleteClient(selectedClient)) setSelectedClient(null)
           }}
           onNewInstallation={() => setEditingInstallation('new')}
           onEditInstallation={(installation) => setEditingInstallation(installation)}
@@ -2402,6 +2379,7 @@ function ClientDetail({
   isAdmin,
   onClose,
   onEditClient,
+  onDeleteClient,
   onNewInstallation,
   onEditInstallation,
   onDeleteInstallation,
@@ -2410,6 +2388,7 @@ function ClientDetail({
   isAdmin: boolean
   onClose: () => void
   onEditClient: () => void
+  onDeleteClient: () => Promise<void>
   onNewInstallation: () => void
   onEditInstallation: (installation: Installation) => void
   onDeleteInstallation: (installation: Installation) => Promise<void>
@@ -2425,9 +2404,22 @@ function ClientDetail({
           <div className="sheet-heading">
             <h3>Contacte</h3>
             {isAdmin && (
-              <Button className="action-link" type="button" variant="ghost" size="sm" onClick={onEditClient}>
-                Edita la fitxa
-              </Button>
+              <div className="client-detail-actions">
+                <Button className="action-link" type="button" variant="ghost" size="sm" onClick={onEditClient}>
+                  <Pencil size={15} aria-hidden="true" />
+                  Edita el client
+                </Button>
+                <Button
+                  className="icon-action destructive"
+                  type="button"
+                  variant="destructive"
+                  size="icon-sm"
+                  aria-label={`Elimina ${client.legal_name}`}
+                  onClick={() => void onDeleteClient()}
+                >
+                  <Trash2 size={15} aria-hidden="true" />
+                </Button>
+              </div>
             )}
           </div>
           <div className="detail-list">
