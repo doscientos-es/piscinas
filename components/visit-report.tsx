@@ -1,12 +1,11 @@
 'use client'
 
-import { Button, LinkButton, toast } from '@doscientos/ui'
-import { ArrowLeft, CheckCircle2, Clock3, MapPin, PackagePlus, Trash2 } from 'lucide-react'
+import { AutocompleteCombobox, Button, LinkButton, QuantityInput, toast } from '@doscientos/ui'
+import { ArrowLeft, CheckCircle2, Clock3, MapPin, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
-import { findProducts } from '@/lib/product-search'
 import { createClient } from '@/lib/supabase/client'
 import { buildVisitNotes, parseVisitNotes, standardVisitChecks } from '@/lib/visit-checklist'
 import { getInitialVisitReportState } from '@/lib/visit-report-state'
@@ -119,10 +118,6 @@ export function VisitReport({
 
   const selectedProductIds = new Set(usages.map((usage) => usage.productId))
   const availableProducts = products.filter((product) => !selectedProductIds.has(product.id))
-  const matchingProducts = useMemo(
-    () => findProducts(availableProducts, productSearch),
-    [availableProducts, productSearch],
-  )
   const intervention = visit?.interventions
   const isClosed = visit?.status === 'completed'
 
@@ -298,47 +293,43 @@ export function VisitReport({
                 <p>Afegeix només el material utilitzat durant aquesta visita.</p>
               </div>
             </div>
-            <div className="product-picker">
-              <label className="product-search">
-                <span>Cerca un producte</span>
-                <input
-                  type="search"
-                  value={productSearch}
-                  onChange={(event) => setProductSearch(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key !== 'Enter') return
-                    event.preventDefault()
-                    if (matchingProducts.length === 1) addProduct(matchingProducts[0].id)
-                  }}
-                  disabled={!availableProducts.length}
-                  placeholder="Nom o referència…"
-                />
-              </label>
-            </div>
-            {productSearch.trim() && (
-              <ul className="product-search-results" aria-label="Resultats de productes">
-                {matchingProducts.length ? (
-                  matchingProducts.map((product) => (
-                    <li key={product.id}>
-                      <Button type="button" variant="ghost" onClick={() => addProduct(product.id)}>
-                        <span>
-                          <strong>{product.name}</strong>
-                          <small>{product.reference ?? 'Sense referència'}</small>
-                        </span>
-                        <em>
-                          {quantityFormat.format(product.stock_quantity)} {product.unit}
-                        </em>
-                        <PackagePlus size={17} aria-hidden="true" />
-                      </Button>
-                    </li>
-                  ))
-                ) : (
-                  <li className="product-search-empty">
-                    No hi ha coincidències entre els materials amb estoc.
-                  </li>
-                )}
-              </ul>
-            )}
+            <AutocompleteCombobox
+              className="product-combobox"
+              label="Afegeix un producte"
+              description={
+                availableProducts.length
+                  ? 'Cerca pel nom o la referència i selecciona’l per afegir-lo.'
+                  : 'Ja has afegit tots els productes disponibles.'
+              }
+              placeholder="Cerca un producte o referència"
+              aria-label="Cerca i afegeix un producte"
+              items={availableProducts}
+              inputValue={productSearch}
+              selectedKey={null}
+              isDisabled={!availableProducts.length}
+              getItemKey={(product) => product.id}
+              getItemLabel={(product) => `${product.name} ${product.reference ?? ''}`}
+              onInputChange={setProductSearch}
+              onSelectionChange={(_key, product) => {
+                if (product) addProduct(product.id)
+              }}
+              renderItem={(product) => (
+                <div className="product-combobox-option">
+                  <span>
+                    <strong>{product.name}</strong>
+                    <small>{product.reference ?? 'Sense referència'}</small>
+                  </span>
+                  <em>
+                    {quantityFormat.format(product.stock_quantity)} {product.unit} disponibles
+                  </em>
+                </div>
+              )}
+              emptyState={
+                <p className="product-combobox-empty">
+                  No hi ha coincidències entre els materials amb estoc.
+                </p>
+              }
+            />
             {usages.length ? (
               <div className="usage-list">
                 {usages.map((usage, index) => {
@@ -349,21 +340,22 @@ export function VisitReport({
                         <strong>{product?.name ?? 'Producte no disponible'}</strong>
                         <span>
                           {product
-                            ? `${quantityFormat.format(product.stock_quantity)} ${product.unit} disponibles`
+                            ? `${product.reference ? `${product.reference} · ` : ''}${quantityFormat.format(product.stock_quantity)} ${product.unit} disponibles`
                             : 'Producte no disponible'}
                         </span>
                       </div>
                       <label className="usage-quantity">
                         <span>Quantitat {product && <small>en {product.unit}</small>}</span>
-                        <input
-                          type="number"
-                          min="0.001"
-                          step="0.001"
-                          inputMode="decimal"
+                        <QuantityInput
+                          className="usage-quantity-input"
+                          aria-label={`Quantitat de ${product?.name ?? 'producte'}`}
+                          decrementAriaLabel={`Redueix la quantitat de ${product?.name ?? 'producte'}`}
+                          incrementAriaLabel={`Augmenta la quantitat de ${product?.name ?? 'producte'}`}
+                          minValue={0.001}
+                          maxValue={product ? Number(product.stock_quantity) : undefined}
+                          step={0.001}
                           value={usage.quantity}
-                          onChange={(event) =>
-                            updateUsage(index, { quantity: Number(event.target.value) })
-                          }
+                          onChange={(quantity) => updateUsage(index, { quantity })}
                         />
                       </label>
                       <Button

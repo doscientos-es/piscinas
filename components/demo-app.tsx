@@ -76,6 +76,7 @@ import {
 import type { SearchParamUpdates } from '@/lib/search-params'
 import { createClient } from '@/lib/supabase/client'
 import { usePersistentSearchParams } from '@/lib/use-persistent-search-params'
+import { getVisitMapUrls } from '@/lib/visit-location'
 import {
   canManagePendingWork,
   getDefaultScheduledFor,
@@ -105,9 +106,12 @@ type Visit = {
   installations: {
     name: string
     address: string
+    pool_type: string | null
+    instructions: string | null
+    notes: string | null
     location_latitude: number | null
     location_longitude: number | null
-    clients: { legal_name: string }
+    clients: { legal_name: string; phone: string | null }
   } | null
   interventions: { completed_at: string | null; notes: string | null } | null
 }
@@ -227,7 +231,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       s
         .from('visits')
         .select(
-          'id,installation_id,scheduled_for,status,planning_notes,technician_id,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,location_latitude,location_longitude,clients(legal_name)),interventions(completed_at,notes)',
+          'id,installation_id,scheduled_for,status,planning_notes,technician_id,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,pool_type,instructions,notes,location_latitude,location_longitude,clients(legal_name,phone)),interventions(completed_at,notes)',
         )
         .order('scheduled_for'),
       invoicesRequest,
@@ -244,7 +248,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       ? await s
           .from('visits')
           .select(
-            'id,installation_id,scheduled_for,status,planning_notes,technician_id,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,clients(legal_name)),interventions(completed_at,notes)',
+            'id,installation_id,scheduled_for,status,planning_notes,technician_id,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,pool_type,instructions,notes,clients(legal_name,phone)),interventions(completed_at,notes)',
           )
           .order('scheduled_for')
       : v
@@ -1216,6 +1220,7 @@ function Agenda({
   const [editingVisit, setEditingVisit] = useState<Visit | 'new' | null>(null)
   const [initialScheduledFor, setInitialScheduledFor] = useState<string | undefined>()
   const [deletingVisit, setDeletingVisit] = useState<Visit | null>(null)
+  const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [operationError, setOperationError] = useState<string | null>(null)
   useEffect(() => {
@@ -1258,6 +1263,9 @@ function Agenda({
     if (!canManagePendingWork(isAdmin, visit.status)) return
     setOperationError(null)
     setDeletingVisit(visit)
+  }
+  const openVisitDetails = (visit: Visit) => {
+    if (!isAdmin && visit.status === 'scheduled') setSelectedVisit(visit)
   }
 
   return (
@@ -1331,7 +1339,7 @@ function Agenda({
             date={activeDate}
             visits={visitsForDay(visits, activeDate)}
             isAdmin={isAdmin}
-            start={start}
+            onPreview={openVisitDetails}
             onCreate={createWork}
             onEdit={editWork}
             onDelete={requestDeleteWork}
@@ -1342,7 +1350,7 @@ function Agenda({
             days={days}
             visits={visits}
             isAdmin={isAdmin}
-            start={start}
+            onPreview={openVisitDetails}
             onCreate={createWork}
             onEdit={editWork}
             onDelete={requestDeleteWork}
@@ -1354,7 +1362,7 @@ function Agenda({
             activeDate={activeDate}
             visits={visits}
             isAdmin={isAdmin}
-            start={start}
+            onPreview={openVisitDetails}
             onCreate={createWork}
             onEdit={editWork}
             onDelete={requestDeleteWork}
@@ -1362,6 +1370,16 @@ function Agenda({
         )}
       </section>
       {operationError && <p className="form-error">{operationError}</p>}
+      {selectedVisit && (
+        <VisitPreview
+          visit={selectedVisit}
+          onClose={() => setSelectedVisit(null)}
+          onStart={() => {
+            setSelectedVisit(null)
+            start(selectedVisit)
+          }}
+        />
+      )}
       {editingVisit && (
         <WorkEditor
           key={`${editingVisit === 'new' ? 'new' : editingVisit.id}-${initialScheduledFor ?? ''}`}
@@ -1404,11 +1422,84 @@ function Agenda({
   )
 }
 
+function VisitPreview({ visit, onClose, onStart }: { visit: Visit; onClose: () => void; onStart: () => void }) {
+  const installation = visit.installations
+  const scheduledFor = new Date(visit.scheduled_for)
+  const { embedUrl, directionsUrl } = getVisitMapUrls({
+    installationName: installation?.name,
+    address: installation?.address,
+    latitude: installation?.location_latitude,
+    longitude: installation?.location_longitude,
+  })
+
+  return (
+    <Modal
+      title={installation?.clients?.legal_name ?? 'Detalls de la visita'}
+      description="Revisa la informació abans de registrar l'inici."
+      onClose={onClose}
+      className="visit-preview-modal"
+    >
+      <div className="visit-preview-content">
+        <div className="visit-preview-schedule">
+          <CalendarDays size={19} aria-hidden="true" />
+          <div>
+            <span>Visita programada</span>
+            <strong>{formatDateTime(scheduledFor)}</strong>
+          </div>
+        </div>
+        <section className="visit-preview-installation">
+          <div className="visit-preview-section-heading">
+            <Building2 size={18} aria-hidden="true" />
+            <div>
+              <strong>{installation?.name ?? 'Instal·lació'}</strong>
+              {installation?.pool_type && <span>{installation.pool_type}</span>}
+            </div>
+          </div>
+          <address>{installation?.address ?? 'No hi ha cap adreça registrada.'}</address>
+          {installation?.clients?.phone && (
+            <a href={`tel:${installation.clients.phone}`} className="visit-preview-phone">
+              <Phone size={15} aria-hidden="true" /> {installation.clients.phone}
+            </a>
+          )}
+        </section>
+        <section className="visit-preview-map" aria-label="Ubicació de la instal·lació">
+          <iframe title={`Mapa de ${installation?.name ?? 'la instal·lació'}`} src={embedUrl} loading="lazy" />
+          <a href={directionsUrl} target="_blank" rel="noreferrer" className="visit-preview-map-link">
+            <MapPin size={16} aria-hidden="true" /> Obre la ruta a Google Maps
+          </a>
+        </section>
+        {visit.planning_notes && (
+          <aside className="visit-preview-notes">
+            <strong>Indicacions de la visita</strong>
+            <p>{visit.planning_notes}</p>
+          </aside>
+        )}
+        {installation?.instructions && (
+          <aside className="visit-preview-notes">
+            <strong>Instruccions de la instal·lació</strong>
+            <p>{installation.instructions}</p>
+          </aside>
+        )}
+        {installation?.notes && (
+          <aside className="visit-preview-notes subtle">
+            <strong>Notes de la instal·lació</strong>
+            <p>{installation.notes}</p>
+          </aside>
+        )}
+      </div>
+      <DialogFooter className="modal-foot visit-preview-footer">
+        <Button variant="outline" type="button" onClick={onClose}>Torna a l'agenda</Button>
+        <Button type="button" onClick={onStart}>Inicia la visita</Button>
+      </DialogFooter>
+    </Modal>
+  )
+}
+
 function DayCalendar({
   date,
   visits,
   isAdmin,
-  start,
+  onPreview,
   onCreate,
   onEdit,
   onDelete,
@@ -1416,7 +1507,7 @@ function DayCalendar({
   date: Date
   visits: Visit[]
   isAdmin: boolean
-  start: (visit: Visit) => void
+  onPreview: (visit: Visit) => void
   onCreate: (date: Date) => void
   onEdit: (visit: Visit) => void
   onDelete: (visit: Visit) => void
@@ -1446,7 +1537,7 @@ function DayCalendar({
               key={visit.id}
               visit={visit}
               isAdmin={isAdmin}
-              start={start}
+              onPreview={onPreview}
               onEdit={onEdit}
               onDelete={onDelete}
               timed
@@ -1465,7 +1556,7 @@ function WeekCalendar({
   days,
   visits,
   isAdmin,
-  start,
+  onPreview,
   onCreate,
   onEdit,
   onDelete,
@@ -1473,7 +1564,7 @@ function WeekCalendar({
   days: Date[]
   visits: Visit[]
   isAdmin: boolean
-  start: (visit: Visit) => void
+  onPreview: (visit: Visit) => void
   onCreate: (date: Date) => void
   onEdit: (visit: Visit) => void
   onDelete: (visit: Visit) => void
@@ -1500,7 +1591,7 @@ function WeekCalendar({
                 key={visit.id}
                 visit={visit}
                 isAdmin={isAdmin}
-                start={start}
+                onPreview={onPreview}
                 onEdit={onEdit}
                 onDelete={onDelete}
                 compact
@@ -1521,7 +1612,7 @@ function MonthCalendar({
   activeDate,
   visits,
   isAdmin,
-  start,
+  onPreview,
   onCreate,
   onEdit,
   onDelete,
@@ -1530,7 +1621,7 @@ function MonthCalendar({
   activeDate: Date
   visits: Visit[]
   isAdmin: boolean
-  start: (visit: Visit) => void
+  onPreview: (visit: Visit) => void
   onCreate: (date: Date) => void
   onEdit: (visit: Visit) => void
   onDelete: (visit: Visit) => void
@@ -1559,7 +1650,7 @@ function MonthCalendar({
                     key={visit.id}
                     visit={visit}
                     isAdmin={isAdmin}
-                    start={start}
+                    onPreview={onPreview}
                     onEdit={onEdit}
                     onDelete={onDelete}
                     compact
@@ -1580,7 +1671,7 @@ function MonthCalendar({
 function CalendarEvent({
   visit,
   isAdmin,
-  start,
+  onPreview,
   onEdit,
   onDelete,
   compact,
@@ -1588,7 +1679,7 @@ function CalendarEvent({
 }: {
   visit: Visit
   isAdmin: boolean
-  start: (visit: Visit) => void
+  onPreview: (visit: Visit) => void
   onEdit: (visit: Visit) => void
   onDelete: (visit: Visit) => void
   compact?: boolean
@@ -1640,7 +1731,7 @@ function CalendarEvent({
         style={timed ? { top } : undefined}
         onClick={(event) => {
           event.stopPropagation()
-          start(visit)
+          onPreview(visit)
         }}
       >
         {content}
