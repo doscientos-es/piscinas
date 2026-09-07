@@ -1,5 +1,6 @@
 'use client'
 
+import { Button, LinkButton, toast } from '@doscientos/ui'
 import { ArrowLeft, CheckCircle2, Clock3, MapPin, PackagePlus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -179,6 +180,9 @@ export function VisitReport({
       setError(completionError.message)
       return
     }
+    toast.success('Informe completat', {
+      description: 'La visita i els consums han quedat registrats.',
+    })
     router.replace('/agenda')
     router.refresh()
   }
@@ -316,7 +320,7 @@ export function VisitReport({
                 {matchingProducts.length ? (
                   matchingProducts.map((product) => (
                     <li key={product.id}>
-                      <button type="button" onClick={() => addProduct(product.id)}>
+                      <Button type="button" variant="ghost" onClick={() => addProduct(product.id)}>
                         <span>
                           <strong>{product.name}</strong>
                           <small>{product.reference ?? 'Sense referència'}</small>
@@ -325,7 +329,7 @@ export function VisitReport({
                           {quantityFormat.format(product.stock_quantity)} {product.unit}
                         </em>
                         <PackagePlus size={17} aria-hidden="true" />
-                      </button>
+                      </Button>
                     </li>
                   ))
                 ) : (
@@ -362,14 +366,16 @@ export function VisitReport({
                           }
                         />
                       </label>
-                      <button
+                      <Button
                         className="usage-delete"
                         type="button"
+                        variant="destructive"
+                        size="icon-sm"
                         onClick={() => removeUsage(index)}
                         aria-label={`Elimina ${product?.name ?? 'producte'}`}
                       >
                         <Trash2 size={17} />
-                      </button>
+                      </Button>
                     </div>
                   )
                 })}
@@ -383,10 +389,10 @@ export function VisitReport({
           </section>
 
           <div className="report-actions">
-            <Link className="button secondary" href="/agenda">
+            <LinkButton variant="outline" href="/agenda">
               Torna sense desar
-            </Link>
-            <button className="button accent" type="submit" disabled={saving}>
+            </LinkButton>
+            <Button type="submit" disabled={saving}>
               {saving ? (
                 "S'està desant…"
               ) : (
@@ -394,7 +400,7 @@ export function VisitReport({
                   <CheckCircle2 size={17} /> Tanca la visita
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </form>
       )}

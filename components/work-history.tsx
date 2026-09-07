@@ -1,7 +1,9 @@
 'use client'
 
 import {
+  AutocompleteCombobox,
   Button,
+  ConfirmDialog,
   Dialog,
   DialogClose,
   DialogContent,
@@ -9,6 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  HighlightMatch,
 } from '@doscientos/ui'
 import { CalendarDays, Pencil, Search, Trash2, UserRound } from 'lucide-react'
 import Link from 'next/link'
@@ -69,6 +72,8 @@ export function WorkHistory({
   const requestedPage = Number(searchParams.get('pagina') ?? '1')
   const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage - 1 : 0
   const [editingVisit, setEditingVisit] = useState<WorkHistoryVisit | 'new' | null>(null)
+  const [deletingVisit, setDeletingVisit] = useState<WorkHistoryVisit | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [operationError, setOperationError] = useState<string | null>(null)
   const handledCreationVersion = useRef(creationVersion)
   useEffect(() => {
@@ -192,9 +197,11 @@ export function WorkHistory({
             </span>
             {canEditWork(isAdmin) ? (
               <div className="work-history-actions">
-                <button
+                <Button
                   className="action-link"
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     setOperationError(null)
                     setEditingVisit(visit)
@@ -202,29 +209,21 @@ export function WorkHistory({
                 >
                   <Pencil size={15} aria-hidden="true" />
                   Edita
-                </button>
+                </Button>
                 {canManagePendingWork(isAdmin, visit.status) && (
-                  <button
+                  <Button
                     className="action-link danger"
                     type="button"
+                    variant="destructive"
+                    size="sm"
                     onClick={() => {
-                      if (
-                        !window.confirm(
-                          'Voleu eliminar aquesta feina programada? Aquesta acció no es pot desfer.',
-                        )
-                      )
-                        return
                       setOperationError(null)
-                      void onDeletePendingWork(visit.id).catch((error: unknown) => {
-                        setOperationError(
-                          error instanceof Error ? error.message : "No s'ha pogut eliminar la feina.",
-                        )
-                      })
+                      setDeletingVisit(visit)
                     }}
                   >
                     <Trash2 size={15} aria-hidden="true" />
                     Elimina
-                  </button>
+                  </Button>
                 )}
               </div>
             ) : visit.status !== 'scheduled' ? (
@@ -245,25 +244,25 @@ export function WorkHistory({
         </div>
       )}
       <nav className="pagination" aria-label="Paginació de feines">
-        <button
-          className="button secondary"
+        <Button
           type="button"
+          variant="outline"
           disabled={currentPage === 0}
           onClick={() => changePage(currentPage - 1)}
         >
           Anterior
-        </button>
+        </Button>
         <span>
           Pàgina {currentPage + 1} de {pageCount}
         </span>
-        <button
-          className="button secondary"
+        <Button
           type="button"
+          variant="outline"
           disabled={currentPage + 1 >= pageCount}
           onClick={() => changePage(currentPage + 1)}
         >
           Següent
-        </button>
+        </Button>
       </nav>
       {editingVisit && (
         <WorkEditor
@@ -278,22 +277,48 @@ export function WorkHistory({
           }}
         />
       )}
+      <ConfirmDialog
+        open={Boolean(deletingVisit)}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setDeletingVisit(null)
+        }}
+        title="Elimina la feina programada?"
+        description="Aquesta acció no es pot desfer."
+        confirmLabel="Elimina la feina"
+        cancelLabel="Cancel·la"
+        destructive
+        pending={isDeleting}
+        onConfirm={() => {
+          if (!deletingVisit) return
+          setIsDeleting(true)
+          void onDeletePendingWork(deletingVisit.id)
+            .catch((error: unknown) => {
+              setOperationError(error instanceof Error ? error.message : "No s'ha pogut eliminar la feina.")
+            })
+            .finally(() => {
+              setIsDeleting(false)
+              setDeletingVisit(null)
+            })
+        }}
+      />
     </section>
   )
 }
 
-function WorkEditor({
+export function WorkEditor({
   visit,
   installations,
   technicians,
   onClose,
   onSave,
+  initialScheduledFor,
 }: {
   visit: WorkHistoryVisit | 'new'
   installations: WorkInstallation[]
   technicians: WorkTechnician[]
   onClose: () => void
   onSave: (input: PendingWorkInput) => Promise<void>
+  initialScheduledFor?: string
 }) {
   const initialInstallation =
     visit === 'new' ? undefined : installations.find((item) => item.id === visit.installation_id)
@@ -304,7 +329,7 @@ function WorkEditor({
     visit === 'new' ? (technicians[0]?.id ?? '') : (visit.technician_id ?? ''),
   )
   const [scheduledFor, setScheduledFor] = useState(
-    visit === 'new' ? '' : toDateTimeLocal(visit.scheduled_for),
+    visit === 'new' ? (initialScheduledFor ?? '') : toDateTimeLocal(visit.scheduled_for),
   )
   const [planningNotes, setPlanningNotes] = useState(
     visit === 'new' ? '' : (visit.planning_notes ?? ''),
@@ -313,9 +338,6 @@ function WorkEditor({
   const [saving, setSaving] = useState(false)
   const clients = useMemo(() => groupWorkInstallationsByClient(installations), [installations])
   const selectedClient = clients.find((client) => client.id === selectedClientId)
-  const matchingClients = clients.filter((client) =>
-    client.name.toLocaleLowerCase('es').includes(clientSearch.toLocaleLowerCase('es').trim()),
-  )
   const unavailable = !installationId || !technicianId
 
   const selectClient = (client: WorkClient) => {
@@ -357,62 +379,42 @@ function WorkEditor({
         </DialogHeader>
         <form className="record-form" onSubmit={(event) => void submit(event)}>
           <div className="form-grid">
-            <div className="field form-span-2 work-client-picker">
-              <span>Client</span>
-              <input
-                type="search"
-                value={clientSearch}
-                onChange={(event) => updateClientSearch(event.target.value)}
-                placeholder="Cerca pel nom del client"
-                aria-label="Cerca un client"
-                autoComplete="off"
-              />
-              {selectedClient ? (
-                <div className="work-client-selected">
-                  <span>
-                    <strong>{selectedClient.name}</strong>
-                    <small>
-                      {selectedClient.installations.length}{' '}
-                      {selectedClient.installations.length === 1
-                        ? 'instal·lació'
-                        : 'instal·lacions'}
-                    </small>
-                  </span>
-                  <button
-                    type="button"
-                    className="action-link"
-                    onClick={() => updateClientSearch('')}
-                  >
-                    Canvia
-                  </button>
+            <AutocompleteCombobox
+              className="form-span-2 work-client-picker"
+              label="Client"
+              description={
+                selectedClient
+                  ? 'Client seleccionat. Pots escriure per canviar-lo.'
+                  : 'Escriu el nom del client i selecciona’l de la llista.'
+              }
+              placeholder="Cerca pel nom del client"
+              aria-label="Cerca un client"
+              items={clients}
+              inputValue={clientSearch}
+              selectedKey={selectedClientId || null}
+              getItemKey={(client) => client.id}
+              getItemLabel={(client) => client.name}
+              onInputChange={updateClientSearch}
+              onSelectionChange={(_key, client) => {
+                if (client) selectClient(client)
+              }}
+              renderItem={(client, query) => (
+                <div className="grid gap-0.5">
+                  <strong>
+                    <HighlightMatch text={client.name} query={query} />
+                  </strong>
+                  <small className="text-muted-foreground text-xs">
+                    {client.installations.length}{' '}
+                    {client.installations.length === 1 ? 'instal·lació' : 'instal·lacions'}
+                  </small>
                 </div>
-              ) : clientSearch.trim() ? (
-                <div className="work-client-options" aria-label="Clients trobats">
-                  {matchingClients.length ? (
-                    matchingClients.map((client) => (
-                      <button
-                        type="button"
-                        className="work-client-option"
-                        key={client.id}
-                        onClick={() => selectClient(client)}
-                      >
-                        <strong>{client.name}</strong>
-                        <small>
-                          {client.installations.length}{' '}
-                          {client.installations.length === 1 ? 'instal·lació' : 'instal·lacions'}
-                        </small>
-                      </button>
-                    ))
-                  ) : (
-                    <p>No hi ha clients que coincideixin amb la cerca.</p>
-                  )}
-                </div>
-              ) : (
-                <p className="work-client-hint">
-                  Cerca i selecciona el client abans de triar la instal·lació.
-                </p>
               )}
-            </div>
+              emptyState={
+                <p className="text-muted-foreground px-3 py-5 text-center text-sm">
+                  No hi ha clients que coincideixin amb la cerca.
+                </p>
+              }
+            />
             {selectedClient?.installations.length === 1 ? (
               <div className="field form-span-2">
                 <span>Instal·lació</span>

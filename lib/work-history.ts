@@ -102,6 +102,16 @@ export function normalizeWorkPlanningNotes(value: string) {
   return value.trim() || null
 }
 
+/** Returns a local workday start suitable for the schedule form. */
+export function getDefaultScheduledFor(date: Date) {
+  const scheduledFor = new Date(date)
+  scheduledFor.setHours(9, 0, 0, 0)
+  const year = scheduledFor.getFullYear()
+  const month = String(scheduledFor.getMonth() + 1).padStart(2, '0')
+  const day = String(scheduledFor.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}T09:00`
+}
+
 function normalize(value: string) {
   return value
     .normalize('NFD')

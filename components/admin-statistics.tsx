@@ -47,25 +47,23 @@ export function AdminStatistics({
 
     const loadStatistics = async () => {
       setLoading(true)
-      const supabase = createClient()
-      const [visits, invoices] = await Promise.all([
-        supabase
-          .from('visits')
-          .select('scheduled_for,status,interventions(started_at)')
-          .gte('scheduled_for', start.toISOString())
-          .lt('scheduled_for', end.toISOString()),
-        supabase
-          .from('invoices')
-          .select('issued_on,status,total')
-          .gte('issued_on', startDate)
-          .lt('issued_on', endDate),
-      ])
-      if (!active) return
-      const loadError = visits.error || invoices.error
-      if (loadError) {
-        setError(loadError.message)
-        setStatistics(null)
-      } else {
+      try {
+        const supabase = createClient()
+        const [visits, invoices] = await Promise.all([
+          supabase
+            .from('visits')
+            .select('scheduled_for,status,interventions(started_at)')
+            .gte('scheduled_for', start.toISOString())
+            .lt('scheduled_for', end.toISOString()),
+          supabase
+            .from('invoices')
+            .select('issued_on,status,total')
+            .gte('issued_on', startDate)
+            .lt('issued_on', endDate),
+        ])
+        if (!active) return
+        const loadError = visits.error || invoices.error
+        if (loadError) throw new Error(loadError.message)
         setStatistics(
           buildAdminStatistics(
             (visits.data ?? []) as unknown as StatisticsVisit[],
@@ -74,8 +72,13 @@ export function AdminStatistics({
           ),
         )
         setError(null)
+      } catch (loadError) {
+        if (!active) return
+        setStatistics(null)
+        setError(loadError instanceof Error ? loadError.message : 'Error desconegut.')
+      } finally {
+        if (active) setLoading(false)
       }
-      setLoading(false)
     }
 
     void loadStatistics()

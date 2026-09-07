@@ -4,6 +4,7 @@ import {
   canEditWork,
   canManagePendingWork,
   filterWorkHistory,
+  getDefaultScheduledFor,
   groupWorkInstallationsByClient,
   normalizeWorkPlanningNotes,
   paginateWorkHistory,
@@ -142,5 +143,9 @@ describe('work history', () => {
       'Revisar la bomba antes de empezar.',
     )
     expect(normalizeWorkPlanningNotes('   ')).toBeNull()
+  })
+
+  it('preselecciona el día pulsado al programar una nueva feina', () => {
+    expect(getDefaultScheduledFor(new Date(2026, 7, 12, 16, 30))).toBe('2026-08-12T09:00')
   })
 })

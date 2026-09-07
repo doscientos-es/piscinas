@@ -6,12 +6,16 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
+  LinkButton,
   PopoverContent,
   PopoverTrigger,
+  toast,
 } from '@doscientos/ui'
 import {
+  AlertTriangle,
   ArrowRight,
   Building2,
   CalendarDays,
@@ -48,7 +52,7 @@ import { AdminStatistics } from '@/components/admin-statistics'
 import { Inventory, type Product } from '@/components/inventory'
 import { InvoicePreview } from '@/components/invoice-preview'
 import { VisitReport } from '@/components/visit-report'
-import { WorkHistory } from '@/components/work-history'
+import { WorkEditor, WorkHistory } from '@/components/work-history'
 import { getAgendaVisitAction } from '@/lib/agenda-access'
 import { canAccessAppView, type AccountRole } from '@/lib/app-access'
 import { validateAuthInput } from '@/lib/auth-validation'
@@ -68,6 +72,8 @@ import type { SearchParamUpdates } from '@/lib/search-params'
 import { createClient } from '@/lib/supabase/client'
 import { usePersistentSearchParams } from '@/lib/use-persistent-search-params'
 import {
+  canManagePendingWork,
+  getDefaultScheduledFor,
   normalizeWorkPlanningNotes,
   type PendingWorkInput,
   type WorkInstallation,
@@ -165,7 +171,6 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
   const [workCreationVersion, setWorkCreationVersion] = useState(0)
   const [statisticsReload, setStatisticsReload] = useState(0)
   const [isPreparingBilling, setIsPreparingBilling] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [signOutError, setSignOutError] = useState<string | null>(null)
   const [visitToStart, setVisitToStart] = useState<Visit | null>(null)
@@ -176,7 +181,9 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     const s = createClient()
     const { data: userData, error: userError } = await s.auth.getUser()
     if (userError || !userData.user) {
-      setMessage(userError?.message ?? "No s'ha pogut identificar la sessió.")
+      toast.error("No s'ha pogut identificar la sessió", {
+        description: userError?.message,
+      })
       return
     }
     const profile = await s
@@ -185,7 +192,9 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       .eq('id', userData.user.id)
       .maybeSingle()
     if (profile.error || !profile.data) {
-      setMessage(profile.error?.message ?? "No s'ha trobat el perfil d'accés.")
+      toast.error("No s'ha trobat el perfil d'accés", {
+        description: profile.error?.message,
+      })
       return
     }
     const accountRole = profile.data.role as AccountRole
@@ -260,7 +269,9 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
         p.error?.message ?? '',
       )
     if (visitResponse.error) {
-      setMessage(visitResponse.error.message)
+      toast.error("No s'ha pogut carregar l'operativa", {
+        description: visitResponse.error.message,
+      })
       return
     }
     setVisits((visitResponse.data ?? []) as unknown as Visit[])
@@ -274,7 +285,11 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       clientResponse.error ||
       techniciansResult.error ||
       (inventoryMigrationPending ? null : p.error)
-    if (secondaryError) setMessage(secondaryError.message)
+    if (secondaryError) {
+      toast.error("Part de la informació no s'ha pogut carregar", {
+        description: secondaryError.message,
+      })
+    }
   }, [])
   useEffect(() => {
     const s = createClient()
@@ -335,7 +350,6 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     router.refresh()
   }
   const requestStart = (visit: Visit) => {
-    setMessage(null)
     setStartError(null)
     setVisitToStart(visit)
   }
@@ -367,7 +381,11 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       .from('invoices')
       .update({ status: 'paid', paid_at: new Date().toISOString() })
       .eq('id', invoice.id)
-    setMessage(error ? error.message : 'Factura marcada com a cobrada.')
+    if (error) {
+      toast.error("No s'ha pogut registrar el cobrament", { description: error.message })
+      return
+    }
+    toast.success('Factura marcada com a cobrada', { description: invoice.number ?? undefined })
     await load()
   }
   const generateMonthlyInvoices = async (billingPeriod: string) => {
@@ -375,15 +393,15 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       p_billing_period: billingPeriod,
     })
     if (error) {
-      setMessage(error.message)
+      toast.error("No s'han pogut actualitzar les factures", { description: error.message })
       return
     }
     const generated = (data ?? []).filter((invoice: { created: boolean }) => invoice.created).length
-    setMessage(
-      generated
-        ? `${formatBillingPeriod(billingPeriod)} actualitzat: ${generated} esborranys nous.`
-        : `Les factures de ${formatBillingPeriod(billingPeriod)} ja estan actualitzades.`,
-    )
+    toast.success('Factures actualitzades', {
+      description: generated
+        ? `${formatBillingPeriod(billingPeriod)}: ${generated} esborranys nous.`
+        : `Les factures de ${formatBillingPeriod(billingPeriod)} ja estaven actualitzades.`,
+    })
     await load()
   }
   const prepareMonthlyInvoices = async () => {
@@ -424,7 +442,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     if (!result.data)
       throw new Error('La feina ja no existeix o no tens permís per modificar-la.')
 
-    setMessage(id ? 'Feina actualitzada.' : 'Feina programada.')
+    toast.success(id ? 'Feina actualitzada' : 'Feina programada')
     await load()
   }
   const deletePendingWork = async (id: string) => {
@@ -438,7 +456,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     if (error) throw new Error(error.message)
     if (!data) throw new Error('La feina ja no està pendent o no tens permís per eliminar-la.')
 
-    setMessage('Feina eliminada.')
+    toast.success('Feina eliminada')
     await load()
   }
   const saveClient = async (client: ClientInput, id?: string) => {
@@ -470,7 +488,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
       : createClient().from('clients').insert(payload)
     const { error } = await query
     if (error) throw new Error(error.message)
-    setMessage(id ? 'Client actualitzat.' : 'Client creat.')
+    toast.success(id ? 'Client actualitzat' : 'Client creat')
     await load()
   }
   const deleteClient = async (client: Client) => {
@@ -481,8 +499,12 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     )
       return
     const { error } = await createClient().from('clients').delete().eq('id', client.id)
-    setMessage(error ? error.message : 'Client eliminat.')
-    if (!error) await load()
+    if (error) {
+      toast.error("No s'ha pogut eliminar el client", { description: error.message })
+      return
+    }
+    toast.success('Client eliminat', { description: client.legal_name })
+    await load()
   }
   const saveInstallation = async (
     clientId: string,
@@ -504,14 +526,18 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
           .insert({ ...payload, client_id: clientId })
     const { error } = await query
     if (error) throw new Error(error.message)
-    setMessage(id ? 'Instal·lació actualitzada.' : 'Instal·lació afegida.')
+    toast.success(id ? 'Instal·lació actualitzada' : 'Instal·lació afegida')
     await load()
   }
   const deleteInstallation = async (installation: Installation) => {
     if (!window.confirm(`Voleu eliminar la instal·lació «${installation.name}»?`)) return
     const { error } = await createClient().from('installations').delete().eq('id', installation.id)
-    setMessage(error ? error.message : 'Instal·lació eliminada.')
-    if (!error) await load()
+    if (error) {
+      toast.error("No s'ha pogut eliminar la instal·lació", { description: error.message })
+      return
+    }
+    toast.success('Instal·lació eliminada', { description: installation.name })
+    await load()
   }
   const accountInitials = accountName
     .split(' ')
@@ -530,10 +556,11 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
     })),
   )
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand">
+    <div className="min-h-dvh bg-slate-50 text-slate-900">
+      <aside className="fixed inset-y-0 left-0 z-10 flex w-60 flex-col overflow-y-auto border-r border-slate-200 bg-white px-3 py-4 text-slate-900 max-[880px]:static max-[880px]:w-full max-[880px]:overflow-visible max-[880px]:px-4 max-[880px]:py-3">
+        <div className="px-2 pb-5 max-[880px]:px-1 max-[880px]:pb-3">
           <Image
+            className="h-auto w-[150px] max-[880px]:w-[136px]"
             src="/concepte-blau-logo.png"
             alt="Concepte Blau"
             width={450}
@@ -541,179 +568,200 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             priority
           />
         </div>
-        <nav className={`nav ${isAdmin ? 'nav-admin' : 'nav-worker'}`}>
+        <nav className="flex flex-col gap-0.5 max-[880px]:flex-row max-[880px]:overflow-x-auto max-[880px]:pb-0.5">
           {isAdmin && (
-            <Nav
-              href="/"
-              label="Resum"
-              icon={<LayoutDashboard size={18} />}
-              active={activeView === 'inicio'}
-            />
+            <>
+              <p className="mx-2 mb-1 mt-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400 max-[880px]:hidden">
+                Visió general
+              </p>
+              <Nav
+                href="/"
+                label="Resum"
+                icon={<LayoutDashboard size={17} />}
+                active={activeView === 'inicio'}
+              />
+            </>
           )}
+          <p className="mx-2 mb-1 mt-4 text-[10px] font-semibold uppercase tracking-wider text-slate-400 max-[880px]:hidden">
+            Operativa
+          </p>
           <Nav
             href="/agenda"
             label="Agenda"
-            icon={<CalendarDays size={18} />}
+            icon={<CalendarDays size={17} />}
             active={activeView === 'agenda' || activeView === 'parte'}
           />
           <Nav
             href="/trabajos"
             label="Feines"
-            icon={<CheckCircle2 size={18} />}
+            icon={<CheckCircle2 size={17} />}
             active={activeView === 'trabajos'}
+          />
+          <Nav
+            href="/inventario"
+            label="Inventari"
+            icon={<Package size={17} />}
+            active={activeView === 'inventario'}
           />
           {isAdmin && (
             <>
+              <p className="mx-2 mb-1 mt-4 text-[10px] font-semibold uppercase tracking-wider text-slate-400 max-[880px]:hidden">
+                Gestió
+              </p>
               <Nav
                 href="/clientes"
                 label="Clients"
-                icon={<Users size={18} />}
+                icon={<Users size={17} />}
                 active={activeView === 'clientes'}
               />
               <Nav
                 href="/facturacion"
                 label="Facturació"
-                icon={<FileText size={18} />}
+                icon={<FileText size={17} />}
                 active={activeView === 'facturacion'}
+              />
+              <Nav
+                href="/estadisticas"
+                label="Estadístiques"
+                icon={<LayoutDashboard size={17} />}
+                active={activeView === 'estadisticas'}
               />
             </>
           )}
-          <Nav
-            href="/inventario"
-            label="Inventari"
-            icon={<Package size={18} />}
-            active={activeView === 'inventario'}
-          />
-          {isAdmin && (
-            <Nav
-              href="/estadisticas"
-              label="Estadístiques"
-              icon={<LayoutDashboard size={18} />}
-              active={activeView === 'estadisticas'}
-            />
-          )}
         </nav>
-        <div className="profile">
+        <div className="mt-auto border-t border-slate-200 pt-3 max-[880px]:hidden">
           <PopoverTrigger>
             <Button
-              className="profile-trigger"
+              className="w-full justify-start gap-3 px-2 text-left hover:bg-slate-50"
               type="button"
               variant="ghost"
               aria-label={`Obre el menú de ${accountName}`}
             >
-              <span className="avatar" aria-hidden="true">
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-violet-100 text-xs font-semibold text-violet-700" aria-hidden="true">
                 {accountInitials || 'CB'}
               </span>
-              <span className="profile-summary">
-                <strong>{accountName}</strong>
-                <span>{isAdmin ? 'Administració' : 'Operativa'}</span>
+              <span className="min-w-0 flex-1">
+                <strong className="block truncate text-sm font-medium text-slate-800">{accountName}</strong>
+                <span className="block truncate text-xs text-slate-500">{isAdmin ? 'Administració' : 'Operativa'}</span>
               </span>
-              <ChevronDown className="profile-chevron" size={16} aria-hidden="true" />
+              <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-slate-400" />
             </Button>
-            <PopoverContent placement="top start" className="profile-popover">
-              <div className="profile-popover-header">
-                <span className="avatar profile-popover-avatar" aria-hidden="true">
+            <PopoverContent placement="top start" className="w-64 p-2">
+              <div className="flex items-center gap-3 px-2 py-1.5">
+                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-violet-100 text-xs font-semibold text-violet-700" aria-hidden="true">
                   {accountInitials || 'CB'}
                 </span>
-                <span>
-                  <strong>{accountName}</strong>
-                  <small>{accountEmail || 'Sessió activa'}</small>
+                <span className="min-w-0">
+                  <strong className="block truncate text-sm font-medium text-slate-800">{accountName}</strong>
+                  <small className="block truncate text-xs text-slate-500">{accountEmail || 'Sessió activa'}</small>
                 </span>
               </div>
-              <div className="profile-popover-divider" />
-              <button
-                className="profile-sign-out"
+              <div className="my-2 border-t border-slate-100" />
+              <Button
+                className="w-full justify-start px-2 text-slate-700 hover:bg-slate-50"
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => void signOut()}
                 disabled={isSigningOut}
               >
                 <LogOut size={16} aria-hidden="true" />
                 {isSigningOut ? "S'està tancant la sessió…" : 'Tanca la sessió'}
-              </button>
-              {signOutError && <p className="profile-sign-out-error">{signOutError}</p>}
+              </Button>
+              {signOutError && <p className="px-2 pt-2 text-xs text-rose-600">{signOutError}</p>}
             </PopoverContent>
           </PopoverTrigger>
         </div>
       </aside>
-      <main className={activeView === 'agenda' ? 'main agenda-main' : 'main'}>
+      <main className="min-h-dvh pl-60 max-[880px]:pl-0">
         {activeView !== 'agenda' && (
-          <header className="topbar">
+          <header className="sticky top-0 z-5 flex h-16 items-center justify-between border-b border-slate-200 bg-white/90 px-8 backdrop-blur max-[880px]:px-5">
             <div>
-              <h1>{titles[activeView]}</h1>
+              <h1 className="text-sm font-semibold tracking-tight text-slate-800">{titles[activeView]}</h1>
             </div>
-            <div className="top-actions">
+            <div className="flex items-center gap-2">
               {activeView === 'inicio' && (
-                <Link className="button accent" href="/agenda">
+                <LinkButton href="/agenda">
                   Veure agenda
-                </Link>
+                </LinkButton>
               )}
               {activeView === 'clientes' && isAdmin && (
-                <button className="button" type="button" onClick={() => setEditingClient('new')}>
+                <Button type="button" onClick={() => setEditingClient('new')}>
                   <Plus size={17} aria-hidden="true" />
                   Client nou
-                </button>
+                </Button>
               )}
               {activeView === 'trabajos' && isAdmin && (
-                <button
-                  className="button"
+                <Button
                   type="button"
                   onClick={() => setWorkCreationVersion((value) => value + 1)}
                 >
                   <Plus size={17} aria-hidden="true" />
                   Feina nova
-                </button>
+                </Button>
               )}
               {activeView === 'facturacion' && isAdmin && (
-                <button
-                  className="button"
+                <Button
                   type="button"
                   disabled={isPreparingBilling}
                   onClick={() => void prepareMonthlyInvoices()}
                 >
                   <FileText size={17} aria-hidden="true" />
                   {isPreparingBilling ? "S'estan actualitzant…" : 'Actualitza les factures'}
-                </button>
+                </Button>
               )}
               {activeView === 'inventario' && isAdmin && (
-                <button
-                  className="button inventory-create"
+                <Button
+                  className="inventory-create"
                   type="button"
                   onClick={() => setProductCreationVersion((value) => value + 1)}
                 >
                   <Plus size={17} aria-hidden="true" />
                   Material nou
-                </button>
+                </Button>
               )}
               {activeView === 'estadisticas' && isAdmin && (
-                <button
-                  className="button secondary analytics-refresh"
+                <Button
+                  className="analytics-refresh"
                   type="button"
+                  variant="outline"
                   onClick={() => setStatisticsReload((value) => value + 1)}
                 >
                   <RefreshCw size={16} aria-hidden="true" />
                   Actualitza
-                </button>
+                </Button>
               )}
             </div>
           </header>
         )}
-        <div className={activeView === 'agenda' ? 'content agenda-content' : 'content'}>
-          {message && (
-            <p className="toast" role="status">
-              {message}
-            </p>
-          )}
+        <div
+          className={
+            activeView === 'agenda'
+              ? 'agenda-content min-h-dvh'
+              : 'mx-auto max-w-[1560px] px-8 py-7 max-[880px]:px-5 max-[880px]:py-6'
+          }
+        >
           {activeView === 'inicio' && (
             <Overview
               visits={visits}
               invoices={invoices}
               clients={clients}
+              products={products}
+              accountName={accountName}
               isAdmin={isAdmin}
               start={requestStart}
             />
           )}
           {activeView === 'agenda' && (
-            <Agenda visits={visits} isAdmin={isAdmin} start={requestStart} />
+            <Agenda
+              visits={visits}
+              installations={workInstallations}
+              technicians={technicians}
+              isAdmin={isAdmin}
+              start={requestStart}
+              onSavePendingWork={savePendingWork}
+              onDeletePendingWork={deletePendingWork}
+            />
           )}
           {activeView === 'trabajos' && (
             <WorkHistory
@@ -856,7 +904,15 @@ function Nav({
   active: boolean
 }) {
   return (
-    <Link href={href} aria-current={active ? 'page' : undefined}>
+    <Link
+      className={`flex h-9 items-center gap-3 rounded-md px-2.5 text-sm font-medium transition-colors max-[880px]:h-8 max-[880px]:shrink-0 max-[880px]:gap-2 max-[880px]:px-3 max-[880px]:text-xs ${
+        active
+          ? 'bg-violet-50 text-violet-700'
+          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+      }`}
+      href={href}
+      aria-current={active ? 'page' : undefined}
+    >
       {icon}
       <span>{label}</span>
     </Link>
@@ -872,42 +928,63 @@ function VisitRow({
   start: (v: Visit) => void
 }) {
   const x = visit.installations
+  const scheduledFor = new Date(visit.scheduled_for)
+  const status = getAgendaVisitAction(visit.status, true).label
+  const statusClass =
+    visit.status === 'in_progress'
+      ? 'bg-sky-50 text-sky-700 ring-sky-100'
+      : visit.status === 'scheduled'
+        ? 'bg-violet-50 text-violet-700 ring-violet-100'
+        : 'bg-slate-100 text-slate-600 ring-slate-200'
+
   return (
-    <div className="visit">
-      <div className="time">
-        {new Intl.DateTimeFormat('ca-ES', { hour: '2-digit', minute: '2-digit' }).format(
-          new Date(visit.scheduled_for),
-        )}
+    <div className="grid grid-cols-[5.25rem_minmax(0,1fr)] items-center gap-x-4 gap-y-1 border-t border-slate-100 py-4 first:border-t-0 sm:grid-cols-[6.25rem_minmax(0,1fr)_auto]">
+      <div className="row-span-2 self-start text-sm font-semibold tabular-nums text-slate-900">
+        {new Intl.DateTimeFormat('ca-ES', { hour: '2-digit', minute: '2-digit' }).format(scheduledFor)}
+        <span className="mt-0.5 block text-xs font-medium capitalize text-slate-500">
+          {new Intl.DateTimeFormat('ca-ES', { weekday: 'short', day: 'numeric', month: 'short' }).format(
+            scheduledFor,
+          )}
+        </span>
       </div>
-      <div>
-        <div className="visit-title">{x?.clients?.legal_name ?? 'Client'}</div>
-        <div className="visit-meta">
+      <div className="min-w-0">
+        <div className="truncate text-sm font-semibold text-slate-900">{x?.clients?.legal_name ?? 'Client'}</div>
+        <div className="mt-0.5 truncate text-xs text-slate-500">
           {x?.name ?? 'Instal·lació'} · {x?.address ?? ''}
         </div>
         {isAdmin && (
-          <div className="visit-meta">
+          <div className="mt-1 text-xs text-slate-500">
             Responsable: {visit.technician?.full_name ?? 'Sense assignar'}
           </div>
         )}
       </div>
       {isAdmin ? (
-        <span className="badge">{getAgendaVisitAction(visit.status, true).label}</span>
+        <span className={`col-start-2 w-fit rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset sm:col-start-auto ${statusClass}`}>
+          {status}
+        </span>
       ) : null}
       {!isAdmin && visit.status === 'completed' ? (
-        <span className="badge ok">Completada</span>
+        <span className="col-start-2 w-fit rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-100 sm:col-start-auto">
+          Completada
+        </span>
       ) : null}
       {!isAdmin && visit.status === 'in_progress' ? (
-        <Link className="badge progress" href={`/agenda/${visit.id}`}>
+        <Link
+          className="col-start-2 w-fit rounded-md bg-sky-50 px-2 py-1 text-xs font-medium text-sky-700 ring-1 ring-inset ring-sky-100 sm:col-start-auto"
+          href={`/agenda/${visit.id}`}
+        >
           Continua
         </Link>
       ) : null}
       {!isAdmin && visit.status === 'cancelled' ? (
-        <span className="badge pending">Cancel·lada</span>
+        <span className="col-start-2 w-fit rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-200 sm:col-start-auto">
+          Cancel·lada
+        </span>
       ) : null}
       {!isAdmin && visit.status === 'scheduled' ? (
-        <button className="badge progress" onClick={() => start(visit)}>
+        <Button className="col-start-2 w-fit sm:col-start-auto" type="button" variant="secondary" size="xs" onClick={() => start(visit)}>
           Inicia
-        </button>
+        </Button>
       ) : null}
     </div>
   )
@@ -916,99 +993,212 @@ function Overview({
   visits,
   invoices,
   clients,
+  products,
+  accountName,
   isAdmin,
   start,
 }: {
   visits: Visit[]
   invoices: Invoice[]
   clients: Client[]
+  products: Product[]
+  accountName: string
   isAdmin: boolean
   start: (v: Visit) => void
 }) {
-  const due = invoices.filter((i) => i.status !== 'paid')
+  const now = new Date()
+  const today = startOfDay(now)
+  const operationalVisits = visits.filter(
+    (visit) => visit.status !== 'completed' && visit.status !== 'cancelled',
+  )
+  const todayVisits = operationalVisits.filter((visit) => isSameDay(new Date(visit.scheduled_for), now))
+  const futureVisits = operationalVisits.filter((visit) => new Date(visit.scheduled_for) >= today)
+  const displayedVisits = (todayVisits.length ? todayVisits : futureVisits.length ? futureVisits : operationalVisits).slice(0, 4)
+  const due = invoices.filter((invoice) => invoice.status !== 'paid')
+  const overdueInvoices = due.filter(
+    (invoice) => invoice.due_on && new Date(`${invoice.due_on}T12:00:00`) < today,
+  )
+  const unassignedVisits = operationalVisits.filter((visit) => !visit.technician_id)
+  const overdueVisits = operationalVisits.filter((visit) => new Date(visit.scheduled_for) < today)
+  const lowStock = products.filter(
+    (product) => product.active && product.stock_quantity <= product.minimum_stock,
+  )
+  const weeklyVisits = futureVisits.filter(
+    (visit) => new Date(visit.scheduled_for) < addDays(today, 7),
+  )
+  const currentDate = new Intl.DateTimeFormat('ca-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(now)
+  const attentionCount = unassignedVisits.length + overdueVisits.length + lowStock.length + overdueInvoices.length
+
   return (
-    <>
-      <section className="stats">
-        <Stat
-          icon={<CalendarDays size={19} />}
-          label="Visites"
-          value={String(visits.length)}
-          foot={`${visits.filter((v) => v.status === 'completed').length} completades`}
-        />
-        <Stat
-          icon={<Users size={19} />}
-          label="Clients actius"
-          value={String(clients.filter((client) => client.active).length)}
-          foot={`${clients.length} clients registrats`}
-        />
-        <Stat
-          icon={<FileText size={19} />}
-          label="Factures pendents"
-          value={String(due.length)}
-          foot={money.format(due.reduce((n, i) => n + Number(i.total), 0))}
-        />
-        <Stat
-          icon={<CircleDollarSign size={19} />}
-          label="Facturació"
-          value={money.format(invoices.reduce((n, i) => n + Number(i.total), 0))}
-          foot="Import total emès"
-        />
-      </section>
-      <section className="card" style={{ marginTop: 18 }}>
-        <div className="card-head">
-          <h3>Properes visites</h3>
-          <Link className="card-link" href="/agenda">
-            Veure agenda <ArrowRight size={15} aria-hidden="true" />
-          </Link>
+    <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-5">
+      <section className="relative isolate overflow-hidden rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm sm:px-6">
+        <div className="absolute -right-20 -top-24 -z-10 size-64 rounded-full bg-violet-100/70 blur-3xl" aria-hidden="true" />
+        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-700">Centre de control</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-[28px]">
+            Bon dia, {accountName}
+          </h2>
+          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-500">
+            Tot el que necessites per planificar el dia i anticipar les incidències operatives.
+          </p>
         </div>
-        {visits.length ? (
-          visits
-            .slice(0, 4)
-            .map((v) => <VisitRow key={v.id} visit={v} isAdmin={isAdmin} start={start} />)
-        ) : (
-          <p className="overview-visits-empty">No hi ha visites assignades o programades.</p>
-        )}
+        <time
+          className="inline-flex w-fit shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs font-semibold capitalize text-slate-600"
+          dateTime={now.toISOString()}
+        >
+          <CalendarDays size={15} aria-hidden="true" className="text-violet-600" />
+          {currentDate}
+        </time>
+        </div>
       </section>
-    </>
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadors operatius">
+        <Stat icon={<CalendarDays size={17} />} label="Agenda d'avui" value={String(todayVisits.length)} foot={`${operationalVisits.length} visites obertes`} href="/agenda" />
+        <Stat icon={<AlertTriangle size={17} />} label="Per assignar" value={String(unassignedVisits.length)} foot={unassignedVisits.length ? 'Requereixen planificació' : 'Tot assignat'} href="/agenda" tone={unassignedVisits.length ? 'warning' : 'success'} />
+        <Stat icon={<Package size={17} />} label="Estoc crític" value={String(lowStock.length)} foot={lowStock.length ? 'Materials sota mínim' : 'Estoc controlat'} href="/inventario?stock=low" tone={lowStock.length ? 'warning' : 'success'} />
+        <Stat icon={<CircleDollarSign size={17} />} label="Per cobrar" value={money.format(due.reduce((total, invoice) => total + Number(invoice.total), 0))} foot={`${overdueInvoices.length} factures vençudes`} href="/facturacion" tone={overdueInvoices.length ? 'danger' : 'default'} />
+      </section>
+
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(17rem,0.85fr)]">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-400">{todayVisits.length ? 'Operativa d’avui' : 'Planificació'}</p>
+              <h3 className="mt-1.5 text-base font-semibold tracking-tight text-slate-950">{todayVisits.length ? "Agenda d'avui" : 'Properes visites'}</h3>
+            </div>
+            <Link className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold text-violet-700 transition-colors hover:bg-violet-50 hover:text-violet-800" href="/agenda">
+              Veure agenda <ArrowRight size={14} aria-hidden="true" />
+            </Link>
+          </div>
+          {displayedVisits.length ? (
+            displayedVisits.map((visit) => <VisitRow key={visit.id} visit={visit} isAdmin={isAdmin} start={start} />)
+          ) : (
+            <p className="py-8 text-center text-sm text-slate-500">No hi ha visites assignades o programades.</p>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-label="Requereix atenció">
+          <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-400">Seguiment</p>
+              <h3 className="mt-1.5 text-base font-semibold tracking-tight text-slate-950">Requereix atenció</h3>
+            </div>
+            <span className="inline-grid h-7 min-w-7 place-items-center rounded-full bg-violet-50 px-2 text-xs font-bold tabular-nums text-violet-700">{attentionCount}</span>
+          </div>
+          <div className="mt-3 divide-y divide-slate-100">
+            {unassignedVisits.length > 0 && <OverviewAlert href="/agenda" icon={<AlertTriangle size={16} />} title={`${unassignedVisits.length} visites sense assignar`} detail="Assigna un tècnic abans de la visita." tone="warning" />}
+            {overdueVisits.length > 0 && <OverviewAlert href="/agenda" icon={<CalendarDays size={16} />} title={`${overdueVisits.length} visites pendents de tancar`} detail="Revisa els parts que ja han vençut." tone="danger" />}
+            {lowStock.length > 0 && <OverviewAlert href="/inventario?stock=low" icon={<Package size={16} />} title={`${lowStock.length} materials amb estoc baix`} detail="Consulta les existències i planifica la reposició." tone="warning" />}
+            {overdueInvoices.length > 0 && <OverviewAlert href="/facturacion" icon={<CircleDollarSign size={16} />} title={`${money.format(overdueInvoices.reduce((total, invoice) => total + Number(invoice.total), 0))} vençuts`} detail={`${overdueInvoices.length} factures pendents de cobrament.`} tone="danger" />}
+            {!attentionCount && (
+              <div className="flex items-start gap-3 py-4 text-emerald-600">
+                <CheckCircle2 size={18} aria-hidden="true" className="mt-0.5 shrink-0" />
+                <span>
+                  <strong className="block text-sm font-semibold text-slate-900">Tot sota control</strong>
+                  <small className="mt-0.5 block text-xs leading-5 text-slate-500">No hi ha incidències operatives pendents.</small>
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="mt-3 flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2.5 text-xs text-slate-500">
+            <span>Pròxims 7 dies</span>
+            <strong className="font-semibold text-slate-800">{weeklyVisits.length} visites planificades</strong>
+          </div>
+        </section>
+      </div>
+    </div>
   )
 }
+
+function OverviewAlert({ href, icon, title, detail, tone }: { href: string; icon: ReactNode; title: string; detail: string; tone: 'warning' | 'danger' }) {
+  const toneClass = tone === 'danger' ? 'text-rose-600' : 'text-amber-600'
+  return (
+    <Link className="-mx-1 flex items-start gap-3 rounded-lg px-1 py-3 transition-colors hover:bg-slate-50 hover:px-2" href={href}>
+      <span className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-md ${tone === 'danger' ? 'bg-rose-50' : 'bg-amber-50'} ${toneClass}`} aria-hidden="true">{icon}</span>
+      <span className="min-w-0 flex-1">
+        <strong className="block text-sm font-medium text-slate-800">{title}</strong>
+        <small className="mt-0.5 block text-xs leading-5 text-slate-500">{detail}</small>
+      </span>
+      <ArrowRight size={15} aria-hidden="true" className="mt-2 shrink-0 text-slate-400" />
+    </Link>
+  )
+}
+
 function Stat({
   icon,
   label,
   value,
   foot,
+  href,
+  tone = 'default',
 }: {
   icon: ReactNode
   label: string
   value: string
   foot: string
+  href?: string
+  tone?: 'default' | 'warning' | 'success' | 'danger'
 }) {
-  return (
-    <div className="stat">
-      <div className="stat-heading">
-        <div className="stat-label">{label}</div>
-        <span className="stat-icon" aria-hidden="true">
+  const iconClass = {
+    default: 'bg-violet-50 text-violet-700',
+    warning: 'bg-amber-50 text-amber-700',
+    success: 'bg-emerald-50 text-emerald-700',
+    danger: 'bg-rose-50 text-rose-700',
+  }[tone]
+  const content = (
+    <>
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-xs font-medium text-slate-500">{label}</div>
+        <span className={`grid size-7 place-items-center rounded-md ${iconClass}`} aria-hidden="true">
           {icon}
         </span>
       </div>
-      <div className="stat-value">{value}</div>
-      <div className="stat-foot">{foot}</div>
-    </div>
+      <div className="mt-4 text-2xl font-semibold tracking-tight text-slate-950 tabular-nums">{value}</div>
+      <div className="mt-1 text-xs text-slate-500">{foot}</div>
+    </>
+  )
+  return href ? (
+    <Link
+      className="group flex min-h-36 flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md"
+      href={href}
+    >
+      {content}
+    </Link>
+  ) : (
+    <div className="flex min-h-36 flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm">{content}</div>
   )
 }
 type CalendarView = 'day' | 'week' | 'month'
 
 function Agenda({
   visits,
+  installations,
+  technicians,
   isAdmin,
   start,
+  onSavePendingWork,
+  onDeletePendingWork,
 }: {
   visits: Visit[]
+  installations: WorkInstallation[]
+  technicians: WorkTechnician[]
   isAdmin: boolean
   start: (v: Visit) => void
+  onSavePendingWork: (input: PendingWorkInput, id?: string) => Promise<void>
+  onDeletePendingWork: (id: string) => Promise<void>
 }) {
   const [calendarView, setCalendarView] = useState<CalendarView>('week')
   const [activeDate, setActiveDate] = useState(() => startOfDay(new Date()))
+  const [editingVisit, setEditingVisit] = useState<Visit | 'new' | null>(null)
+  const [initialScheduledFor, setInitialScheduledFor] = useState<string | undefined>()
+  const [deletingVisit, setDeletingVisit] = useState<Visit | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [operationError, setOperationError] = useState<string | null>(null)
   useEffect(() => {
     if (window.matchMedia('(max-width: 560px)').matches) setCalendarView('day')
   }, [])
@@ -1033,6 +1223,23 @@ function Agenda({
         calendarView === 'month' ? getDaysInMonth(date) : calendarView === 'week' ? 7 : 1,
       ),
     )
+  const createWork = (date: Date) => {
+    if (!isAdmin) return
+    setOperationError(null)
+    setInitialScheduledFor(getDefaultScheduledFor(date))
+    setEditingVisit('new')
+  }
+  const editWork = (visit: Visit) => {
+    if (!canManagePendingWork(isAdmin, visit.status)) return
+    setOperationError(null)
+    setInitialScheduledFor(undefined)
+    setEditingVisit(visit)
+  }
+  const requestDeleteWork = (visit: Visit) => {
+    if (!canManagePendingWork(isAdmin, visit.status)) return
+    setOperationError(null)
+    setDeletingVisit(visit)
+  }
 
   return (
     <>
@@ -1046,6 +1253,12 @@ function Agenda({
             <h3>{calendarPeriodLabel(activeDate, calendarView)}</h3>
           </div>
           <div className="calendar-controls">
+            {isAdmin && (
+              <Button type="button" size="sm" onClick={() => createWork(activeDate)}>
+                <Plus size={16} aria-hidden="true" />
+                Feina nova
+              </Button>
+            )}
             <div className="calendar-pagination">
               <button
                 type="button"
@@ -1100,10 +1313,21 @@ function Agenda({
             visits={visitsForDay(visits, activeDate)}
             isAdmin={isAdmin}
             start={start}
+            onCreate={createWork}
+            onEdit={editWork}
+            onDelete={requestDeleteWork}
           />
         )}
         {calendarView === 'week' && (
-          <WeekCalendar days={days} visits={visits} isAdmin={isAdmin} start={start} />
+          <WeekCalendar
+            days={days}
+            visits={visits}
+            isAdmin={isAdmin}
+            start={start}
+            onCreate={createWork}
+            onEdit={editWork}
+            onDelete={requestDeleteWork}
+          />
         )}
         {calendarView === 'month' && (
           <MonthCalendar
@@ -1112,9 +1336,51 @@ function Agenda({
             visits={visits}
             isAdmin={isAdmin}
             start={start}
+            onCreate={createWork}
+            onEdit={editWork}
+            onDelete={requestDeleteWork}
           />
         )}
       </section>
+      {operationError && <p className="form-error">{operationError}</p>}
+      {editingVisit && (
+        <WorkEditor
+          key={`${editingVisit === 'new' ? 'new' : editingVisit.id}-${initialScheduledFor ?? ''}`}
+          visit={editingVisit}
+          installations={installations}
+          technicians={technicians}
+          initialScheduledFor={initialScheduledFor}
+          onClose={() => setEditingVisit(null)}
+          onSave={async (input) => {
+            await onSavePendingWork(input, editingVisit === 'new' ? undefined : editingVisit.id)
+            setEditingVisit(null)
+          }}
+        />
+      )}
+      <ConfirmDialog
+        open={Boolean(deletingVisit)}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setDeletingVisit(null)
+        }}
+        title="Elimina la feina programada?"
+        description="Aquesta acció no es pot desfer."
+        confirmLabel="Elimina la feina"
+        cancelLabel="Cancel·la"
+        destructive
+        pending={isDeleting}
+        onConfirm={() => {
+          if (!deletingVisit) return
+          setIsDeleting(true)
+          void onDeletePendingWork(deletingVisit.id)
+            .catch((error: unknown) => {
+              setOperationError(error instanceof Error ? error.message : "No s'ha pogut eliminar la feina.")
+            })
+            .finally(() => {
+              setIsDeleting(false)
+              setDeletingVisit(null)
+            })
+        }}
+      />
     </>
   )
 }
@@ -1124,11 +1390,17 @@ function DayCalendar({
   visits,
   isAdmin,
   start,
+  onCreate,
+  onEdit,
+  onDelete,
 }: {
   date: Date
   visits: Visit[]
   isAdmin: boolean
   start: (visit: Visit) => void
+  onCreate: (date: Date) => void
+  onEdit: (visit: Visit) => void
+  onDelete: (visit: Visit) => void
 }) {
   const hours = Array.from({ length: 13 }, (_, index) => index + 7)
   return (
@@ -1143,12 +1415,23 @@ function DayCalendar({
             <span key={hour}>{`${String(hour).padStart(2, '0')}:00`}</span>
           ))}
         </div>
-        <div className="day-track">
+        <div
+          className={`day-track ${isAdmin ? 'can-create-work' : ''}`}
+          onClick={() => onCreate(date)}
+        >
           {hours.map((hour) => (
             <div className="day-hour" key={hour} />
           ))}
           {visits.map((visit) => (
-            <CalendarEvent key={visit.id} visit={visit} isAdmin={isAdmin} start={start} timed />
+            <CalendarEvent
+              key={visit.id}
+              visit={visit}
+              isAdmin={isAdmin}
+              start={start}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              timed
+            />
           ))}
           {visits.length === 0 && (
             <p className="calendar-empty">No hi ha visites previstes per a aquest dia.</p>
@@ -1164,11 +1447,17 @@ function WeekCalendar({
   visits,
   isAdmin,
   start,
+  onCreate,
+  onEdit,
+  onDelete,
 }: {
   days: Date[]
   visits: Visit[]
   isAdmin: boolean
   start: (visit: Visit) => void
+  onCreate: (date: Date) => void
+  onEdit: (visit: Visit) => void
+  onDelete: (visit: Visit) => void
 }) {
   return (
     <div className="week-calendar">
@@ -1182,9 +1471,21 @@ function WeekCalendar({
       </div>
       <div className="week-day-columns">
         {days.map((day) => (
-          <div className={`week-day ${isToday(day) ? 'today' : ''}`} key={day.toISOString()}>
+          <div
+            className={`week-day ${isToday(day) ? 'today' : ''} ${isAdmin ? 'can-create-work' : ''}`}
+            key={day.toISOString()}
+            onClick={() => onCreate(day)}
+          >
             {visitsForDay(visits, day).map((visit) => (
-              <CalendarEvent key={visit.id} visit={visit} isAdmin={isAdmin} start={start} compact />
+              <CalendarEvent
+                key={visit.id}
+                visit={visit}
+                isAdmin={isAdmin}
+                start={start}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                compact
+              />
             ))}
             {visitsForDay(visits, day).length === 0 && (
               <span className="calendar-free">Lliure</span>
@@ -1202,12 +1503,18 @@ function MonthCalendar({
   visits,
   isAdmin,
   start,
+  onCreate,
+  onEdit,
+  onDelete,
 }: {
   days: Date[]
   activeDate: Date
   visits: Visit[]
   isAdmin: boolean
   start: (visit: Visit) => void
+  onCreate: (date: Date) => void
+  onEdit: (visit: Visit) => void
+  onDelete: (visit: Visit) => void
 }) {
   return (
     <div className="month-calendar">
@@ -1222,8 +1529,9 @@ function MonthCalendar({
           const dayVisits = visitsForDay(visits, day)
           return (
             <div
-              className={`month-day ${isCurrentMonth ? '' : 'outside-month'} ${isToday(day) ? 'today' : ''}`}
+              className={`month-day ${isCurrentMonth ? '' : 'outside-month'} ${isToday(day) ? 'today' : ''} ${isAdmin ? 'can-create-work' : ''}`}
               key={day.toISOString()}
+              onClick={() => onCreate(day)}
             >
               <span className="month-date">{day.getDate()}</span>
               <div className="month-events">
@@ -1233,6 +1541,8 @@ function MonthCalendar({
                     visit={visit}
                     isAdmin={isAdmin}
                     start={start}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
                     compact
                   />
                 ))}
@@ -1252,12 +1562,16 @@ function CalendarEvent({
   visit,
   isAdmin,
   start,
+  onEdit,
+  onDelete,
   compact,
   timed,
 }: {
   visit: Visit
   isAdmin: boolean
   start: (visit: Visit) => void
+  onEdit: (visit: Visit) => void
+  onDelete: (visit: Visit) => void
   compact?: boolean
   timed?: boolean
 }) {
@@ -1265,6 +1579,7 @@ function CalendarEvent({
   const minutes = scheduled.getHours() * 60 + scheduled.getMinutes()
   const top = Math.max(0, (minutes - 420) * 1.15)
   const action = getAgendaVisitAction(visit.status, isAdmin)
+  const canManage = canManagePendingWork(isAdmin, visit.status)
   const content = (
     <>
       <time>
@@ -1279,14 +1594,35 @@ function CalendarEvent({
       )}
     </>
   )
-  const className = `calendar-event ${visit.status} ${compact ? 'compact' : ''} ${action.isInteractive ? 'operational' : ''}`
+  const className = `calendar-event ${visit.status} ${compact ? 'compact' : ''} ${action.isInteractive || canManage ? 'operational' : ''}`
+  if (canManage)
+    return (
+      <div className={className} style={timed ? { top } : undefined} onClick={(event) => event.stopPropagation()}>
+        {content}
+        <div className="calendar-event-actions">
+          <button type="button" className="calendar-event-action" onClick={() => onEdit(visit)}>
+            <Pencil size={13} aria-hidden="true" /> Edita
+          </button>
+          <button
+            type="button"
+            className="calendar-event-action destructive"
+            onClick={() => onDelete(visit)}
+          >
+            <Trash2 size={13} aria-hidden="true" /> Elimina
+          </button>
+        </div>
+      </div>
+    )
   if (action.isInteractive && visit.status === 'scheduled')
     return (
       <button
         type="button"
         className={className}
         style={timed ? { top } : undefined}
-        onClick={() => start(visit)}
+        onClick={(event) => {
+          event.stopPropagation()
+          start(visit)
+        }}
       >
         {content}
         <em>{action.label}</em>
@@ -1294,13 +1630,18 @@ function CalendarEvent({
     )
   if (action.isInteractive && (visit.status === 'in_progress' || visit.status === 'completed'))
     return (
-      <Link className={className} style={timed ? { top } : undefined} href={`/agenda/${visit.id}`}>
+      <Link
+        className={className}
+        style={timed ? { top } : undefined}
+        href={`/agenda/${visit.id}`}
+        onClick={(event) => event.stopPropagation()}
+      >
         {content}
         <em>{action.label}</em>
       </Link>
     )
   return (
-    <div className={className} style={timed ? { top } : undefined}>
+    <div className={className} style={timed ? { top } : undefined} onClick={(event) => event.stopPropagation()}>
       {content}
       <em>{action.label}</em>
     </div>
@@ -1472,24 +1813,28 @@ function Billing({
                   </div>
                   <div className="invoice-actions">
                     <div className="invoice-utility-actions">
-                      <button
+                      <Button
                         className="invoice-action"
                         type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setPreviewedInvoice(invoice)}
                         aria-label={`Veure la factura ${invoice.number ?? invoice.id}`}
                       >
                         <Eye size={16} aria-hidden="true" />
                         <span>Veure</span>
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         className="invoice-action"
                         type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => downloadInvoice(invoice)}
                         aria-label={`Descarrega la factura ${invoice.number ?? invoice.id}`}
                       >
                         <Download size={16} aria-hidden="true" />
                         <span>Descarrega</span>
-                      </button>
+                      </Button>
                     </div>
                     {isPaid ? (
                       <span className="invoice-status-pill paid">
@@ -1497,13 +1842,15 @@ function Billing({
                         Cobrada
                       </span>
                     ) : (
-                      <button
+                      <Button
                         className="invoice-status-pill pending"
                         type="button"
+                        variant="outline"
+                        size="sm"
                         onClick={() => pay(invoice)}
                       >
                         Marca com a cobrada
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </article>
@@ -1669,6 +2016,9 @@ function Clients({
             role="listitem"
           >
             <div className="client-card-head">
+              <span className="client-avatar" aria-hidden="true">
+                {client.legal_name.trim().slice(0, 2).toUpperCase()}
+              </span>
               <div>
                 <div className="client-name-row">
                   <h3>{client.legal_name}</h3>
@@ -1679,59 +2029,70 @@ function Clients({
               <span className="client-type">{clientTypeLabel(client.client_type)}</span>
             </div>
             <div className="client-contact">
-              <span>
+              <span className="client-contact-primary">
                 <UserRound size={15} aria-hidden="true" />
                 {client.contact_name || 'Sense contacte assignat'}
               </span>
-              {client.contact_email && (
-                <span>
-                  <Mail size={15} aria-hidden="true" />
-                  {client.contact_email}
-                </span>
-              )}
-              {client.contact_phone && (
-                <span>
-                  <Phone size={15} aria-hidden="true" />
-                  {client.contact_phone}
+              {(client.contact_email || client.contact_phone) && (
+                <span className="client-contact-secondary">
+                  {client.contact_email && (
+                    <span>
+                      <Mail size={14} aria-hidden="true" />
+                      {client.contact_email}
+                    </span>
+                  )}
+                  {client.contact_phone && (
+                    <span>
+                      <Phone size={14} aria-hidden="true" />
+                      {client.contact_phone}
+                    </span>
+                  )}
                 </span>
               )}
             </div>
             <div className="client-details">
-              <span>
+              <span className="client-details-primary">
                 <Building2 size={15} aria-hidden="true" />
                 {client.installations.length}{' '}
                 {client.installations.length === 1 ? 'instal·lació' : 'instal·lacions'}
               </span>
-              <span>
+              <span className="client-details-secondary">
                 Cobrament {paymentLabel(client.payment_method)} · {client.payment_terms_days} dies
               </span>
             </div>
             <div className="client-card-actions">
-              <button
-                className="action-link"
+              <Button
+                className="icon-action"
                 type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Veure la fitxa de ${client.legal_name}`}
                 onClick={() => setSelectedClient(client)}
               >
-                Veure la fitxa
-              </button>
+                <Eye size={16} aria-hidden="true" />
+              </Button>
               {isAdmin && (
                 <>
-                  <button
+                  <Button
                     className="icon-action"
                     type="button"
+                    variant="ghost"
+                    size="icon-sm"
                     aria-label={`Edita ${client.legal_name}`}
                     onClick={() => setEditingClient(client)}
                   >
                     <Pencil size={16} />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     className="icon-action destructive"
                     type="button"
+                    variant="destructive"
+                    size="icon-sm"
                     aria-label={`Elimina ${client.legal_name}`}
                     onClick={() => void onDeleteClient(client)}
                   >
                     <Trash2 size={16} />
-                  </button>
+                  </Button>
                 </>
               )}
             </div>
@@ -1745,25 +2106,25 @@ function Clients({
         </div>
       )}
       <nav className="pagination" aria-label="Paginació de clients">
-        <button
-          className="button secondary"
+        <Button
           type="button"
+          variant="outline"
           disabled={page === 0}
           onClick={() => updateSearchParams({ pagina: page > 1 ? page : null })}
         >
           Anterior
-        </button>
+        </Button>
         <span>
           Pàgina {page + 1} de {pageCount}
         </span>
-        <button
-          className="button secondary"
+        <Button
           type="button"
+          variant="outline"
           disabled={page + 1 >= pageCount}
           onClick={() => updateSearchParams({ pagina: page + 2 })}
         >
           Següent
-        </button>
+        </Button>
       </nav>
       {editingClient && (
         <ClientForm
@@ -2005,14 +2366,14 @@ function ClientForm({
           />
           Client actiu
         </label>
-        <div className="modal-foot">
-          <button className="button secondary" type="button" onClick={onClose}>
+        <DialogFooter className="modal-foot">
+          <Button variant="outline" type="button" onClick={onClose}>
             Cancel·la
-          </button>
-          <button className="button" disabled={saving} type="submit">
+          </Button>
+          <Button type="submit" disabled={saving}>
             {saving ? "S'està desant…" : client ? 'Desa els canvis' : 'Crea el client'}
-          </button>
-        </div>
+          </Button>
+        </DialogFooter>
       </form>
     </Modal>
   )
@@ -2046,9 +2407,9 @@ function ClientDetail({
           <div className="sheet-heading">
             <h3>Contacte</h3>
             {isAdmin && (
-              <button className="action-link" type="button" onClick={onEditClient}>
+              <Button className="action-link" type="button" variant="ghost" size="sm" onClick={onEditClient}>
                 Edita la fitxa
-              </button>
+              </Button>
             )}
           </div>
           <div className="detail-list">
@@ -2081,10 +2442,10 @@ function ClientDetail({
           <div className="sheet-heading">
             <h3>Instal·lacions</h3>
             {isAdmin && (
-              <button className="action-link" type="button" onClick={onNewInstallation}>
+              <Button className="action-link" type="button" variant="ghost" size="sm" onClick={onNewInstallation}>
                 <Plus size={15} />
                 Afegeix
-              </button>
+              </Button>
             )}
           </div>
           <div className="installation-list">
@@ -2099,22 +2460,26 @@ function ClientDetail({
                 </div>
                 {isAdmin && (
                   <div>
-                    <button
+                    <Button
                       className="icon-action"
                       type="button"
+                      variant="ghost"
+                      size="icon-sm"
                       aria-label={`Edita ${installation.name}`}
                       onClick={() => onEditInstallation(installation)}
                     >
                       <Pencil size={15} />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       className="icon-action destructive"
                       type="button"
+                      variant="destructive"
+                      size="icon-sm"
                       aria-label={`Elimina ${installation.name}`}
                       onClick={() => void onDeleteInstallation(installation)}
                     >
                       <Trash2 size={15} />
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
@@ -2270,10 +2635,10 @@ function VisitStartMap({
   const mapLink = `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`
   return (
     <div className="time-tracking-map">
-      <button type="button" onClick={() => setMapOpen((open) => !open)}>
+      <Button type="button" variant="outline" size="sm" onClick={() => setMapOpen((open) => !open)}>
         <MapPin size={15} aria-hidden="true" />{' '}
         {mapOpen ? 'Amaga el mapa' : 'Veure el punt al mapa'}
-      </button>
+      </Button>
       {mapOpen && (
         <>
           <iframe
@@ -2377,9 +2742,9 @@ function InstallationForm({
               <h3>Ubicació de la instal·lació</h3>
               <p>Opcional. Activa la comprovació de distància en iniciar una visita.</p>
             </div>
-            <button className="button secondary" type="button" onClick={setCurrentLocation}>
+            <Button variant="outline" size="sm" type="button" onClick={setCurrentLocation}>
               <MapPin size={15} aria-hidden="true" /> Fes servir la meva ubicació
-            </button>
+            </Button>
           </div>
           <div className="form-grid">
             <Field label="Latitud">
@@ -2422,18 +2787,18 @@ function InstallationForm({
             onChange={(e) => update('notes', e.target.value)}
           />
         </Field>
-        <div className="modal-foot">
-          <button className="button secondary" type="button" onClick={onClose}>
+        <DialogFooter className="modal-foot">
+          <Button variant="outline" type="button" onClick={onClose}>
             Cancel·la
-          </button>
-          <button className="button" disabled={saving} type="submit">
+          </Button>
+          <Button type="submit" disabled={saving}>
             {saving
               ? "S'està desant…"
               : installation
                 ? 'Desa els canvis'
                 : 'Afegeix la instal·lació'}
-          </button>
-        </div>
+          </Button>
+        </DialogFooter>
       </form>
     </Modal>
   )
@@ -2594,14 +2959,16 @@ function AuthScreen() {
                   autoComplete="current-password"
                   placeholder="Mínim 8 caràcters"
                 />
-                <button
+                <Button
                   className="auth-password-toggle"
                   type="button"
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => setShowPassword((visible) => !visible)}
                   aria-label={showPassword ? 'Amaga la contrasenya' : 'Mostra la contrasenya'}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+                </Button>
               </div>
             </label>
             {feedback && (
@@ -2612,10 +2979,10 @@ function AuthScreen() {
                 {feedback.text}
               </p>
             )}
-            <button className="auth-submit" type="submit" disabled={isSubmitting}>
+            <Button className="auth-submit" type="submit" disabled={isSubmitting}>
               {isSubmitting ? "S'està comprovant…" : 'Entra al tauler'}
               <ArrowRight size={18} aria-hidden="true" />
-            </button>
+            </Button>
           </form>
           <p className="auth-switch">
             Accés exclusiu per invitació. Si encara no tens compte, contacta amb l'administració.

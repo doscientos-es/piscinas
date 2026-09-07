@@ -1,10 +1,29 @@
 'use client'
 
-import { History, PackagePlus, Pencil, Trash2, X } from 'lucide-react'
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  PopoverContent,
+  PopoverTrigger,
+  toast,
+} from '@doscientos/ui'
+import { History, PackagePlus, Pencil, SlidersHorizontal, Trash2, X } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { createClient } from '@/lib/supabase/client'
+import {
+  getInventoryCategories,
+  getInventoryPageCount,
+  INVENTORY_PAGE_SIZE,
+  readInventoryPage,
+} from '@/lib/inventory-filters'
+import type { SearchParamUpdates } from '@/lib/search-params'
 import { usePersistentSearchParams } from '@/lib/use-persistent-search-params'
 
 export type Product = {
@@ -30,6 +49,11 @@ type Movement = {
 }
 
 type ProductInput = Omit<Product, 'id'>
+
+type InventoryPageResponse = {
+  items: Product[]
+  total: number
+}
 
 const currency = new Intl.NumberFormat('ca-ES', { style: 'currency', currency: 'EUR' })
 const emptyProduct: ProductInput = {
@@ -62,27 +86,74 @@ export function Inventory({
   const searchParams = useSearchParams()
   const updateSearchParams = usePersistentSearchParams()
   const query = searchParams.get('q') ?? ''
+  const category = searchParams.get('categoria') ?? ''
+  const statusParam = searchParams.get('estado')
+  const stockParam = searchParams.get('stock')
+  const status = statusParam === 'active' || statusParam === 'inactive' ? statusParam : 'all'
+  const stock = stockParam === 'low' || stockParam === 'healthy' ? stockParam : 'all'
+  const page = readInventoryPage(searchParams.get('pagina'))
   const [editing, setEditing] = useState<Product | 'new' | null>(null)
   const [movementProduct, setMovementProduct] = useState<Product | null>(null)
   const [historyProduct, setHistoryProduct] = useState<Product | null>(null)
   const [movements, setMovements] = useState<Movement[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [remoteProducts, setRemoteProducts] = useState<Product[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [reloadVersion, setReloadVersion] = useState(0)
   const creationVersionRef = useRef(creationVersion)
-  const visible = useMemo(
-    () =>
-      products.filter(
-        (product) =>
-          product.name.toLocaleLowerCase('ca').includes(query.toLocaleLowerCase('ca')) ||
-          product.reference?.toLocaleLowerCase('ca').includes(query.toLocaleLowerCase('ca')),
-      ),
-    [products, query],
-  )
+  const categories = useMemo(() => getInventoryCategories(products), [products])
+  const hasFilters = Boolean(query || category || status !== 'all' || stock !== 'all')
+  const activeFilterCount = Number(Boolean(category)) + Number(status !== 'all') + Number(stock !== 'all')
+  const pageCount = getInventoryPageCount(total)
+  const updateInventorySearch = (updates: SearchParamUpdates) =>
+    updateSearchParams({ ...updates, pagina: null })
   const lowStock = products.filter(
     (product) => product.active && product.stock_quantity <= product.minimum_stock,
   )
 
   useEffect(() => {
+    let active = true
+    const timer = window.setTimeout(async () => {
+      setLoading(true)
+      const { data, error: requestError } = await createClient().rpc('list_inventory_page', {
+        p_query: query.trim() || null,
+        p_category: category || null,
+        p_status: status,
+        p_stock: stock,
+        p_page: page,
+        p_page_size: INVENTORY_PAGE_SIZE,
+      })
+      if (!active) return
+      if (requestError) {
+        setError(requestError.message)
+        setRemoteProducts([])
+        setTotal(0)
+      } else {
+        const response = data as unknown as InventoryPageResponse
+        setError(null)
+        setRemoteProducts(response?.items ?? [])
+        setTotal(Number(response?.total ?? 0))
+      }
+      setLoading(false)
+    }, 200)
+
+    return () => {
+      active = false
+      window.clearTimeout(timer)
+    }
+  }, [category, page, query, reloadVersion, status, stock])
+
+  useEffect(() => {
+    if (!loading && page > pageCount) updateSearchParams({ pagina: pageCount === 1 ? null : pageCount })
+  }, [loading, page, pageCount, updateSearchParams])
+
+  useEffect(() => {
     if (!historyProduct) return
+    let active = true
+    setHistoryLoading(true)
+    setMovements([])
     createClient()
       .from('inventory_movements')
       .select('id,product_id,movement_type,quantity,note,occurred_at')
@@ -90,9 +161,14 @@ export function Inventory({
       .order('occurred_at', { ascending: false })
       .limit(30)
       .then(({ data, error: requestError }) => {
+        if (!active) return
         if (requestError) setError(requestError.message)
         else setMovements((data ?? []) as Movement[])
+        setHistoryLoading(false)
       })
+    return () => {
+      active = false
+    }
   }, [historyProduct])
 
   useEffect(() => {
@@ -100,6 +176,11 @@ export function Inventory({
     creationVersionRef.current = creationVersion
     setEditing('new')
   }, [creationVersion, isAdmin])
+
+  const refreshInventory = async () => {
+    await onRefresh()
+    setReloadVersion((version) => version + 1)
+  }
 
   const remove = async (product: Product) => {
     if (
@@ -112,8 +193,12 @@ export function Inventory({
       .from('products')
       .delete()
       .eq('id', product.id)
-    if (requestError) setError(requestError.message)
-    else await onRefresh()
+    if (requestError) {
+      toast.error("No s'ha pogut eliminar el material", { description: requestError.message })
+      return
+    }
+    toast.success('Material eliminat', { description: product.name })
+    await refreshInventory()
   }
 
   return (
@@ -155,28 +240,148 @@ export function Inventory({
           </strong>
         </div>
       </section>
-      <div className="client-toolbar">
+      <div className="client-toolbar inventory-toolbar">
         <label className="client-search">
           <span className="sr-only">Cerca materials</span>
           <input
             value={query}
-            onChange={(event) => updateSearchParams({ q: event.target.value })}
+            onChange={(event) => updateInventorySearch({ q: event.target.value })}
             placeholder="Cerca per material o referència"
           />
         </label>
-        <span>{visible.length} materials</span>
+        <PopoverTrigger>
+          <Button className="inventory-filter-trigger" type="button" variant="outline">
+            <SlidersHorizontal size={16} aria-hidden="true" />
+            Filtres
+            {activeFilterCount > 0 && <span className="inventory-filter-count">{activeFilterCount}</span>}
+          </Button>
+          <PopoverContent placement="bottom end" className="inventory-filters-popover">
+            <header className="inventory-filters-heading">
+              <div>
+                <strong>Filtra l'inventari</strong>
+                <span>Els resultats s'actualitzen al moment.</span>
+              </div>
+              {activeFilterCount > 0 && (
+                <Button
+                  className="action-link inventory-clear-filters"
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => updateInventorySearch({ categoria: null, estado: null, stock: null })}
+                >
+                  Neteja
+                </Button>
+              )}
+            </header>
+            <label className="inventory-filter-field">
+              <span>Categoria</span>
+              <select
+                value={category}
+                onChange={(event) => updateInventorySearch({ categoria: event.target.value })}
+              >
+                <option value="">Totes les categories</option>
+                {categories.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="inventory-filter-field">
+              <span>Estat</span>
+              <select value={status} onChange={(event) => updateInventorySearch({ estado: event.target.value })}>
+                <option value="all">Tots els estats</option>
+                <option value="active">Actius</option>
+                <option value="inactive">Inactius</option>
+              </select>
+            </label>
+            <label className="inventory-filter-field">
+              <span>Disponibilitat</span>
+              <select value={stock} onChange={(event) => updateInventorySearch({ stock: event.target.value })}>
+                <option value="all">Tot l'estoc</option>
+                <option value="low">Estoc baix</option>
+                <option value="healthy">Estoc correcte</option>
+              </select>
+            </label>
+          </PopoverContent>
+        </PopoverTrigger>
+        <span className="inventory-result-count">
+          {loading ? 'Carregant…' : `${remoteProducts.length} de ${total} materials`}
+        </span>
       </div>
+      {hasFilters && (
+        <div className="inventory-filter-feedback" aria-label="Filtres actius">
+          <div className="inventory-active-filters">
+            {query && (
+              <Button
+                className="inventory-filter-chip"
+                type="button"
+                variant="outline"
+                size="xs"
+                onClick={() => updateInventorySearch({ q: null })}
+                aria-label={`Elimina la cerca ${query}`}
+              >
+                Cerca: {query} <X size={13} aria-hidden="true" />
+              </Button>
+            )}
+            {category && (
+              <Button
+                className="inventory-filter-chip"
+                type="button"
+                variant="outline"
+                size="xs"
+                onClick={() => updateInventorySearch({ categoria: null })}
+                aria-label={`Elimina la categoria ${category}`}
+              >
+                {category} <X size={13} aria-hidden="true" />
+              </Button>
+            )}
+            {status !== 'all' && (
+              <Button
+                className="inventory-filter-chip"
+                type="button"
+                variant="outline"
+                size="xs"
+                onClick={() => updateInventorySearch({ estado: null })}
+              >
+                {status === 'active' ? 'Actius' : 'Inactius'} <X size={13} aria-hidden="true" />
+              </Button>
+            )}
+            {stock !== 'all' && (
+              <Button
+                className="inventory-filter-chip"
+                type="button"
+                variant="outline"
+                size="xs"
+                onClick={() => updateInventorySearch({ stock: null })}
+              >
+                {stock === 'low' ? 'Estoc baix' : 'Estoc correcte'} <X size={13} aria-hidden="true" />
+              </Button>
+            )}
+          </div>
+          <Button
+            className="action-link inventory-reset-filters"
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => updateInventorySearch({ q: null, categoria: null, estado: null, stock: null })}
+          >
+            Neteja-ho tot
+          </Button>
+        </div>
+      )}
       <div className="inventory-list">
-        {visible.map((product) => (
+        {remoteProducts.map((product) => (
           <article
             key={product.id}
             className={`inventory-row ${!product.active ? 'is-inactive' : ''}`}
           >
-            <div>
+            <div className="inventory-material">
               <strong>{product.name}</strong>
-              <span>{product.reference || product.category || 'Sense referència'}</span>
+              <span>{product.reference || 'Sense referència'}</span>
+              {product.category && <small className="inventory-category-tag">{product.category}</small>}
             </div>
-            <div>
+            <div className="inventory-stock">
               <span>Existències</span>
               <strong
                 className={product.stock_quantity <= product.minimum_stock ? 'stock-low' : ''}
@@ -187,7 +392,7 @@ export function Inventory({
                 Mín. {product.minimum_stock} {product.unit}
               </small>
             </div>
-            <div>
+            <div className="inventory-pricing">
               <span>Cost / venda</span>
               <strong>
                 {currency.format(Number(product.cost_price ?? 0))} /{' '}
@@ -195,50 +400,82 @@ export function Inventory({
               </strong>
             </div>
             <div className="inventory-actions">
-              <button
+              <Button
                 className="action-link"
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => setHistoryProduct(product)}
               >
                 <History size={16} aria-hidden="true" />
                 Historial
-              </button>
+              </Button>
               {isAdmin && (
                 <>
-                  <button
+                  <Button
                     className="action-link"
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setMovementProduct(product)}
                   >
                     <PackagePlus size={16} aria-hidden="true" />
                     Ajusta
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     className="icon-action"
                     type="button"
+                    variant="ghost"
+                    size="icon-sm"
                     aria-label={`Edita ${product.name}`}
                     onClick={() => setEditing(product)}
                   >
                     <Pencil size={16} />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     className="icon-action destructive"
                     type="button"
+                    variant="destructive"
+                    size="icon-sm"
                     aria-label={`Elimina ${product.name}`}
                     onClick={() => void remove(product)}
                   >
                     <Trash2 size={16} />
-                  </button>
+                  </Button>
                 </>
               )}
             </div>
           </article>
         ))}
       </div>
-      {visible.length === 0 && (
+      {!loading && remoteProducts.length === 0 && (
         <div className="empty-results">
           <p>No hi ha materials que coincideixin amb la cerca.</p>
         </div>
+      )}
+      {loading && <p className="inventory-loading" role="status">S&apos;està carregant l&apos;inventari…</p>}
+      {!loading && total > 0 && (
+        <nav className="pagination inventory-pagination" aria-label="Paginació de l'inventari">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={page === 1}
+            onClick={() => updateSearchParams({ pagina: page === 2 ? null : page - 1 })}
+          >
+            Anterior
+          </Button>
+          <span>
+            Pàgina {page} de {pageCount} · {total} materials
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={page >= pageCount}
+            onClick={() => updateSearchParams({ pagina: page + 1 })}
+          >
+            Següent
+          </Button>
+        </nav>
       )}
       {editing && (
         <ProductForm
@@ -257,8 +494,11 @@ export function Inventory({
                 ? await createClient().from('products').insert(payload)
                 : await createClient().from('products').update(payload).eq('id', editing.id)
             if (response.error) throw new Error(response.error.message)
-            await onRefresh()
+            await refreshInventory()
             setEditing(null)
+            toast.success(editing === 'new' ? 'Material creat' : 'Material actualitzat', {
+              description: payload.name,
+            })
           }}
         />
       )}
@@ -275,8 +515,9 @@ export function Inventory({
               p_unit_cost: movementProduct.cost_price,
             })
             if (requestError) throw new Error(requestError.message)
-            await onRefresh()
+            await refreshInventory()
             setMovementProduct(null)
+            toast.success('Moviment registrat', { description: movementProduct.name })
           }}
         />
       )}
@@ -284,6 +525,7 @@ export function Inventory({
         <HistoryModal
           product={historyProduct}
           movements={movements}
+          loading={historyLoading}
           onClose={() => setHistoryProduct(null)}
         />
       )}
@@ -411,14 +653,14 @@ function ProductForm({
             {error}
           </p>
         )}
-        <div className="modal-foot">
-          <button className="button secondary" type="button" onClick={onClose}>
+        <DialogFooter className="modal-foot">
+          <Button variant="outline" type="button" onClick={onClose}>
             Cancel·la
-          </button>
-          <button className="button" disabled={saving}>
+          </Button>
+          <Button type="submit" disabled={saving}>
             {saving ? "S'està desant…" : 'Desa el material'}
-          </button>
-        </div>
+          </Button>
+        </DialogFooter>
       </form>
     </Modal>
   )
@@ -494,14 +736,14 @@ function MovementForm({
             {error}
           </p>
         )}
-        <div className="modal-foot">
-          <button className="button secondary" type="button" onClick={onClose}>
+        <DialogFooter className="modal-foot">
+          <Button variant="outline" type="button" onClick={onClose}>
             Cancel·la
-          </button>
-          <button className="button" disabled={saving}>
+          </Button>
+          <Button type="submit" disabled={saving}>
             {saving ? "S'està registrant…" : 'Registra el moviment'}
-          </button>
-        </div>
+          </Button>
+        </DialogFooter>
       </form>
     </Modal>
   )
@@ -510,35 +752,65 @@ function MovementForm({
 function HistoryModal({
   product,
   movements,
+  loading,
   onClose,
 }: {
   product: Product
   movements: Movement[]
+  loading: boolean
   onClose: () => void
 }) {
   return (
-    <Modal title={`Historial · ${product.name}`} onClose={onClose}>
+    <Modal
+      title="Historial d'estoc"
+      description={product.name}
+      className="inventory-history-modal"
+      onClose={onClose}
+    >
+      <section className="inventory-history-summary" aria-label="Resum d'estoc">
+        <div>
+          <span>Estoc actual</span>
+          <strong className={product.stock_quantity <= product.minimum_stock ? 'stock-low' : 'stock-positive'}>
+            {product.stock_quantity} {product.unit}
+          </strong>
+        </div>
+        <div>
+          <span>Estoc mínim</span>
+          <strong>
+            {product.minimum_stock} {product.unit}
+          </strong>
+        </div>
+        <p className={product.stock_quantity <= product.minimum_stock ? 'is-low' : 'is-healthy'}>
+          {product.stock_quantity <= product.minimum_stock ? 'Cal reposició' : 'Estoc disponible'}
+        </p>
+      </section>
       <div className="movement-history">
-        {movements.length === 0 ? (
+        {loading ? (
+          <p className="movement-history-status" role="status">
+            S&apos;està carregant l&apos;historial…
+          </p>
+        ) : movements.length === 0 ? (
           <p>Aquest material encara no té moviments registrats.</p>
         ) : (
           movements.map((movement) => (
-            <div key={movement.id}>
-              <span>
+            <article className={`movement-history-row movement-${movement.movement_type}`} key={movement.id}>
+              <div className="movement-history-detail">
+                <strong>{movementLabel(movement.movement_type)}</strong>
+                <p>{movement.note || 'Sense observacions.'}</p>
+              </div>
+              <div className="movement-history-value">
+                <strong className={movement.quantity < 0 ? 'stock-low' : 'stock-positive'}>
+                  {movement.quantity > 0 ? '+' : ''}
+                  {movement.quantity} {product.unit}
+                </strong>
+                <time dateTime={movement.occurred_at}>
                 {new Intl.DateTimeFormat('ca-ES', {
                   dateStyle: 'medium',
                   timeStyle: 'short',
                 }).format(new Date(movement.occurred_at))}
-              </span>
-              <strong className={movement.quantity < 0 ? 'stock-low' : 'stock-positive'}>
-                {movement.quantity > 0 ? '+' : ''}
-                {movement.quantity} {product.unit}
-              </strong>
-              <p>
-                {movementLabel(movement.movement_type)}
-                {movement.note ? ` · ${movement.note}` : ''}
-              </p>
-            </div>
+                </time>
+              </div>
+            </article>
           ))
         )}
       </div>
@@ -555,24 +827,26 @@ function movementLabel(type: Movement['movement_type']) {
 }
 function Modal({
   title,
+  description,
+  className,
   onClose,
   children,
 }: {
   title: string
+  description?: React.ReactNode
+  className?: string
   onClose: () => void
   children: React.ReactNode
 }) {
   return (
-    <div className="modal-backdrop" role="presentation">
-      <section className="modal inventory-modal" role="dialog" aria-modal="true" aria-label={title}>
-        <div className="modal-title">
-          <h2>{title}</h2>
-          <button className="close" type="button" aria-label="Tanca" onClick={onClose}>
-            <X size={19} />
-          </button>
-        </div>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className={`modal inventory-modal ${className ?? ''}`} showCloseButton>
+        <DialogHeader className="modal-title">
+          <DialogTitle>{title}</DialogTitle>
+          {description && <DialogDescription>{description}</DialogDescription>}
+        </DialogHeader>
         {children}
-      </section>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

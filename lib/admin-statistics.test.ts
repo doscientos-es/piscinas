@@ -50,4 +50,26 @@ describe('buildAdminStatistics', () => {
     expect(statistics.status).toMatchObject({ completed: 1, in_progress: 1 })
     expect(statistics.punctuality).toEqual({ early: 0, onTime: 1, late: 0, exception: 1 })
   })
+
+  it('accepts one-to-one interventions and visits without an intervention', () => {
+    const statistics = buildAdminStatistics(
+      [
+        {
+          scheduled_for: '2026-09-10T09:00:00',
+          status: 'completed',
+          interventions: { started_at: '2026-09-10T09:05:00' },
+        },
+        {
+          scheduled_for: '2026-09-11T09:00:00',
+          status: 'scheduled',
+          interventions: null,
+        },
+      ],
+      [],
+      now,
+    )
+
+    expect(statistics.totals).toMatchObject({ planned: 2, completed: 1, started: 1 })
+    expect(statistics.punctuality).toEqual({ early: 0, onTime: 1, late: 0, exception: 0 })
+  })
 })

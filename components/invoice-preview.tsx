@@ -1,6 +1,7 @@
 'use client'
 
-import { Download, Printer, X } from 'lucide-react'
+import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@doscientos/ui'
+import { Download, Printer } from 'lucide-react'
 
 import {
   type Invoice,
@@ -23,28 +24,12 @@ export function InvoicePreview({
   const lines = getInvoiceLines(invoice)
 
   return (
-    <div className="invoice-preview-backdrop" role="presentation" onMouseDown={onClose}>
-      <section
-        className="invoice-preview"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="invoice-preview-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <header className="invoice-preview-header">
-          <div>
-            <span className="eyebrow">Vista prèvia de la factura</span>
-            <h2 id="invoice-preview-title">{invoice.number ?? 'Esborrany'}</h2>
-          </div>
-          <button
-            className="close"
-            type="button"
-            onClick={onClose}
-            aria-label="Tanca la vista prèvia"
-          >
-            <X size={18} aria-hidden="true" />
-          </button>
-        </header>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="invoice-preview" showCloseButton>
+        <DialogHeader className="invoice-preview-header">
+          <span className="eyebrow">Vista prèvia de la factura</span>
+          <DialogTitle>{invoice.number ?? 'Esborrany'}</DialogTitle>
+        </DialogHeader>
         <article className="invoice-paper">
           <div className="invoice-paper-header">
             <div>
@@ -111,17 +96,17 @@ export function InvoicePreview({
             client.
           </p>
         </article>
-        <footer className="invoice-preview-actions">
-          <button className="button secondary" type="button" onClick={() => onDownload(invoice)}>
+        <DialogFooter className="invoice-preview-actions">
+          <Button variant="outline" type="button" onClick={() => onDownload(invoice)}>
             <Download size={16} aria-hidden="true" />
             Descarrega la factura
-          </button>
-          <button className="button" type="button" onClick={() => printInvoice(invoice)}>
+          </Button>
+          <Button type="button" onClick={() => printInvoice(invoice)}>
             <Printer size={16} aria-hidden="true" />
             Imprimeix / desa en PDF
-          </button>
-        </footer>
-      </section>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

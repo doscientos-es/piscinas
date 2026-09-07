@@ -1,7 +1,7 @@
 export type StatisticsVisit = {
   scheduled_for: string
   status: string
-  interventions: { started_at: string | null }[]
+  interventions: { started_at: string | null } | { started_at: string | null }[] | null
 }
 
 export type StatisticsInvoice = {
@@ -71,7 +71,10 @@ export function buildAdminStatistics(
     if (isVisitStatus(visit.status)) status[visit.status] += 1
     if (visit.status === 'completed') month.completed += 1
 
-    const startedAt = visit.interventions[0]?.started_at
+    const intervention = Array.isArray(visit.interventions)
+      ? visit.interventions[0]
+      : visit.interventions
+    const startedAt = intervention?.started_at
     if (!startedAt) continue
     const deltaMinutes = (new Date(startedAt).getTime() - scheduledFor.getTime()) / 60_000
     if (deltaMinutes < -15) punctuality.early += 1

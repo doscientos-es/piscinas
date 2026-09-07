@@ -1,5 +1,6 @@
 'use client'
 
+import { Toaster } from '@doscientos/ui'
 import { usePathname } from 'next/navigation'
 import { Suspense } from 'react'
 
@@ -8,9 +9,12 @@ import { getAppRoute } from '@/lib/app-route'
 
 export function PersistentApp() {
   return (
-    <Suspense fallback={<main className="empty-state">S'està carregant l'aplicació…</main>}>
-      <PersistentAppContent />
-    </Suspense>
+    <>
+      <Suspense fallback={<main className="empty-state">S'està carregant l'aplicació…</main>}>
+        <PersistentAppContent />
+      </Suspense>
+      <Toaster position="bottom-right" />
+    </>
   )
 }
 
