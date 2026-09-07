@@ -3,22 +3,18 @@ import { describe, expect, it } from 'vitest'
 import { validateAuthInput } from './auth-validation'
 
 describe('validateAuthInput', () => {
-  it('requereix un nom en registrar-se', () => {
+  it('requereix una adreça electrònica vàlida', () => {
     expect(
       validateAuthInput({
-        mode: 'register',
-        name: '',
-        email: 'operaciones@concepteblau.cat',
+        email: 'no-es-un-correu',
         password: 'segura123',
       }),
-    ).toBe('Introdueix el teu nom per crear el compte.')
+    ).toBe('Introdueix una adreça electrònica vàlida.')
   })
 
   it('accepta credencials vàlides per iniciar sessió', () => {
     expect(
       validateAuthInput({
-        mode: 'login',
-        name: '',
         email: 'operaciones@concepteblau.cat',
         password: 'segura123',
       }),

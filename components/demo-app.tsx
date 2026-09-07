@@ -51,7 +51,7 @@ import { VisitReport } from '@/components/visit-report'
 import { WorkHistory } from '@/components/work-history'
 import { getAgendaVisitAction } from '@/lib/agenda-access'
 import { canAccessAppView, type AccountRole } from '@/lib/app-access'
-import { validateAuthInput, type AuthMode } from '@/lib/auth-validation'
+import { validateAuthInput } from '@/lib/auth-validation'
 import { downloadInvoice, formatDate, getInvoiceLines, type Invoice } from '@/lib/invoice-template'
 import {
   isClientExtensionSchemaPending,
@@ -2483,23 +2483,15 @@ function Modal({
   )
 }
 function AuthScreen() {
-  const [mode, setMode] = useState<AuthMode>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [name, setName] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [feedback, setFeedback] = useState<{ kind: 'error' | 'success'; text: string } | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const isRegister = mode === 'register'
-
-  const changeMode = (nextMode: AuthMode) => {
-    setMode(nextMode)
-    setFeedback(null)
-  }
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const validationError = validateAuthInput({ email, password, name, mode })
+    const validationError = validateAuthInput({ email, password })
     if (validationError) {
       setFeedback({ kind: 'error', text: validationError })
       return
@@ -2508,13 +2500,7 @@ function AuthScreen() {
     setIsSubmitting(true)
     setFeedback(null)
     const supabase = createClient()
-    const result = isRegister
-      ? await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: { data: { full_name: name.trim() } },
-        })
-      : await supabase.auth.signInWithPassword({ email: email.trim(), password })
+    const result = await supabase.auth.signInWithPassword({ email: email.trim(), password })
 
     setIsSubmitting(false)
     if (result.error) {
@@ -2522,19 +2508,7 @@ function AuthScreen() {
       return
     }
 
-    if (isRegister && !result.data.session) {
-      setFeedback({
-        kind: 'success',
-        text: 'Compte creat. Revisa el teu correu per confirmar-lo i després inicia sessió.',
-      })
-      return
-    }
-    setFeedback({
-      kind: 'success',
-      text: isRegister
-        ? 'Compte creat. Ja pots accedir al tauler.'
-        : "Sessió iniciada. S'està carregant el tauler…",
-    })
+    setFeedback({ kind: 'success', text: "Sessió iniciada. S'està carregant el tauler…" })
   }
 
   return (
@@ -2586,48 +2560,10 @@ function AuthScreen() {
               <LockKeyhole size={15} aria-hidden="true" />
               Àrea privada
             </span>
-            <h2>{isRegister ? 'Crea el teu compte' : 'Benvingut de nou'}</h2>
-            <p>
-              {isRegister
-                ? "Registra't per començar a gestionar la teva operativa."
-                : 'Accedeix per continuar amb la teva operativa diària.'}
-            </p>
-          </div>
-          <div className="auth-tabs" role="tablist" aria-label="Opcions d'accés">
-            <button
-              type="button"
-              className={!isRegister ? 'active' : ''}
-              role="tab"
-              aria-selected={!isRegister}
-              onClick={() => changeMode('login')}
-            >
-              Inicia sessió
-            </button>
-            <button
-              type="button"
-              className={isRegister ? 'active' : ''}
-              role="tab"
-              aria-selected={isRegister}
-              onClick={() => changeMode('register')}
-            >
-              Crea un compte
-            </button>
+            <h2>Benvingut de nou</h2>
+            <p>Accedeix per continuar amb la teva operativa diària.</p>
           </div>
           <form className="auth-form" onSubmit={submit} noValidate>
-            {isRegister && (
-              <label className="auth-field">
-                <span>Nom complet</span>
-                <div className="auth-input">
-                  <UserRound size={18} aria-hidden="true" />
-                  <input
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    autoComplete="name"
-                    placeholder="El teu nom"
-                  />
-                </div>
-              </label>
-            )}
             <label className="auth-field">
               <span>Adreça electrònica</span>
               <div className="auth-input">
@@ -2650,7 +2586,7 @@ function AuthScreen() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  autoComplete={isRegister ? 'new-password' : 'current-password'}
+                  autoComplete="current-password"
                   placeholder="Mínim 8 caràcters"
                 />
                 <button
@@ -2662,7 +2598,6 @@ function AuthScreen() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              {isRegister && <small>Fes servir almenys 8 caràcters.</small>}
             </label>
             {feedback && (
               <p
@@ -2673,19 +2608,12 @@ function AuthScreen() {
               </p>
             )}
             <button className="auth-submit" type="submit" disabled={isSubmitting}>
-              {isSubmitting
-                ? "S'està comprovant…"
-                : isRegister
-                  ? 'Crea el compte'
-                  : 'Entra al tauler'}
+              {isSubmitting ? "S'està comprovant…" : 'Entra al tauler'}
               <ArrowRight size={18} aria-hidden="true" />
             </button>
           </form>
           <p className="auth-switch">
-            {isRegister ? 'Ja tens un compte?' : 'Encara no tens un compte?'}
-            <button type="button" onClick={() => changeMode(isRegister ? 'login' : 'register')}>
-              {isRegister ? 'Inicia sessió' : "Crea'n un ara"}
-            </button>
+            Accés exclusiu per invitació. Si encara no tens compte, contacta amb l'administració.
           </p>
         </div>
       </section>

@@ -1,17 +1,9 @@
-export type AuthMode = 'login' | 'register'
-
 type AuthInput = {
   email: string
   password: string
-  name: string
-  mode: AuthMode
 }
 
-export function validateAuthInput({ email, password, name, mode }: AuthInput) {
-  if (mode === 'register' && name.trim().length < 2) {
-    return 'Introdueix el teu nom per crear el compte.'
-  }
-
+export function validateAuthInput({ email, password }: AuthInput) {
   if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
     return 'Introdueix una adreça electrònica vàlida.'
   }

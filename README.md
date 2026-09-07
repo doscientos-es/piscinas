@@ -16,7 +16,7 @@ pnpm dev
 
 Abre `http://localhost:3000`.
 
-`DEMO_MODE=true` indica que los datos, factura, correo y cobro son simulados: no hay integraciones externas ni persistencia.
+La demo requiere un proyecto de Supabase configurado y guarda allí los cambios de la sesión. Usa exclusivamente datos sintéticos en un proyecto de demostración: iniciar o cerrar una visita, registrar consumos, editar clientes, actualizar facturas o marcar un cobro modifica esos datos. El primer usuario registrado en una base de demo vacía recibe el rol de administración; los siguientes reciben el rol de técnico.
 
 ## Inventario
 
@@ -26,9 +26,7 @@ Antes de usarla contra Supabase, aplica las migraciones versionadas de inventari
 
 ## Correo transaccional
 
-El proyecto queda preparado para usar Resend desde código de servidor con el paquete `resend`. La clave `RESEND_API_KEY` está configurada como secreto en Vercel para producción, preview y desarrollo, y debe mantenerse sólo en `.env.local` durante el desarrollo local.
-
-Para simular el flujo se usa `RESEND_FROM="Piscinas <onboarding@resend.dev>"`. Ese remitente de pruebas sólo puede enviar al correo asociado a la cuenta de Resend; las direcciones ficticias se emplearán únicamente para datos y estados simulados. Antes de activar envíos a clientes, verifica un dominio en Resend y sustituye la variable por `Nombre <remitente@dominio-verificado>`. No se usa ninguna clave de Resend en el navegador, GitHub Actions ni Supabase mientras los correos se envíen desde Next.js.
+La interfaz actual no envía correos. La dependencia y las variables de Resend quedan reservadas para una futura integración desde servidor; `RESEND_API_KEY` debe mantenerse sólo en `.env.local` durante el desarrollo local y nunca exponerse al navegador.
 
 ## Calidad
 
@@ -41,4 +39,4 @@ pnpm build
 
 ## Límites de la demo
 
-No incluye autenticación real, envío de emails, PDF fiscal, fotos, SEPA, WhatsApp ni importación de Excel. Consulta [la ruta de evolución](docs/demo-to-production.md) antes de conectar servicios reales.
+Incluye autenticación y persistencia en Supabase para datos de ejemplo, pero no envío de emails, PDF fiscal, fotos, SEPA, WhatsApp ni importación de Excel. Consulta [la ruta de evolución](docs/demo-to-production.md) antes de conectar servicios reales.

@@ -78,6 +78,18 @@ describe('work history', () => {
     expect(paginateWorkHistory(results, 1, 1)).toEqual([visits[0]])
   })
 
+  it('muestra trabajos de cualquier estado cuando se seleccionan todos', () => {
+    expect(
+      filterWorkHistory(visits, {
+        query: '',
+        status: 'all',
+        technicianId: '',
+        from: '',
+        to: '',
+      }),
+    ).toHaveLength(2)
+  })
+
   it('reserva la edición para administración y trabajos pendientes', () => {
     expect(canEditWork(true)).toBe(true)
     expect(canEditWork(false)).toBe(false)

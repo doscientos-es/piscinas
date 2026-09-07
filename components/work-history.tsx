@@ -62,9 +62,7 @@ export function WorkHistory({
     statusParam === 'scheduled' ||
     statusParam === 'cancelled'
       ? statusParam
-      : isAdmin
-        ? 'scheduled'
-        : 'completed'
+      : 'all'
   const technicianId = searchParams.get('tecnico') ?? ''
   const from = searchParams.get('desde') ?? ''
   const to = searchParams.get('hasta') ?? ''

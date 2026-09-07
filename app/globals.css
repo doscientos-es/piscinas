@@ -8549,7 +8549,7 @@ textarea:focus-visible {
   inline-size: min(720px, 100%);
   max-inline-size: calc(100vw - clamp(24px, 6vw, 64px));
   max-block-size: calc(100dvh - clamp(24px, 6vw, 64px));
-  margin: 0;
+  margin: 0 auto;
   padding: 20px;
 }
 .work-editor-dialog-header {
