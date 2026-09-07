@@ -9000,6 +9000,17 @@ body {
   margin: auto;
 }
 
+/* The invoice is a readable document, not a narrow generic dialog. */
+[data-slot='dialog-content'].invoice-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  inline-size: min(960px, calc(100vw - clamp(24px, 6vw, 64px)));
+  max-inline-size: min(960px, calc(100vw - clamp(24px, 6vw, 64px)));
+  max-block-size: calc(100dvh - clamp(24px, 6vw, 64px));
+  gap: 0;
+  padding: 0;
+}
+
 /* Dialog overlays use a wrapper between the overlay and its content. Centre both levels explicitly. */
 [data-slot='dialog-overlay'] {
   position: fixed !important;
@@ -9063,6 +9074,12 @@ body {
   [data-slot='dialog-overlay'],
   [data-slot='dialog-overlay'] > * {
     align-items: flex-start !important;
+  }
+
+  [data-slot='dialog-content'].invoice-preview {
+    inline-size: calc(100vw - 24px);
+    max-inline-size: calc(100vw - 24px);
+    max-block-size: calc(100dvh - 24px);
   }
 }
 
@@ -9939,4 +9956,37 @@ body,
     display: none;
   }
 
+}
+
+/* Invoice actions remain visible in the header, before the scrollable document. */
+.invoice-preview-header {
+  align-items: center;
+  gap: 16px;
+  padding-right: 62px;
+}
+
+.invoice-preview-title {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.invoice-preview-header .invoice-preview-actions {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 0;
+}
+
+@media (max-width: 620px) {
+  .invoice-preview-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding-right: 54px;
+  }
+
+  .invoice-preview-header .invoice-preview-actions {
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-start;
+  }
 }

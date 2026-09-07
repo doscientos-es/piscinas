@@ -8,6 +8,9 @@ export type InvoiceClient = {
 export type InvoiceLine = {
   id: string
   sort_order?: number
+  contract_id?: string | null
+  visit_id?: string | null
+  billing_item_id?: string | null
   description: string
   quantity: number
   unit_price: number
@@ -28,6 +31,17 @@ export type Invoice = {
   billing_period: string | null
   clients: InvoiceClient | null
   invoice_lines: InvoiceLine[]
+}
+
+export type MonthlyInvoiceBreakdown = {
+  subscriptionLines: InvoiceLine[]
+  visitLines: InvoiceLine[]
+  productLines: InvoiceLine[]
+  otherLines: InvoiceLine[]
+  subscriptionTotal: number
+  productTotal: number
+  otherTotal: number
+  visitCount: number
 }
 
 const moneyFormatter = new Intl.NumberFormat('ca-ES', { style: 'currency', currency: 'EUR' })
@@ -58,6 +72,52 @@ export function getInvoiceLines(invoice: Invoice): InvoiceLine[] {
       line_total: invoice.subtotal,
     },
   ]
+}
+
+/** Separates a monthly invoice into subscription, visit and billed-consumption sources. */
+export function getMonthlyInvoiceBreakdown(invoice: Invoice): MonthlyInvoiceBreakdown {
+  const breakdown: MonthlyInvoiceBreakdown = {
+    subscriptionLines: [],
+    visitLines: [],
+    productLines: [],
+    otherLines: [],
+    subscriptionTotal: 0,
+    productTotal: 0,
+    otherTotal: 0,
+    visitCount: 0,
+  }
+
+  for (const line of getInvoiceLines(invoice)) {
+    const amount = Number(line.line_total)
+    if (line.contract_id || /^manteniment (piscina|mensual)/i.test(line.description)) {
+      breakdown.subscriptionLines.push(line)
+      breakdown.subscriptionTotal += amount
+    } else if (line.visit_id) {
+      breakdown.visitLines.push(line)
+      breakdown.visitCount += 1
+    } else if (line.billing_item_id) {
+      breakdown.productLines.push(line)
+      breakdown.productTotal += amount
+    } else {
+      breakdown.otherLines.push(line)
+      breakdown.otherTotal += amount
+    }
+  }
+
+  return breakdown
+}
+
+export function getInvoiceStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    draft: 'Esborrany',
+    issued: 'Emesa',
+    sent: 'Enviada',
+    paid: 'Cobrada',
+    overdue: 'Vençuda',
+    returned: 'Retornada',
+    void: 'Anul·lada',
+  }
+  return labels[status] ?? status
 }
 
 function escapeHtml(value: string) {

@@ -56,7 +56,17 @@ import { WorkEditor, WorkHistory } from '@/components/work-history'
 import { getAgendaVisitAction } from '@/lib/agenda-access'
 import { canAccessAppView, type AccountRole } from '@/lib/app-access'
 import { validateAuthInput } from '@/lib/auth-validation'
-import { downloadInvoice, formatDate, getInvoiceLines, type Invoice } from '@/lib/invoice-template'
+import {
+  downloadInvoice,
+  formatDate,
+  formatMoney,
+  getInvoiceLines,
+  getInvoiceStatusLabel,
+  getMonthlyInvoiceBreakdown,
+  type Invoice,
+  type InvoiceLine,
+  type MonthlyInvoiceBreakdown,
+} from '@/lib/invoice-template'
 import {
   isClientExtensionSchemaPending,
   isLocationSchemaPending,
@@ -210,7 +220,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
         ? s
             .from('invoices')
             .select(
-              'id,client_id,number,status,subtotal,vat_total,total,issued_on,due_on,billing_period,clients(legal_name,tax_id,billing_email,billing_address),invoice_lines(id,sort_order,description,quantity,unit_price,vat_rate,line_total)',
+              'id,client_id,number,status,subtotal,vat_total,total,issued_on,due_on,billing_period,clients(legal_name,tax_id,billing_email,billing_address),invoice_lines(id,sort_order,contract_id,visit_id,billing_item_id,description,quantity,unit_price,vat_rate,line_total)',
             )
             .order('created_at', { ascending: false })
         : Promise.resolve({ data: [], error: null })

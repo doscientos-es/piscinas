@@ -1,6 +1,6 @@
 'use client'
 
-import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@doscientos/ui'
+import { Button, Dialog, DialogContent, DialogHeader, DialogTitle } from '@doscientos/ui'
 import { Download, Printer } from 'lucide-react'
 
 import {
@@ -27,8 +27,20 @@ export function InvoicePreview({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="invoice-preview" showCloseButton>
         <DialogHeader className="invoice-preview-header">
-          <span className="eyebrow">Vista prèvia de la factura</span>
-          <DialogTitle>{invoice.number ?? 'Esborrany'}</DialogTitle>
+          <div className="invoice-preview-title">
+            <span className="eyebrow">Vista prèvia de la factura</span>
+            <DialogTitle>{invoice.number ?? 'Esborrany'}</DialogTitle>
+          </div>
+          <div className="invoice-preview-actions" aria-label="Accions de la factura">
+            <Button variant="outline" type="button" onClick={() => onDownload(invoice)}>
+              <Download size={16} aria-hidden="true" />
+              Descarrega
+            </Button>
+            <Button type="button" onClick={() => printInvoice(invoice)}>
+              <Printer size={16} aria-hidden="true" />
+              Imprimeix
+            </Button>
+          </div>
         </DialogHeader>
         <article className="invoice-paper">
           <div className="invoice-paper-header">
@@ -96,16 +108,6 @@ export function InvoicePreview({
             client.
           </p>
         </article>
-        <DialogFooter className="invoice-preview-actions">
-          <Button variant="outline" type="button" onClick={() => onDownload(invoice)}>
-            <Download size={16} aria-hidden="true" />
-            Descarrega la factura
-          </Button>
-          <Button type="button" onClick={() => printInvoice(invoice)}>
-            <Printer size={16} aria-hidden="true" />
-            Imprimeix / desa en PDF
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
