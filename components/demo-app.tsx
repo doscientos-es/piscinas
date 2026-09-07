@@ -1,6 +1,16 @@
 'use client'
 
-import { Button, ConfirmDialog, PopoverContent, PopoverTrigger } from '@doscientos/ui'
+import {
+  Button,
+  ConfirmDialog,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  PopoverContent,
+  PopoverTrigger,
+} from '@doscientos/ui'
 import {
   ArrowRight,
   Building2,
@@ -28,7 +38,6 @@ import {
   Trash2,
   UserRound,
   Users,
-  X,
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -2462,26 +2471,15 @@ function Modal({
   children: ReactNode
 }) {
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
-      <section
-        className="modal client-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="modal-title">
-          <div>
-            <h2>{title}</h2>
-            <p>{description}</p>
-          </div>
-          <button className="close" type="button" onClick={onClose} aria-label="Tanca">
-            <X size={19} />
-          </button>
-        </div>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="modal client-modal max-h-[calc(100dvh-2rem)] max-w-[min(760px,calc(100vw-2rem))]">
+        <DialogHeader className="modal-title pr-10">
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
         {children}
-      </section>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 function AuthScreen() {
