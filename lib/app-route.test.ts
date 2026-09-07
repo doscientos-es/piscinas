@@ -14,6 +14,12 @@ describe('getAppRoute', () => {
     expect(getAppRoute('/agenda/0d73fc4a-7498-4a62-b4f6-1b4ec742ef8c')).toEqual({
       view: 'parte',
       visitId: '0d73fc4a-7498-4a62-b4f6-1b4ec742ef8c',
+      backHref: '/agenda',
+    })
+    expect(getAppRoute('/trabajos/0d73fc4a-7498-4a62-b4f6-1b4ec742ef8c')).toEqual({
+      view: 'parte',
+      visitId: '0d73fc4a-7498-4a62-b4f6-1b4ec742ef8c',
+      backHref: '/trabajos',
     })
   })
 })

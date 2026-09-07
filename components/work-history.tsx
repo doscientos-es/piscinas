@@ -197,6 +197,11 @@ export function WorkHistory({
             </span>
             {canEditWork(isAdmin) ? (
               <div className="work-history-actions">
+                {visit.status === 'completed' && (
+                  <Link className="action-link" href={`/trabajos/${visit.id}`}>
+                    Veure informe
+                  </Link>
+                )}
                 <Button
                   className="action-link"
                   type="button"
@@ -226,9 +231,13 @@ export function WorkHistory({
                   </Button>
                 )}
               </div>
+            ) : visit.status === 'completed' ? (
+              <Link className="action-link" href={`/trabajos/${visit.id}`}>
+                Veure informe
+              </Link>
             ) : visit.status !== 'scheduled' ? (
               <Link className="action-link" href={`/agenda/${visit.id}`}>
-                {visit.status === 'completed' ? 'Veure informe' : 'Veure'}
+                Veure
               </Link>
             ) : (
               <span className="muted">Pendent</span>

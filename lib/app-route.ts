@@ -16,7 +16,7 @@ export type AppRoute =
   | { view: 'facturacion' }
   | { view: 'inventario' }
   | { view: 'estadisticas' }
-  | { view: 'parte'; visitId: string }
+  | { view: 'parte'; visitId: string; backHref: '/agenda' | '/trabajos' }
 
 export function getAppRoute(pathname: string): AppRoute {
   if (pathname === '/agenda') return { view: 'agenda' }
@@ -26,8 +26,11 @@ export function getAppRoute(pathname: string): AppRoute {
   if (pathname === '/inventario') return { view: 'inventario' }
   if (pathname === '/estadisticas') return { view: 'estadisticas' }
 
-  const visitId = /^\/agenda\/([^/]+)$/.exec(pathname)?.[1]
-  if (visitId) return { view: 'parte', visitId }
+  const agendaVisitId = /^\/agenda\/([^/]+)$/.exec(pathname)?.[1]
+  if (agendaVisitId) return { view: 'parte', visitId: agendaVisitId, backHref: '/agenda' }
+
+  const workVisitId = /^\/trabajos\/([^/]+)$/.exec(pathname)?.[1]
+  if (workVisitId) return { view: 'parte', visitId: workVisitId, backHref: '/trabajos' }
 
   return { view: 'inicio' }
 }

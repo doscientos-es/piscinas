@@ -8,6 +8,8 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { createClient } from '@/lib/supabase/client'
 import { buildVisitNotes, parseVisitNotes, standardVisitChecks } from '@/lib/visit-checklist'
+import { isLocationSchemaPending } from '@/lib/location-schema-compatibility'
+import { getVisitMapUrls } from '@/lib/visit-location'
 import { getInitialVisitReportState } from '@/lib/visit-report-state'
 import { validateVisitCompletion, type ProductUsageInput } from '@/lib/visit-validation'
 
@@ -36,6 +38,8 @@ type VisitDetail = {
     name: string
     address: string
     instructions: string | null
+    location_latitude: number | null
+    location_longitude: number | null
     clients: { legal_name: string } | null
   } | null
   technician: { full_name: string } | null
@@ -58,11 +62,11 @@ const quantityFormat = new Intl.NumberFormat('ca-ES', { maximumFractionDigits: 3
 export function VisitReport({
   visitId,
   readOnly = false,
-  isAdmin = false,
+  backHref = '/agenda',
 }: {
   visitId: string
   readOnly?: boolean
-  isAdmin?: boolean
+  backHref?: '/agenda' | '/trabajos'
 }) {
   const router = useRouter()
   const [visit, setVisit] = useState<VisitDetail | null>(null)
@@ -78,15 +82,14 @@ export function VisitReport({
   const load = useCallback(async () => {
     setLoading(true)
     const supabase = createClient()
-    const interventionFields = isAdmin
-      ? 'id,started_at,completed_at,notes,start_latitude,start_longitude,start_location_accuracy_m,start_location_recorded_at,intervention_products(id,product_id,quantity,unit_price,products(name,unit))'
-      : 'id,started_at,completed_at,notes,intervention_products(id,product_id,quantity,unit_price,products(name,unit))'
-    const [visitResult, productsResult] = await Promise.all([
+    const interventionFields =
+      'id,started_at,completed_at,notes,start_latitude,start_longitude,start_location_accuracy_m,start_location_recorded_at,intervention_products(id,product_id,quantity,unit_price,products(name,unit))'
+    const visitFields = `id,status,scheduled_for,planning_notes,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,instructions,location_latitude,location_longitude,clients(legal_name)),interventions(${interventionFields})`
+    const fallbackVisitFields = `id,status,scheduled_for,planning_notes,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,instructions,clients(legal_name)),interventions(${interventionFields})`
+    const [initialVisitResult, productsResult] = await Promise.all([
       supabase
         .from('visits')
-        .select(
-          `id,status,scheduled_for,planning_notes,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,instructions,clients(legal_name)),interventions(${interventionFields})`,
-        )
+        .select(visitFields)
         .eq('id', visitId)
         .maybeSingle(),
       supabase
@@ -95,6 +98,9 @@ export function VisitReport({
         .gt('stock_quantity', 0)
         .order('name'),
     ])
+    const visitResult = isLocationSchemaPending(initialVisitResult.error?.message)
+      ? await supabase.from('visits').select(fallbackVisitFields).eq('id', visitId).maybeSingle()
+      : initialVisitResult
 
     const loadError = visitResult.error || productsResult.error
     if (loadError) {
@@ -110,7 +116,7 @@ export function VisitReport({
       setUsages(initialReportState.usages)
     }
     setLoading(false)
-  }, [isAdmin, visitId])
+  }, [visitId])
 
   useEffect(() => {
     void load()
@@ -178,7 +184,7 @@ export function VisitReport({
     toast.success('Informe completat', {
       description: 'La visita i els consums han quedat registrats.',
     })
-    router.replace('/agenda')
+    router.replace(backHref)
     router.refresh()
   }
 
@@ -189,8 +195,8 @@ export function VisitReport({
   const installation = visit.installations
   return (
     <section className="report-page">
-      <Link className="back-link" href="/agenda">
-        <ArrowLeft size={17} /> Torna a l'agenda
+      <Link className="back-link" href={backHref}>
+        <ArrowLeft size={17} /> {backHref === '/trabajos' ? 'Torna a Feines' : "Torna a l'agenda"}
       </Link>
       <div className="report-heading">
         <div>
@@ -223,6 +229,12 @@ export function VisitReport({
           <p>{visit.planning_notes}</p>
         </aside>
       )}
+      <VisitLocationMap
+        installationName={installation?.name ?? 'Instal·lació'}
+        address={installation?.address ?? ''}
+        latitude={installation?.location_latitude ?? null}
+        longitude={installation?.location_longitude ?? null}
+      />
       {error && (
         <p className="report-error" role="alert">
           {error}
@@ -236,7 +248,6 @@ export function VisitReport({
           technicianName={visit.technician?.full_name ?? null}
           startedAt={intervention.started_at}
           completedAt={intervention.completed_at}
-          isAdmin={isAdmin}
           startLatitude={intervention.start_latitude}
           startLongitude={intervention.start_longitude}
           startAccuracy={intervention.start_location_accuracy_m}
@@ -400,13 +411,48 @@ export function VisitReport({
   )
 }
 
+function VisitLocationMap({
+  installationName,
+  address,
+  latitude,
+  longitude,
+}: {
+  installationName: string
+  address: string
+  latitude: number | null
+  longitude: number | null
+}) {
+  const { embedUrl, directionsUrl } = getVisitMapUrls({
+    installationName,
+    address,
+    latitude,
+    longitude,
+  })
+  return (
+    <section className="visit-destination-map">
+      <div>
+        <strong><MapPin size={17} aria-hidden="true" /> Ubicació de la visita</strong>
+        <span>{address || 'Adreça no disponible'}</span>
+      </div>
+      <iframe
+        title={`Ubicació de ${installationName}`}
+        src={embedUrl}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+      />
+      <a href={directionsUrl} target="_blank" rel="noreferrer">
+        Obre la ruta a Google Maps
+      </a>
+    </section>
+  )
+}
+
 function ClosedReport({
   notes,
   usages,
   technicianName,
   startedAt,
   completedAt,
-  isAdmin,
   startLatitude,
   startLongitude,
   startAccuracy,
@@ -418,7 +464,6 @@ function ClosedReport({
   technicianName: string | null
   startedAt: string | null
   completedAt: string | null
-  isAdmin: boolean
   startLatitude: number | null
   startLongitude: number | null
   startAccuracy: number | null
@@ -516,7 +561,7 @@ function ClosedReport({
         )}
       </section>
 
-      {isAdmin && hasStartLocation && mapUrl && mapLink && (
+      {hasStartLocation && mapUrl && mapLink && (
         <section className="closed-report-section closed-report-location">
           <div className="closed-report-location-heading">
             <div>
@@ -531,7 +576,6 @@ function ClosedReport({
                   ` · Precisió aproximada de ${Math.round(Number(startAccuracy))} m`}
               </p>
             </div>
-            <span>Només administració</span>
           </div>
           <iframe
             title={`Punt d'inici de ${installationName}`}

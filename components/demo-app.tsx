@@ -161,7 +161,15 @@ const titles: Record<View, string> = {
   parte: 'Informe de visita',
 }
 
-export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
+export function DemoApp({
+  view,
+  visitId,
+  backHref = '/agenda',
+}: {
+  view: View
+  visitId?: string
+  backHref?: '/agenda' | '/trabajos'
+}) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [ready, setReady] = useState(false)
@@ -599,13 +607,13 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             href="/agenda"
             label="Agenda"
             icon={<CalendarDays size={17} />}
-            active={activeView === 'agenda' || activeView === 'parte'}
+            active={activeView === 'agenda' || (activeView === 'parte' && backHref === '/agenda')}
           />
           <Nav
             href="/trabajos"
             label="Feines"
             icon={<CheckCircle2 size={17} />}
-            active={activeView === 'trabajos'}
+            active={activeView === 'trabajos' || (activeView === 'parte' && backHref === '/trabajos')}
           />
           <Nav
             href="/inventario"
@@ -785,7 +793,7 @@ export function DemoApp({ view, visitId }: { view: View; visitId?: string }) {
             />
           )}
           {activeView === 'parte' && visitId && (
-            <VisitReport visitId={visitId} readOnly={isAdmin} isAdmin={isAdmin} />
+            <VisitReport visitId={visitId} readOnly={isAdmin} backHref={backHref} />
           )}
           {activeView === 'facturacion' && (
             <Billing
@@ -1463,7 +1471,12 @@ function VisitPreview({ visit, onClose, onStart }: { visit: Visit; onClose: () =
           )}
         </section>
         <section className="visit-preview-map" aria-label="Ubicació de la instal·lació">
-          <iframe title={`Mapa de ${installation?.name ?? 'la instal·lació'}`} src={embedUrl} loading="lazy" />
+          <iframe
+            title={`Mapa de ${installation?.name ?? 'la instal·lació'}`}
+            src={embedUrl}
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
           <a href={directionsUrl} target="_blank" rel="noreferrer" className="visit-preview-map-link">
             <MapPin size={16} aria-hidden="true" /> Obre la ruta a Google Maps
           </a>
