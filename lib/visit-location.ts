@@ -5,6 +5,12 @@ export type VisitLocation = {
   longitude?: number | null
 }
 
+export type WorkerPosition = {
+  latitude: number
+  longitude: number
+  accuracy: number
+}
+
 export function hasVisitCoordinates({ latitude, longitude }: VisitLocation) {
   return (
     typeof latitude === 'number' &&
@@ -15,6 +21,15 @@ export function hasVisitCoordinates({ latitude, longitude }: VisitLocation) {
     latitude <= 90 &&
     longitude >= -180 &&
     longitude <= 180
+  )
+}
+
+export function hasValidWorkerPosition(position: WorkerPosition) {
+  return (
+    hasVisitCoordinates(position) &&
+    Number.isFinite(position.accuracy) &&
+    position.accuracy >= 0 &&
+    position.accuracy <= 10_000
   )
 }
 

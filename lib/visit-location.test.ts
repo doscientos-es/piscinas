@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getVisitMapUrls, hasVisitCoordinates } from './visit-location'
+import { getVisitMapUrls, hasValidWorkerPosition, hasVisitCoordinates } from './visit-location'
 
 describe('getVisitMapUrls', () => {
   it('uses the installation coordinates for the map and directions', () => {
@@ -22,5 +22,15 @@ describe('getVisitMapUrls', () => {
     expect(hasVisitCoordinates({ latitude: 41.4, longitude: 2.1 })).toBe(true)
     expect(hasVisitCoordinates({ latitude: 41.4, longitude: null })).toBe(false)
     expect(hasVisitCoordinates({ latitude: 91, longitude: 2.1 })).toBe(false)
+  })
+
+  it('only accepts usable GPS positions for visit starts', () => {
+    expect(hasValidWorkerPosition({ latitude: 41.4, longitude: 2.1, accuracy: 12 })).toBe(true)
+    expect(hasValidWorkerPosition({ latitude: 41.4, longitude: 2.1, accuracy: Number.NaN })).toBe(
+      false,
+    )
+    expect(hasValidWorkerPosition({ latitude: 41.4, longitude: 2.1, accuracy: 10_001 })).toBe(
+      false,
+    )
   })
 })

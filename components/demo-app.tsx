@@ -76,7 +76,11 @@ import {
 import type { SearchParamUpdates } from '@/lib/search-params'
 import { createClient } from '@/lib/supabase/client'
 import { usePersistentSearchParams } from '@/lib/use-persistent-search-params'
-import { getVisitMapUrls, hasVisitCoordinates } from '@/lib/visit-location'
+import {
+  getVisitMapUrls,
+  hasValidWorkerPosition,
+  hasVisitCoordinates,
+} from '@/lib/visit-location'
 import {
   canManagePendingWork,
   getDefaultScheduledFor,
@@ -371,11 +375,12 @@ export function DemoApp({
     setVisitToStart(visit)
   }
   const recordVisitStart = async (visit: Visit) => {
+    const position = await getCurrentWorkerPosition()
     const { error } = await createClient().rpc('start_visit', {
       p_visit_id: visit.id,
-      p_start_latitude: null,
-      p_start_longitude: null,
-      p_start_accuracy_m: null,
+      p_start_latitude: position?.latitude ?? null,
+      p_start_longitude: position?.longitude ?? null,
+      p_start_accuracy_m: position?.accuracy ?? null,
       p_start_outside_schedule_confirmed: false,
       p_exception_reason: null,
     })
@@ -1433,6 +1438,29 @@ function Agenda({
       />
     </>
   )
+}
+
+function getCurrentWorkerPosition(): Promise<{
+  latitude: number
+  longitude: number
+  accuracy: number
+} | null> {
+  if (!navigator.geolocation) return Promise.resolve(null)
+
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const position = {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          accuracy: coords.accuracy,
+        }
+        resolve(hasValidWorkerPosition(position) ? position : null)
+      },
+      () => resolve(null),
+      { enableHighAccuracy: true, maximumAge: 30_000, timeout: 10_000 },
+    )
+  })
 }
 
 function VisitPreview({ visit, onClose, onStart }: { visit: Visit; onClose: () => void; onStart: () => void }) {
