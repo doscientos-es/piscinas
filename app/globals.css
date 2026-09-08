@@ -10161,3 +10161,40 @@ body,
   .overview-visits-panel,
   .overview-attention-panel { padding-right: 14px; padding-left: 14px; }
 }
+
+/* The inclusive media query also covers a viewport exactly 880px wide. */
+@media (max-width: 880px) {
+  .app-mobile-navigation {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 20;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    border-right: 0;
+    border-top: 1px solid #e2e8f0;
+    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  }
+
+  .app-mobile-navigation-links {
+    display: flex;
+    flex: 1;
+    flex-direction: row;
+    gap: 0.125rem;
+    overflow-x: auto;
+    padding-bottom: 0.125rem;
+  }
+
+  .app-mobile-navigation-links > a {
+    height: 2rem;
+    flex-shrink: 0;
+    gap: 0.5rem;
+    padding: 0 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  .app-mobile-main {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+    padding-left: 0;
+  }
+}

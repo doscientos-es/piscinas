@@ -580,7 +580,7 @@ export function DemoApp({
   )
   return (
     <div className="min-h-dvh bg-slate-50 text-slate-900">
-      <aside className="fixed inset-y-0 left-0 z-10 flex w-60 flex-col overflow-y-auto border-r border-slate-200 bg-white px-3 py-4 text-slate-900 max-[880px]:inset-x-0 max-[880px]:inset-y-auto max-[880px]:bottom-0 max-[880px]:z-20 max-[880px]:w-full max-[880px]:overflow-visible max-[880px]:border-r-0 max-[880px]:border-t max-[880px]:px-4 max-[880px]:py-3 max-[880px]:pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+      <aside className="app-mobile-navigation fixed inset-y-0 left-0 z-10 flex w-60 flex-col overflow-y-auto border-r border-slate-200 bg-white px-3 py-4 text-slate-900 max-[880px]:inset-x-0 max-[880px]:inset-y-auto max-[880px]:bottom-0 max-[880px]:z-20 max-[880px]:w-full max-[880px]:overflow-visible max-[880px]:border-r-0 max-[880px]:border-t max-[880px]:px-4 max-[880px]:py-3 max-[880px]:pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         <div className="px-2 pb-5 max-[880px]:hidden">
           <Image
             className="h-auto w-[150px] max-[880px]:w-[136px]"
@@ -591,7 +591,7 @@ export function DemoApp({
             priority
           />
         </div>
-        <nav className="flex flex-col gap-0.5 max-[880px]:flex-row max-[880px]:overflow-x-auto max-[880px]:pb-0.5">
+        <nav className="app-mobile-navigation-links flex flex-col gap-0.5 max-[880px]:flex-row max-[880px]:overflow-x-auto max-[880px]:pb-0.5">
           {isAdmin && (
             <>
               <p className="mx-2 mb-1 mt-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400 max-[880px]:hidden">
@@ -696,7 +696,7 @@ export function DemoApp({
           </PopoverTrigger>
         </div>
       </aside>
-      <main className="min-h-dvh pl-60 max-[880px]:pb-[calc(4rem+env(safe-area-inset-bottom))] max-[880px]:pl-0">
+      <main className="app-mobile-main min-h-dvh pl-60 max-[880px]:pb-[calc(4rem+env(safe-area-inset-bottom))] max-[880px]:pl-0">
         {activeView !== 'agenda' && (
           <header className="sticky top-0 z-5 flex h-16 items-center justify-between border-b border-slate-200 bg-white/90 px-8 backdrop-blur max-[880px]:px-5">
             <div>
