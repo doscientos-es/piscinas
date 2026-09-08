@@ -1,7 +1,11 @@
 export type StatisticsVisit = {
   scheduled_for: string
   status: string
-  interventions: { started_at: string | null } | { started_at: string | null }[] | null
+  technician: { full_name: string | null } | null
+  interventions:
+    | { started_at: string | null; completed_at: string | null }
+    | { started_at: string | null; completed_at: string | null }[]
+    | null
 }
 
 export type StatisticsInvoice = {
@@ -23,6 +27,13 @@ export type AdminStatistics = {
   months: MonthMetric[]
   status: Record<'scheduled' | 'in_progress' | 'completed' | 'cancelled', number>
   punctuality: { early: number; onTime: number; late: number; exception: number }
+  technicianDurations: {
+    technicianName: string
+    completedVisits: number
+    totalMinutes: number
+    averageMinutes: number
+  }[]
+  duration: { completedVisits: number; totalMinutes: number; averageMinutes: number | null }
   totals: {
     planned: number
     completed: number
@@ -60,6 +71,7 @@ export function buildAdminStatistics(
   const byMonth = new Map(months.map((month) => [month.key, month]))
   const status = { scheduled: 0, in_progress: 0, completed: 0, cancelled: 0 }
   const punctuality = { early: 0, onTime: 0, late: 0, exception: 0 }
+  const durationByTechnician = new Map<string, { completedVisits: number; totalMinutes: number }>()
 
   for (const visit of visits) {
     const scheduledFor = new Date(visit.scheduled_for)
@@ -81,6 +93,21 @@ export function buildAdminStatistics(
     else if (Math.abs(deltaMinutes) <= 15) punctuality.onTime += 1
     else if (Math.abs(deltaMinutes) <= 90) punctuality.late += 1
     else punctuality.exception += 1
+
+    const durationMinutes = getCompletedVisitDurationMinutes(
+      visit.status,
+      startedAt,
+      intervention?.completed_at,
+    )
+    const technicianName = visit.technician?.full_name?.trim()
+    if (durationMinutes === null || !technicianName) continue
+    const duration = durationByTechnician.get(technicianName) ?? {
+      completedVisits: 0,
+      totalMinutes: 0,
+    }
+    duration.completedVisits += 1
+    duration.totalMinutes += durationMinutes
+    durationByTechnician.set(technicianName, duration)
   }
 
   for (const invoice of invoices) {
@@ -95,10 +122,36 @@ export function buildAdminStatistics(
     if (invoice.status === 'paid') month.collected += total
   }
 
+  const technicianDurations = [...durationByTechnician.entries()]
+    .map(([technicianName, duration]) => ({
+      technicianName,
+      ...duration,
+      averageMinutes: Math.round(duration.totalMinutes / duration.completedVisits),
+    }))
+    .sort(
+      (first, second) =>
+        second.averageMinutes - first.averageMinutes ||
+        first.technicianName.localeCompare(second.technicianName, 'ca'),
+    )
+  const duration = technicianDurations.reduce(
+    (total, technician) => ({
+      completedVisits: total.completedVisits + technician.completedVisits,
+      totalMinutes: total.totalMinutes + technician.totalMinutes,
+    }),
+    { completedVisits: 0, totalMinutes: 0 },
+  )
+
   return {
     months,
     status,
     punctuality,
+    technicianDurations,
+    duration: {
+      ...duration,
+      averageMinutes: duration.completedVisits
+        ? Math.round(duration.totalMinutes / duration.completedVisits)
+        : null,
+    },
     totals: {
       planned: months.reduce((total, month) => total + month.planned, 0),
       completed: months.reduce((total, month) => total + month.completed, 0),
@@ -115,6 +168,20 @@ function isVisitStatus(status: string): status is (typeof visitStatuses)[number]
 
 function isInPeriod(date: Date, start: Date, end: Date) {
   return !Number.isNaN(date.getTime()) && date >= start && date < end
+}
+
+function getCompletedVisitDurationMinutes(
+  status: string,
+  startedAt: string,
+  completedAt: string | null | undefined,
+) {
+  if (status !== 'completed' || !completedAt) return null
+  const startedTime = new Date(startedAt).getTime()
+  const completedTime = new Date(completedAt).getTime()
+  if (Number.isNaN(startedTime) || Number.isNaN(completedTime) || completedTime < startedTime) {
+    return null
+  }
+  return Math.round((completedTime - startedTime) / 60_000)
 }
 
 function monthKey(date: Date) {

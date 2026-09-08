@@ -52,7 +52,9 @@ export function AdminStatistics({
         const [visits, invoices] = await Promise.all([
           supabase
             .from('visits')
-            .select('scheduled_for,status,interventions(started_at)')
+            .select(
+              'scheduled_for,status,technician:profiles!visits_technician_id_fkey(full_name),interventions(started_at,completed_at)',
+            )
             .gte('scheduled_for', start.toISOString())
             .lt('scheduled_for', end.toISOString()),
           supabase
@@ -125,6 +127,12 @@ export function AdminStatistics({
               detail={`${statistics.totals.started} inicis registrats`}
             />
             <Metric
+              icon={<Clock3 size={19} />}
+              label="Durada mitjana"
+              value={formatMinutes(statistics.duration.averageMinutes)}
+              detail={`${statistics.duration.completedVisits} visites tancades`}
+            />
+            <Metric
               icon={<CircleDollarSign size={19} />}
               label="Facturació emesa"
               value={money.format(statistics.totals.invoiced)}
@@ -167,6 +175,19 @@ export function AdminStatistics({
                 </div>
               </div>
               <EChart option={options.billing} label="Gràfic mensual de facturació i cobrament" />
+            </article>
+            <article className="analytics-chart-card analytics-chart-wide">
+              <div className="analytics-chart-heading">
+                <div>
+                  <h3>Durada mitjana per tècnic</h3>
+                  <p>Només compta visites tancades amb hora d&apos;inici i de finalització.</p>
+                </div>
+              </div>
+              {statistics.technicianDurations.length ? (
+                <EChart option={options.technicianDuration} label="Gràfic de durada mitjana per tècnic" />
+              ) : (
+                <p className="analytics-chart-empty">Encara no hi ha visites tancades amb durada registrada.</p>
+              )}
             </article>
           </div>
           <TimeTrackingManagement />
@@ -330,6 +351,30 @@ function chartOptions(statistics: AdminStatistics) {
         },
       ],
     } satisfies echarts.EChartsOption,
+    technicianDuration: {
+      aria: { enabled: true },
+      tooltip: { trigger: 'axis' },
+      grid: { top: 18, right: 46, bottom: 22, left: 116 },
+      xAxis: {
+        type: 'value',
+        axisLabel: { formatter: (value: number) => `${value} min`, color: '#678293' },
+        axisLine: axis.axisLine,
+      },
+      yAxis: {
+        type: 'category',
+        data: statistics.technicianDurations.map((technician) => technician.technicianName),
+        ...axis,
+      },
+      series: [
+        {
+          name: 'Mitjana',
+          type: 'bar',
+          data: statistics.technicianDurations.map((technician) => technician.averageMinutes),
+          label: { show: true, position: 'right', formatter: '{c} min', color: '#31566c' },
+          itemStyle: { color: colours.primary, borderRadius: [0, 5, 5, 0] },
+        },
+      ],
+    } satisfies echarts.EChartsOption,
   }
 }
 
@@ -339,4 +384,12 @@ function percentage(value: number, total: number) {
 
 function toIsoDate(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function formatMinutes(minutes: number | null) {
+  if (minutes === null) return '—'
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+  if (!hours) return `${remainingMinutes} min`
+  return remainingMinutes ? `${hours} h ${remainingMinutes} min` : `${hours} h`
 }

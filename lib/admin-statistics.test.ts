@@ -18,16 +18,21 @@ describe('buildAdminStatistics', () => {
         {
           scheduled_for: '2026-09-10T09:00:00',
           status: 'completed',
-          interventions: [{ started_at: '2026-09-10T09:08:00' }],
+          technician: { full_name: 'Laia' },
+          interventions: [
+            { started_at: '2026-09-10T09:08:00', completed_at: '2026-09-10T09:53:00' },
+          ],
         },
         {
           scheduled_for: '2026-09-12T09:00:00',
           status: 'in_progress',
-          interventions: [{ started_at: '2026-09-12T10:45:00' }],
+          technician: { full_name: 'Martí' },
+          interventions: [{ started_at: '2026-09-12T10:45:00', completed_at: null }],
         },
         {
           scheduled_for: '2026-03-30T09:00:00',
           status: 'completed',
+          technician: { full_name: 'Laia' },
           interventions: [],
         },
       ],
@@ -49,6 +54,10 @@ describe('buildAdminStatistics', () => {
     })
     expect(statistics.status).toMatchObject({ completed: 1, in_progress: 1 })
     expect(statistics.punctuality).toEqual({ early: 0, onTime: 1, late: 0, exception: 1 })
+    expect(statistics.duration).toEqual({ completedVisits: 1, totalMinutes: 45, averageMinutes: 45 })
+    expect(statistics.technicianDurations).toEqual([
+      { technicianName: 'Laia', completedVisits: 1, totalMinutes: 45, averageMinutes: 45 },
+    ])
   })
 
   it('accepts one-to-one interventions and visits without an intervention', () => {
@@ -57,11 +66,16 @@ describe('buildAdminStatistics', () => {
         {
           scheduled_for: '2026-09-10T09:00:00',
           status: 'completed',
-          interventions: { started_at: '2026-09-10T09:05:00' },
+          technician: { full_name: 'Laia' },
+          interventions: {
+            started_at: '2026-09-10T09:05:00',
+            completed_at: '2026-09-10T10:05:00',
+          },
         },
         {
           scheduled_for: '2026-09-11T09:00:00',
           status: 'scheduled',
+          technician: null,
           interventions: null,
         },
       ],
@@ -71,5 +85,36 @@ describe('buildAdminStatistics', () => {
 
     expect(statistics.totals).toMatchObject({ planned: 2, completed: 1, started: 1 })
     expect(statistics.punctuality).toEqual({ early: 0, onTime: 1, late: 0, exception: 0 })
+  })
+
+  it('groups completed visit durations by technician and ignores incomplete records', () => {
+    const statistics = buildAdminStatistics(
+      [
+        {
+          scheduled_for: '2026-09-08T09:00:00',
+          status: 'completed',
+          technician: { full_name: 'Martí' },
+          interventions: [{ started_at: '2026-09-08T09:00:00', completed_at: '2026-09-08T09:30:00' }],
+        },
+        {
+          scheduled_for: '2026-09-09T09:00:00',
+          status: 'completed',
+          technician: { full_name: 'Martí' },
+          interventions: [{ started_at: '2026-09-09T09:00:00', completed_at: '2026-09-09T10:15:00' }],
+        },
+        {
+          scheduled_for: '2026-09-10T09:00:00',
+          status: 'completed',
+          technician: { full_name: 'Laia' },
+          interventions: [{ started_at: '2026-09-10T10:00:00', completed_at: '2026-09-10T09:30:00' }],
+        },
+      ],
+      [],
+      now,
+    )
+
+    expect(statistics.technicianDurations).toEqual([
+      { technicianName: 'Martí', completedVisits: 2, totalMinutes: 105, averageMinutes: 53 },
+    ])
   })
 })

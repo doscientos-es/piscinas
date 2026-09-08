@@ -7422,6 +7422,15 @@ textarea:focus-visible {
   height: 250px;
   margin-top: 9px;
 }
+.analytics-chart-empty {
+  display: grid;
+  min-height: 250px;
+  margin: 9px 0 0;
+  place-items: center;
+  color: #668193;
+  font-size: 13px;
+  text-align: center;
+}
 .analytics-chart-wide {
   grid-column: span 2;
 }
