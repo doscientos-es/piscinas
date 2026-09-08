@@ -148,4 +148,8 @@ describe('work history', () => {
   it('preselecciona el día pulsado al programar una nueva feina', () => {
     expect(getDefaultScheduledFor(new Date(2026, 7, 12, 16, 30))).toBe('2026-08-12T09:00')
   })
+
+  it('programa mañana a las 09:00 cuando no se indica un día', () => {
+    expect(getDefaultScheduledFor(undefined, new Date(2026, 7, 12, 16, 30))).toBe('2026-08-13T09:00')
+  })
 })

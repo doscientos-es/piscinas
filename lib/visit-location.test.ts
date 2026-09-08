@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getVisitMapUrls } from './visit-location'
+import { getVisitMapUrls, hasVisitCoordinates } from './visit-location'
 
 describe('getVisitMapUrls', () => {
   it('uses the installation coordinates for the map and directions', () => {
@@ -16,5 +16,11 @@ describe('getVisitMapUrls', () => {
       .toMatchObject({
         directionsUrl: 'https://www.google.com/maps/dir/?api=1&destination=Pla%C3%A7a%20Nova%204',
       })
+  })
+
+  it('only treats a complete, valid coordinate pair as mappable', () => {
+    expect(hasVisitCoordinates({ latitude: 41.4, longitude: 2.1 })).toBe(true)
+    expect(hasVisitCoordinates({ latitude: 41.4, longitude: null })).toBe(false)
+    expect(hasVisitCoordinates({ latitude: 91, longitude: 2.1 })).toBe(false)
   })
 })

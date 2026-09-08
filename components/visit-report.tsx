@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { buildVisitNotes, parseVisitNotes, standardVisitChecks } from '@/lib/visit-checklist'
 import { isLocationSchemaPending } from '@/lib/location-schema-compatibility'
-import { getVisitMapUrls } from '@/lib/visit-location'
+import { getVisitMapUrls, hasVisitCoordinates } from '@/lib/visit-location'
 import { getInitialVisitReportState } from '@/lib/visit-report-state'
 import { validateVisitCompletion, type ProductUsageInput } from '@/lib/visit-validation'
 
@@ -63,10 +63,12 @@ export function VisitReport({
   visitId,
   readOnly = false,
   backHref = '/agenda',
+  onVisitCompleted,
 }: {
   visitId: string
   readOnly?: boolean
   backHref?: '/agenda' | '/trabajos'
+  onVisitCompleted?: () => Promise<void>
 }) {
   const router = useRouter()
   const [visit, setVisit] = useState<VisitDetail | null>(null)
@@ -184,8 +186,8 @@ export function VisitReport({
     toast.success('Informe completat', {
       description: 'La visita i els consums han quedat registrats.',
     })
+    await onVisitCompleted?.()
     router.replace(backHref)
-    router.refresh()
   }
 
   if (loading) return <div className="report-loading">S'està carregant l'informe…</div>
@@ -422,6 +424,8 @@ function VisitLocationMap({
   latitude: number | null
   longitude: number | null
 }) {
+  if (!hasVisitCoordinates({ latitude, longitude })) return null
+
   const { embedUrl, directionsUrl } = getVisitMapUrls({
     installationName,
     address,

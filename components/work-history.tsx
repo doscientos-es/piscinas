@@ -24,6 +24,7 @@ import {
   canEditWork,
   canManagePendingWork,
   filterWorkHistory,
+  getDefaultScheduledFor,
   groupWorkInstallationsByClient,
   paginateWorkHistory,
   type PendingWorkInput,
@@ -338,7 +339,7 @@ export function WorkEditor({
     visit === 'new' ? (technicians[0]?.id ?? '') : (visit.technician_id ?? ''),
   )
   const [scheduledFor, setScheduledFor] = useState(
-    visit === 'new' ? (initialScheduledFor ?? '') : toDateTimeLocal(visit.scheduled_for),
+    visit === 'new' ? (initialScheduledFor ?? getDefaultScheduledFor()) : toDateTimeLocal(visit.scheduled_for),
   )
   const [planningNotes, setPlanningNotes] = useState(
     visit === 'new' ? '' : (visit.planning_notes ?? ''),

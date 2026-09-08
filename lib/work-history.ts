@@ -102,9 +102,10 @@ export function normalizeWorkPlanningNotes(value: string) {
   return value.trim() || null
 }
 
-/** Returns a local workday start suitable for the schedule form. */
-export function getDefaultScheduledFor(date: Date) {
-  const scheduledFor = new Date(date)
+/** Returns 09:00 on the selected day, or tomorrow when no day is selected. */
+export function getDefaultScheduledFor(date?: Date, now = new Date()) {
+  const scheduledFor = new Date(date ?? now)
+  if (!date) scheduledFor.setDate(scheduledFor.getDate() + 1)
   scheduledFor.setHours(9, 0, 0, 0)
   const year = scheduledFor.getFullYear()
   const month = String(scheduledFor.getMonth() + 1).padStart(2, '0')

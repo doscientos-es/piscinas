@@ -76,7 +76,7 @@ import {
 import type { SearchParamUpdates } from '@/lib/search-params'
 import { createClient } from '@/lib/supabase/client'
 import { usePersistentSearchParams } from '@/lib/use-persistent-search-params'
-import { getVisitMapUrls } from '@/lib/visit-location'
+import { getVisitMapUrls, hasVisitCoordinates } from '@/lib/visit-location'
 import {
   canManagePendingWork,
   getDefaultScheduledFor,
@@ -575,8 +575,8 @@ export function DemoApp({
   )
   return (
     <div className="min-h-dvh bg-slate-50 text-slate-900">
-      <aside className="fixed inset-y-0 left-0 z-10 flex w-60 flex-col overflow-y-auto border-r border-slate-200 bg-white px-3 py-4 text-slate-900 max-[880px]:static max-[880px]:w-full max-[880px]:overflow-visible max-[880px]:px-4 max-[880px]:py-3">
-        <div className="px-2 pb-5 max-[880px]:px-1 max-[880px]:pb-3">
+      <aside className="fixed inset-y-0 left-0 z-10 flex w-60 flex-col overflow-y-auto border-r border-slate-200 bg-white px-3 py-4 text-slate-900 max-[880px]:inset-x-0 max-[880px]:inset-y-auto max-[880px]:bottom-0 max-[880px]:z-20 max-[880px]:w-full max-[880px]:overflow-visible max-[880px]:border-r-0 max-[880px]:border-t max-[880px]:px-4 max-[880px]:py-3 max-[880px]:pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className="px-2 pb-5 max-[880px]:hidden">
           <Image
             className="h-auto w-[150px] max-[880px]:w-[136px]"
             src="/concepte-blau-logo.png"
@@ -691,7 +691,7 @@ export function DemoApp({
           </PopoverTrigger>
         </div>
       </aside>
-      <main className="min-h-dvh pl-60 max-[880px]:pl-0">
+      <main className="min-h-dvh pl-60 max-[880px]:pb-[calc(4rem+env(safe-area-inset-bottom))] max-[880px]:pl-0">
         {activeView !== 'agenda' && (
           <header className="sticky top-0 z-5 flex h-16 items-center justify-between border-b border-slate-200 bg-white/90 px-8 backdrop-blur max-[880px]:px-5">
             <div>
@@ -793,7 +793,12 @@ export function DemoApp({
             />
           )}
           {activeView === 'parte' && visitId && (
-            <VisitReport visitId={visitId} readOnly={isAdmin} backHref={backHref} />
+            <VisitReport
+              visitId={visitId}
+              readOnly={isAdmin}
+              backHref={backHref}
+              onVisitCompleted={load}
+            />
           )}
           {activeView === 'facturacion' && (
             <Billing
@@ -1255,7 +1260,7 @@ function Agenda({
         calendarView === 'month' ? getDaysInMonth(date) : calendarView === 'week' ? 7 : 1,
       ),
     )
-  const createWork = (date: Date) => {
+  const createWork = (date?: Date) => {
     if (!isAdmin) return
     setOperationError(null)
     setInitialScheduledFor(getDefaultScheduledFor(date))
@@ -1289,7 +1294,7 @@ function Agenda({
           </div>
           <div className="calendar-controls">
             {isAdmin && (
-              <Button type="button" size="sm" onClick={() => createWork(activeDate)}>
+              <Button type="button" size="sm" onClick={() => createWork()}>
                 <Plus size={16} aria-hidden="true" />
                 Feina nova
               </Button>
@@ -1433,12 +1438,13 @@ function Agenda({
 function VisitPreview({ visit, onClose, onStart }: { visit: Visit; onClose: () => void; onStart: () => void }) {
   const installation = visit.installations
   const scheduledFor = new Date(visit.scheduled_for)
-  const { embedUrl, directionsUrl } = getVisitMapUrls({
+  const mapLocation = {
     installationName: installation?.name,
     address: installation?.address,
     latitude: installation?.location_latitude,
     longitude: installation?.location_longitude,
-  })
+  }
+  const mapUrls = hasVisitCoordinates(mapLocation) ? getVisitMapUrls(mapLocation) : null
 
   return (
     <Modal
@@ -1470,17 +1476,19 @@ function VisitPreview({ visit, onClose, onStart }: { visit: Visit; onClose: () =
             </a>
           )}
         </section>
-        <section className="visit-preview-map" aria-label="Ubicació de la instal·lació">
-          <iframe
-            title={`Mapa de ${installation?.name ?? 'la instal·lació'}`}
-            src={embedUrl}
-            loading="lazy"
-            referrerPolicy="no-referrer"
-          />
-          <a href={directionsUrl} target="_blank" rel="noreferrer" className="visit-preview-map-link">
-            <MapPin size={16} aria-hidden="true" /> Obre la ruta a Google Maps
-          </a>
-        </section>
+        {mapUrls && (
+          <section className="visit-preview-map" aria-label="Ubicació de la instal·lació">
+            <iframe
+              title={`Mapa de ${installation?.name ?? 'la instal·lació'}`}
+              src={mapUrls.embedUrl}
+              loading="lazy"
+              referrerPolicy="no-referrer"
+            />
+            <a href={mapUrls.directionsUrl} target="_blank" rel="noreferrer" className="visit-preview-map-link">
+              <MapPin size={16} aria-hidden="true" /> Obre la ruta a Google Maps
+            </a>
+          </section>
+        )}
         {visit.planning_notes && (
           <aside className="visit-preview-notes">
             <strong>Indicacions de la visita</strong>

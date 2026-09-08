@@ -8591,6 +8591,14 @@ textarea:focus-visible {
 }
 .work-editor-dialog-footer {
   margin: 0 -20px -20px;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.work-editor-dialog-footer > button {
+  min-block-size: 38px;
 }
 .work-planning-notes-help {
   color: #617d8f;

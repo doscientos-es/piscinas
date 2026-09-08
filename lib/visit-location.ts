@@ -5,8 +5,21 @@ export type VisitLocation = {
   longitude?: number | null
 }
 
+export function hasVisitCoordinates({ latitude, longitude }: VisitLocation) {
+  return (
+    typeof latitude === 'number' &&
+    typeof longitude === 'number' &&
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude >= -180 &&
+    longitude <= 180
+  )
+}
+
 function getMapQuery({ installationName, address, latitude, longitude }: VisitLocation) {
-  if (Number.isFinite(latitude) && Number.isFinite(longitude)) return `${latitude},${longitude}`
+  if (hasVisitCoordinates({ latitude, longitude })) return `${latitude},${longitude}`
   return address?.trim() || installationName?.trim() || ''
 }
 
