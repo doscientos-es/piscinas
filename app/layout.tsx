@@ -15,7 +15,7 @@ const geist = Geist({
 })
 
 export const metadata: Metadata = {
-  title: { default: 'Concepte Blau · Gestió de piscines', template: '%s · Concepte Blau' },
+  title: { default: 'Gestió de piscines', template: '%s · Gestió de piscines' },
   description: 'Gestió del manteniment, visites, clients i facturació de piscines.',
 }
 

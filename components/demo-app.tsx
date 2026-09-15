@@ -43,7 +43,6 @@ import {
   UserRound,
   Users,
 } from 'lucide-react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
@@ -229,11 +228,11 @@ export function DemoApp({
     const invoicesRequest =
       accountRole === 'admin'
         ? s
-            .from('invoices')
-            .select(
-              'id,client_id,number,status,subtotal,vat_total,total,issued_on,due_on,billing_period,clients(legal_name,tax_id,billing_email,billing_address),invoice_lines(id,sort_order,contract_id,visit_id,billing_item_id,description,quantity,unit_price,vat_rate,line_total)',
-            )
-            .order('created_at', { ascending: false })
+          .from('invoices')
+          .select(
+            'id,client_id,number,status,subtotal,vat_total,total,issued_on,due_on,billing_period,clients(legal_name,tax_id,billing_email,billing_address),invoice_lines(id,sort_order,contract_id,visit_id,billing_item_id,description,quantity,unit_price,vat_rate,line_total)',
+          )
+          .order('created_at', { ascending: false })
         : Promise.resolve({ data: [], error: null })
     const techniciansRequest =
       accountRole === 'admin'
@@ -258,31 +257,31 @@ export function DemoApp({
     const locationSchemaPending = isLocationSchemaPending(v.error?.message)
     const visitResponse = locationSchemaPending
       ? await s
-          .from('visits')
-          .select(
-            'id,installation_id,scheduled_for,status,planning_notes,technician_id,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,pool_type,instructions,notes,clients(legal_name,phone)),interventions(completed_at,notes)',
-          )
-          .order('scheduled_for')
+        .from('visits')
+        .select(
+          'id,installation_id,scheduled_for,status,planning_notes,technician_id,technician:profiles!visits_technician_id_fkey(full_name),installations(name,address,pool_type,instructions,notes,clients(legal_name,phone)),interventions(completed_at,notes)',
+        )
+        .order('scheduled_for')
       : v
     const extendedClients =
       accountRole === 'admin'
         ? await s
-            .from('clients')
-            .select(
-              'id,legal_name,trade_name,tax_id,billing_email,phone,billing_address,payment_method,notes,contact_name,contact_role,contact_email,contact_phone,client_type,billing_frequency,payment_terms_days,active,installations(id,name,address,pool_type,instructions,notes,location_latitude,location_longitude)',
-            )
-            .order('legal_name')
+          .from('clients')
+          .select(
+            'id,legal_name,trade_name,tax_id,billing_email,phone,billing_address,payment_method,notes,contact_name,contact_role,contact_email,contact_phone,client_type,billing_frequency,payment_terms_days,active,installations(id,name,address,pool_type,instructions,notes,location_latitude,location_longitude)',
+          )
+          .order('legal_name')
         : null
     const migrationPending =
       isClientExtensionSchemaPending(extendedClients?.error?.message) ||
       isLocationSchemaPending(extendedClients?.error?.message)
     const clientResponse = migrationPending
       ? await s
-          .from('clients')
-          .select(
-            'id,legal_name,tax_id,billing_email,phone,billing_address,payment_method,notes,installations(id,name,address,pool_type,instructions,notes)',
-          )
-          .order('legal_name')
+        .from('clients')
+        .select(
+          'id,legal_name,tax_id,billing_email,phone,billing_address,payment_method,notes,installations(id,name,address,pool_type,instructions,notes)',
+        )
+        .order('legal_name')
       : (extendedClients ?? { data: [], error: null })
     setClientSchemaReady(!migrationPending)
     const inventoryMigrationPending =
@@ -450,16 +449,16 @@ export function DemoApp({
     }
     const result = id
       ? await createClient()
-          .from('visits')
-          .update(payload)
-          .eq('id', id)
-          .select('id')
-          .maybeSingle()
+        .from('visits')
+        .update(payload)
+        .eq('id', id)
+        .select('id')
+        .maybeSingle()
       : await createClient()
-          .from('visits')
-          .insert({ ...payload, status: 'scheduled' })
-          .select('id')
-          .maybeSingle()
+        .from('visits')
+        .insert({ ...payload, status: 'scheduled' })
+        .select('id')
+        .maybeSingle()
     if (result.error) throw new Error(result.error.message)
     if (!result.data)
       throw new Error('La feina ja no existeix o no tens permís per modificar-la.')
@@ -493,17 +492,17 @@ export function DemoApp({
     }
     const payload = clientSchemaReady
       ? {
-          ...basePayload,
-          payment_terms_days: Number(client.payment_terms_days),
-          trade_name: blankToNull(client.trade_name),
-          contact_name: blankToNull(client.contact_name),
-          contact_role: blankToNull(client.contact_role),
-          contact_email: blankToNull(client.contact_email),
-          contact_phone: blankToNull(client.contact_phone),
-          client_type: client.client_type,
-          billing_frequency: client.billing_frequency,
-          active: client.active,
-        }
+        ...basePayload,
+        payment_terms_days: Number(client.payment_terms_days),
+        trade_name: blankToNull(client.trade_name),
+        contact_name: blankToNull(client.contact_name),
+        contact_role: blankToNull(client.contact_role),
+        contact_email: blankToNull(client.contact_email),
+        contact_phone: blankToNull(client.contact_phone),
+        client_type: client.client_type,
+        billing_frequency: client.billing_frequency,
+        active: client.active,
+      }
       : basePayload
     const query = id
       ? createClient().from('clients').update(payload).eq('id', id)
@@ -545,8 +544,8 @@ export function DemoApp({
     const query = id
       ? createClient().from('installations').update(payload).eq('id', id)
       : createClient()
-          .from('installations')
-          .insert({ ...payload, client_id: clientId })
+        .from('installations')
+        .insert({ ...payload, client_id: clientId })
     const { error } = await query
     if (error) throw new Error(error.message)
     toast.success(id ? 'Instal·lació actualitzada' : 'Instal·lació afegida')
@@ -581,16 +580,6 @@ export function DemoApp({
   return (
     <div className="min-h-dvh bg-slate-50 text-slate-900">
       <aside className="app-mobile-navigation fixed inset-y-0 left-0 z-10 flex w-60 flex-col overflow-y-auto border-r border-slate-200 bg-white px-3 py-4 text-slate-900 max-[880px]:inset-x-0 max-[880px]:inset-y-auto max-[880px]:bottom-0 max-[880px]:z-20 max-[880px]:w-full max-[880px]:overflow-visible max-[880px]:border-r-0 max-[880px]:border-t max-[880px]:px-4 max-[880px]:py-3 max-[880px]:pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        <div className="px-2 pb-5 max-[880px]:hidden">
-          <Image
-            className="h-auto w-[150px] max-[880px]:w-[136px]"
-            src="/concepte-blau-logo.png"
-            alt="Concepte Blau"
-            width={450}
-            height={111}
-            priority
-          />
-        </div>
         <nav className="app-mobile-navigation-links flex flex-col gap-0.5 max-[880px]:flex-row max-[880px]:overflow-x-auto max-[880px]:pb-0.5">
           {isAdmin && (
             <>
@@ -933,11 +922,10 @@ function Nav({
 }) {
   return (
     <Link
-      className={`flex h-9 items-center gap-3 rounded-md px-2.5 text-sm font-medium transition-colors max-[880px]:h-8 max-[880px]:shrink-0 max-[880px]:gap-2 max-[880px]:px-3 max-[880px]:text-xs ${
-        active
+      className={`flex h-9 items-center gap-3 rounded-md px-2.5 text-sm font-medium transition-colors max-[880px]:h-8 max-[880px]:shrink-0 max-[880px]:gap-2 max-[880px]:px-3 max-[880px]:text-xs ${active
           ? 'bg-violet-50 text-violet-700'
           : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-      }`}
+        }`}
       href={href}
       aria-current={active ? 'page' : undefined}
     >
@@ -2073,9 +2061,9 @@ function Clients({
   const typeParam = searchParams.get('tipo')
   const typeFilter: 'all' | ClientType =
     typeParam === 'residential' ||
-    typeParam === 'community' ||
-    typeParam === 'hotel' ||
-    typeParam === 'business'
+      typeParam === 'community' ||
+      typeParam === 'hotel' ||
+      typeParam === 'business'
       ? typeParam
       : 'all'
   const requestedPage = Number(searchParams.get('pagina') ?? '1')
@@ -2312,7 +2300,7 @@ const clientTypeLabel = (type: ClientType) =>
   ({ residential: 'Particular', community: 'Comunitat', hotel: 'Hotel', business: 'Empresa' })[type]
 const paymentLabel = (method: string | null) =>
   ({ direct_debit: 'domiciliat', transfer: 'per transferència', card: 'amb targeta' })[
-    method ?? ''
+  method ?? ''
   ] ?? 'sense definir'
 const emptyClient: ClientInput = {
   legal_name: '',
@@ -3033,15 +3021,7 @@ function AuthScreen() {
 
   return (
     <main className="auth-page">
-      <section className="auth-brand-panel" aria-label="Concepte Blau">
-        <Image
-          className="auth-logo"
-          src="/concepte-blau-logo.png"
-          alt="Concepte Blau"
-          width={450}
-          height={111}
-          priority
-        />
+      <section className="auth-brand-panel" aria-label="Gestió de piscines">
         <div className="auth-brand-copy">
           <span className="auth-kicker">Gestió del manteniment</span>
           <h1>Tot el control de les teves piscines, en un sol lloc.</h1>
@@ -3066,15 +3046,6 @@ function AuthScreen() {
       </section>
       <section className="auth-form-panel">
         <div className="auth-card">
-          <div className="auth-mobile-logo">
-            <Image
-              src="/concepte-blau-logo.png"
-              alt="Concepte Blau"
-              width={450}
-              height={111}
-              priority
-            />
-          </div>
           <div className="auth-heading">
             <span className="auth-eyebrow">
               <LockKeyhole size={15} aria-hidden="true" />

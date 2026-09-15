@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest'
 import manifest from './manifest'
 
 describe('PWA manifest', () => {
-  it('defines the installed Concepte Blau application', () => {
+  it('defines the installed white-label application', () => {
     const result = manifest()
 
     expect(result).toMatchObject({
-      name: 'Concepte Blau · Gestió de piscines',
+      name: 'Gestió de piscines',
       start_url: '/',
       scope: '/',
       display: 'standalone',

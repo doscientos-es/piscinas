@@ -45,8 +45,8 @@ export function InvoicePreview({
         <article className="invoice-paper">
           <div className="invoice-paper-header">
             <div>
-              <strong>Concepte Blau</strong>
-              <span>Gestió i manteniment de piscines</span>
+              <strong>Gestió de piscines</strong>
+              <span>Operativa de manteniment</span>
             </div>
             <div>
               <span>FACTURA</span>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'concepte-blau-static-v1'
+const CACHE_NAME = 'pool-operations-static-v1'
 
 const isStaticAsset = (url) => url.pathname.startsWith('/_next/static/')
 
@@ -11,7 +11,7 @@ self.addEventListener('activate', (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((key) => key.startsWith('concepte-blau-') && key !== CACHE_NAME)
+            .filter((key) => key.startsWith('pool-operations-') && key !== CACHE_NAME)
             .map((key) => caches.delete(key)),
         ),
       )

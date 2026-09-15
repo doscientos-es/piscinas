@@ -3,7 +3,7 @@
 import { usePwaInstallPrompt } from '@doscientos/pwa/react'
 import { Download, Share2, X } from 'lucide-react'
 
-const DISMISS_KEY = 'concepte-blau:pwa-install-dismissed'
+const DISMISS_KEY = 'pool-operations:pwa-install-dismissed'
 
 /** Offers installation only when the browser exposes a safe install path. */
 export function PwaInstallPrompt() {
@@ -14,12 +14,12 @@ export function PwaInstallPrompt() {
   if (!visible) return null
 
   return (
-    <aside className="pwa-install-prompt" aria-label="Instal·la Concepte Blau">
+    <aside className="pwa-install-prompt" aria-label="Instal·la l'aplicació">
       <div className="pwa-install-icon" aria-hidden="true">
         {isIos ? <Share2 size={20} /> : <Download size={20} />}
       </div>
       <div className="pwa-install-content">
-        <strong>{isIos ? "Afegeix Concepte Blau a l'inici" : 'Instal·la Concepte Blau'}</strong>
+        <strong>{isIos ? "Afegeix l'aplicació a l'inici" : "Instal·la l'aplicació"}</strong>
         <p>
           {isIos
             ? 'A Safari, toca Compartir i selecciona «Afegeix a la pantalla d’inici».'

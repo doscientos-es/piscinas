@@ -132,6 +132,11 @@ function escapeHtml(value: string) {
 function replaceTemplateLanguage(document: string) {
   return document
     .replace('<html lang="es">', '<html lang="ca">')
+    .replaceAll(
+      'Factura generada desde Concepte Blau. Este documento es una plantilla de ejemplo para la demo.',
+      "Factura generada des de l'aplicació. Aquest document és una plantilla d'exemple per a la demo.",
+    )
+    .replaceAll('Concepte Blau', 'Gestió de piscines')
     .replaceAll('Gestión y mantenimiento de piscinas', 'Gestió i manteniment de piscines')
     .replaceAll('Borrador', 'Esborrany')
     .replaceAll('Fecha de emisión', "Data d'emissió")
@@ -149,10 +154,6 @@ function replaceTemplateLanguage(document: string) {
     .replaceAll('Precio', 'Preu')
     .replaceAll('Importe', 'Import')
     .replaceAll('Base imponible', 'Base imposable')
-    .replaceAll(
-      'Factura generada desde Concepte Blau. Este documento es una plantilla de ejemplo para la demo.',
-      "Factura generada des de Concepte Blau. Aquest document és una plantilla d'exemple per a la demo.",
-    )
 }
 
 export function buildInvoiceHtml(invoice: Invoice) {
