@@ -5,11 +5,11 @@ type AuthInput = {
 
 export function validateAuthInput({ email, password }: AuthInput) {
   if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
-    return 'Introdueix una adreça electrònica vàlida.'
+    return 'Introduce una dirección de correo electrónico válida.'
   }
 
   if (password.length < 8) {
-    return 'La contrasenya ha de tenir almenys 8 caràcters.'
+    return 'La contraseña debe tener al menos 8 caracteres.'
   }
 
   return null

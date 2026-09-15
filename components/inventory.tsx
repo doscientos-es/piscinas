@@ -55,7 +55,7 @@ type InventoryPageResponse = {
   total: number
 }
 
-const currency = new Intl.NumberFormat('ca-ES', { style: 'currency', currency: 'EUR' })
+const currency = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' })
 const emptyProduct: ProductInput = {
   name: '',
   reference: null,
@@ -185,7 +185,7 @@ export function Inventory({
   const remove = async (product: Product) => {
     if (
       !window.confirm(
-        `Voleu eliminar «${product.name}»? No es pot eliminar si ja s'ha utilitzat en una visita.`,
+        `¿Quieres eliminar «${product.name}»? No se puede eliminar si ya se ha utilizado en una visita.`,
       )
     )
       return
@@ -194,10 +194,10 @@ export function Inventory({
       .delete()
       .eq('id', product.id)
     if (requestError) {
-      toast.error("No s'ha pogut eliminar el material", { description: requestError.message })
+      toast.error('No se ha podido eliminar el material', { description: requestError.message })
       return
     }
-    toast.success('Material eliminat', { description: product.name })
+    toast.success('Material eliminado', { description: product.name })
     await refreshInventory()
   }
 
@@ -210,25 +210,25 @@ export function Inventory({
       )}
       {!schemaReady && (
         <p className="access-note" role="status">
-          L'inventari s'activarà en aplicar la migració de Supabase inclosa en el projecte.
+          El inventario se activará al aplicar la migración de Supabase incluida en el proyecto.
         </p>
       )}
       {!isAdmin && (
         <p className="access-note" role="status">
-          Només els administradors poden modificar l'inventari.
+          Solo los administradores pueden modificar el inventario.
         </p>
       )}
-      <section className="inventory-summary" aria-label="Resum de l'inventari">
+      <section className="inventory-summary" aria-label="Resumen del inventario">
         <div>
-          <span>Materials actius</span>
+          <span>Materiales activos</span>
           <strong>{products.filter((product) => product.active).length}</strong>
         </div>
         <div>
-          <span>Estoc baix</span>
+          <span>Stock bajo</span>
           <strong>{lowStock.length}</strong>
         </div>
         <div>
-          <span>Valor de cost</span>
+          <span>Valor de coste</span>
           <strong>
             {currency.format(
               products.reduce(
@@ -242,24 +242,24 @@ export function Inventory({
       </section>
       <div className="client-toolbar inventory-toolbar">
         <label className="client-search">
-          <span className="sr-only">Cerca materials</span>
+          <span className="sr-only">Buscar materiales</span>
           <input
             value={query}
             onChange={(event) => updateInventorySearch({ q: event.target.value })}
-            placeholder="Cerca per material o referència"
+            placeholder="Buscar por material o referencia"
           />
         </label>
         <PopoverTrigger>
           <Button className="inventory-filter-trigger" type="button" variant="outline">
             <SlidersHorizontal size={16} aria-hidden="true" />
-            Filtres
+            Filtros
             {activeFilterCount > 0 && <span className="inventory-filter-count">{activeFilterCount}</span>}
           </Button>
           <PopoverContent placement="bottom end" className="inventory-filters-popover">
             <header className="inventory-filters-heading">
               <div>
-                <strong>Filtra l'inventari</strong>
-                <span>Els resultats s'actualitzen al moment.</span>
+                <strong>Filtrar el inventario</strong>
+                <span>Los resultados se actualizan al momento.</span>
               </div>
               {activeFilterCount > 0 && (
                 <Button
@@ -269,7 +269,7 @@ export function Inventory({
                   size="sm"
                   onClick={() => updateInventorySearch({ categoria: null, estado: null, stock: null })}
                 >
-                  Neteja
+                  Limpiar
                 </Button>
               )}
             </header>
@@ -279,7 +279,7 @@ export function Inventory({
                 value={category}
                 onChange={(event) => updateInventorySearch({ categoria: event.target.value })}
               >
-                <option value="">Totes les categories</option>
+                <option value="">Todas las categorías</option>
                 {categories.map((item) => (
                   <option key={item} value={item}>
                     {item}
@@ -290,27 +290,27 @@ export function Inventory({
             <label className="inventory-filter-field">
               <span>Estat</span>
               <select value={status} onChange={(event) => updateInventorySearch({ estado: event.target.value })}>
-                <option value="all">Tots els estats</option>
-                <option value="active">Actius</option>
-                <option value="inactive">Inactius</option>
+                <option value="all">Todos los estados</option>
+                <option value="active">Activos</option>
+                <option value="inactive">Inactivos</option>
               </select>
             </label>
             <label className="inventory-filter-field">
-              <span>Disponibilitat</span>
+              <span>Disponibilidad</span>
               <select value={stock} onChange={(event) => updateInventorySearch({ stock: event.target.value })}>
-                <option value="all">Tot l'estoc</option>
-                <option value="low">Estoc baix</option>
-                <option value="healthy">Estoc correcte</option>
+                <option value="all">Todo el stock</option>
+                <option value="low">Stock bajo</option>
+                <option value="healthy">Stock correcto</option>
               </select>
             </label>
           </PopoverContent>
         </PopoverTrigger>
         <span className="inventory-result-count">
-          {loading ? 'Carregant…' : `${remoteProducts.length} de ${total} materials`}
+          {loading ? 'Cargando…' : `${remoteProducts.length} de ${total} materiales`}
         </span>
       </div>
       {hasFilters && (
-        <div className="inventory-filter-feedback" aria-label="Filtres actius">
+        <div className="inventory-filter-feedback" aria-label="Filtros activos">
           <div className="inventory-active-filters">
             {query && (
               <Button
@@ -319,9 +319,9 @@ export function Inventory({
                 variant="outline"
                 size="xs"
                 onClick={() => updateInventorySearch({ q: null })}
-                aria-label={`Elimina la cerca ${query}`}
+                aria-label={`Eliminar la búsqueda ${query}`}
               >
-                Cerca: {query} <X size={13} aria-hidden="true" />
+                Búsqueda: {query} <X size={13} aria-hidden="true" />
               </Button>
             )}
             {category && (
@@ -331,7 +331,7 @@ export function Inventory({
                 variant="outline"
                 size="xs"
                 onClick={() => updateInventorySearch({ categoria: null })}
-                aria-label={`Elimina la categoria ${category}`}
+                aria-label={`Eliminar la categoría ${category}`}
               >
                 {category} <X size={13} aria-hidden="true" />
               </Button>
@@ -344,7 +344,7 @@ export function Inventory({
                 size="xs"
                 onClick={() => updateInventorySearch({ estado: null })}
               >
-                {status === 'active' ? 'Actius' : 'Inactius'} <X size={13} aria-hidden="true" />
+                {status === 'active' ? 'Activos' : 'Inactivos'} <X size={13} aria-hidden="true" />
               </Button>
             )}
             {stock !== 'all' && (
@@ -355,7 +355,7 @@ export function Inventory({
                 size="xs"
                 onClick={() => updateInventorySearch({ stock: null })}
               >
-                {stock === 'low' ? 'Estoc baix' : 'Estoc correcte'} <X size={13} aria-hidden="true" />
+                {stock === 'low' ? 'Stock bajo' : 'Stock correcto'} <X size={13} aria-hidden="true" />
               </Button>
             )}
           </div>
@@ -366,7 +366,7 @@ export function Inventory({
             size="sm"
             onClick={() => updateInventorySearch({ q: null, categoria: null, estado: null, stock: null })}
           >
-            Neteja-ho tot
+            Limpiar todo
           </Button>
         </div>
       )}
@@ -378,11 +378,11 @@ export function Inventory({
           >
             <div className="inventory-material">
               <strong>{product.name}</strong>
-              <span>{product.reference || 'Sense referència'}</span>
+              <span>{product.reference || 'Sin referencia'}</span>
               {product.category && <small className="inventory-category-tag">{product.category}</small>}
             </div>
             <div className="inventory-stock">
-              <span>Existències</span>
+              <span>Existencias</span>
               <strong
                 className={product.stock_quantity <= product.minimum_stock ? 'stock-low' : ''}
               >
@@ -393,7 +393,7 @@ export function Inventory({
               </small>
             </div>
             <div className="inventory-pricing">
-              <span>Cost / venda</span>
+              <span>Coste / venta</span>
               <strong>
                 {currency.format(Number(product.cost_price ?? 0))} /{' '}
                 {currency.format(Number(product.sale_price))}
@@ -420,14 +420,14 @@ export function Inventory({
                     onClick={() => setMovementProduct(product)}
                   >
                     <PackagePlus size={16} aria-hidden="true" />
-                    Ajusta
+                    Ajustar
                   </Button>
                   <Button
                     className="icon-action"
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={`Edita ${product.name}`}
+                    aria-label={`Editar ${product.name}`}
                     onClick={() => setEditing(product)}
                   >
                     <Pencil size={16} />
@@ -437,7 +437,7 @@ export function Inventory({
                     type="button"
                     variant="destructive"
                     size="icon-sm"
-                    aria-label={`Elimina ${product.name}`}
+                    aria-label={`Eliminar ${product.name}`}
                     onClick={() => void remove(product)}
                   >
                     <Trash2 size={16} />
@@ -450,12 +450,12 @@ export function Inventory({
       </div>
       {!loading && remoteProducts.length === 0 && (
         <div className="empty-results">
-          <p>No hi ha materials que coincideixin amb la cerca.</p>
+          <p>No hay materiales que coincidan con la búsqueda.</p>
         </div>
       )}
-      {loading && <p className="inventory-loading" role="status">S&apos;està carregant l&apos;inventari…</p>}
+      {loading && <p className="inventory-loading" role="status">Cargando el inventario…</p>}
       {!loading && total > 0 && (
-        <nav className="pagination inventory-pagination" aria-label="Paginació de l'inventari">
+        <nav className="pagination inventory-pagination" aria-label="Paginación del inventario">
           <Button
             type="button"
             variant="outline"
@@ -465,7 +465,7 @@ export function Inventory({
             Anterior
           </Button>
           <span>
-            Pàgina {page} de {pageCount} · {total} materials
+            Página {page} de {pageCount} · {total} materiales
           </span>
           <Button
             type="button"
@@ -473,7 +473,7 @@ export function Inventory({
             disabled={page >= pageCount}
             onClick={() => updateSearchParams({ pagina: page + 1 })}
           >
-            Següent
+            Siguiente
           </Button>
         </nav>
       )}
@@ -496,7 +496,7 @@ export function Inventory({
             if (response.error) throw new Error(response.error.message)
             await refreshInventory()
             setEditing(null)
-            toast.success(editing === 'new' ? 'Material creat' : 'Material actualitzat', {
+            toast.success(editing === 'new' ? 'Material creado' : 'Material actualizado', {
               description: payload.name,
             })
           }}
@@ -517,7 +517,7 @@ export function Inventory({
             if (requestError) throw new Error(requestError.message)
             await refreshInventory()
             setMovementProduct(null)
-            toast.success('Moviment registrat', { description: movementProduct.name })
+            toast.success('Movimiento registrado', { description: movementProduct.name })
           }}
         />
       )}
@@ -548,7 +548,7 @@ function ProductForm({
   const set = <K extends keyof ProductInput>(key: K, value: ProductInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
   return (
-    <Modal title={product ? 'Edita el material' : 'Material nou'} onClose={onClose}>
+    <Modal title={product ? 'Editar material' : 'Material nuevo'} onClose={onClose}>
       <form
         className="record-form"
         onSubmit={(event) => {
@@ -557,23 +557,23 @@ function ProductForm({
           setError(null)
           onSave(form)
             .catch((reason: unknown) =>
-              setError(reason instanceof Error ? reason.message : "No s'ha pogut desar."),
+              setError(reason instanceof Error ? reason.message : 'No se ha podido guardar.'),
             )
             .finally(() => setSaving(false))
         }}
       >
         <div className="form-grid">
           <label className="field form-span-2">
-            <span>Nom</span>
+            <span>Nombre</span>
             <input
               required
               value={form.name}
               onChange={(event) => set('name', event.target.value)}
-              placeholder="P. ex. clor granulat"
+              placeholder="P. ej. cloro granulado"
             />
           </label>
           <label className="field">
-            <span>Referència</span>
+            <span>Referencia</span>
             <input
               value={form.reference ?? ''}
               onChange={(event) => set('reference', event.target.value)}
@@ -588,16 +588,16 @@ function ProductForm({
             />
           </label>
           <label className="field">
-            <span>Unitat</span>
+            <span>Unidad</span>
             <select value={form.unit} onChange={(event) => set('unit', event.target.value)}>
               <option value="kg">kg</option>
               <option value="l">l</option>
-              <option value="ud">unitats</option>
+              <option value="ud">unidades</option>
               <option value="g">g</option>
             </select>
           </label>
           <label className="field">
-            <span>Estoc inicial</span>
+            <span>Stock inicial</span>
             <input
               type="number"
               min="0"
@@ -607,7 +607,7 @@ function ProductForm({
             />
           </label>
           <label className="field">
-            <span>Estoc mínim</span>
+            <span>Stock mínimo</span>
             <input
               type="number"
               min="0"
@@ -617,7 +617,7 @@ function ProductForm({
             />
           </label>
           <label className="field">
-            <span>Cost unitari (€)</span>
+            <span>Coste unitario (€)</span>
             <input
               type="number"
               min="0"
@@ -629,7 +629,7 @@ function ProductForm({
             />
           </label>
           <label className="field">
-            <span>Preu de venda (€)</span>
+            <span>Precio de venta (€)</span>
             <input
               required
               type="number"
@@ -646,7 +646,7 @@ function ProductForm({
             checked={form.active}
             onChange={(event) => set('active', event.target.checked)}
           />
-          Material actiu
+          Material activo
         </label>
         {error && (
           <p className="form-error" role="alert">
@@ -655,10 +655,10 @@ function ProductForm({
         )}
         <DialogFooter className="modal-foot">
           <Button variant="outline" type="button" onClick={onClose}>
-            Cancel·la
+            Cancelar
           </Button>
           <Button type="submit" disabled={saving}>
-            {saving ? "S'està desant…" : 'Desa el material'}
+            {saving ? 'Guardando…' : 'Guardar material'}
           </Button>
         </DialogFooter>
       </form>
@@ -681,7 +681,7 @@ function MovementForm({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   return (
-    <Modal title={`Ajusta · ${product.name}`} onClose={onClose}>
+    <Modal title={`Ajustar · ${product.name}`} onClose={onClose}>
       <form
         className="record-form"
         onSubmit={(event) => {
@@ -691,14 +691,14 @@ function MovementForm({
           onSave(numeric(quantity), type, note)
             .catch((reason: unknown) =>
               setError(
-                reason instanceof Error ? reason.message : "No s'ha pogut registrar el moviment.",
+                reason instanceof Error ? reason.message : 'No se ha podido registrar el movimiento.',
               ),
             )
             .finally(() => setSaving(false))
         }}
       >
         <p className="movement-current">
-          Estoc actual:{' '}
+          Stock actual:{' '}
           <strong>
             {product.stock_quantity} {product.unit}
           </strong>
@@ -708,11 +708,11 @@ function MovementForm({
             <span>Tipus</span>
             <select value={type} onChange={(event) => setType(event.target.value as typeof type)}>
               <option value="entry">Entrada de material</option>
-              <option value="adjustment">Ajust d'inventari</option>
+              <option value="adjustment">Ajuste de inventario</option>
             </select>
           </label>
           <label className="field">
-            <span>Quantitat {type === 'adjustment' ? '(fes servir − per restar)' : ''}</span>
+            <span>Cantidad {type === 'adjustment' ? '(usa − para restar)' : ''}</span>
             <input
               required
               type="number"
@@ -727,7 +727,7 @@ function MovementForm({
             <input
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              placeholder="P. ex. recepció del proveïdor"
+              placeholder="P. ej. recepción del proveedor"
             />
           </label>
         </div>
@@ -738,10 +738,10 @@ function MovementForm({
         )}
         <DialogFooter className="modal-foot">
           <Button variant="outline" type="button" onClick={onClose}>
-            Cancel·la
+            Cancelar
           </Button>
           <Button type="submit" disabled={saving}>
-            {saving ? "S'està registrant…" : 'Registra el moviment'}
+            {saving ? 'Registrando…' : 'Registrar movimiento'}
           </Button>
         </DialogFooter>
       </form>
@@ -762,41 +762,41 @@ function HistoryModal({
 }) {
   return (
     <Modal
-      title="Historial d'estoc"
+      title="Historial de stock"
       description={product.name}
       className="inventory-history-modal"
       onClose={onClose}
     >
-      <section className="inventory-history-summary" aria-label="Resum d'estoc">
+      <section className="inventory-history-summary" aria-label="Resumen de stock">
         <div>
-          <span>Estoc actual</span>
+          <span>Stock actual</span>
           <strong className={product.stock_quantity <= product.minimum_stock ? 'stock-low' : 'stock-positive'}>
             {product.stock_quantity} {product.unit}
           </strong>
         </div>
         <div>
-          <span>Estoc mínim</span>
+          <span>Stock mínimo</span>
           <strong>
             {product.minimum_stock} {product.unit}
           </strong>
         </div>
         <p className={product.stock_quantity <= product.minimum_stock ? 'is-low' : 'is-healthy'}>
-          {product.stock_quantity <= product.minimum_stock ? 'Cal reposició' : 'Estoc disponible'}
+          {product.stock_quantity <= product.minimum_stock ? 'Necesita reposición' : 'Stock disponible'}
         </p>
       </section>
       <div className="movement-history">
         {loading ? (
           <p className="movement-history-status" role="status">
-            S&apos;està carregant l&apos;historial…
+            Cargando el historial…
           </p>
         ) : movements.length === 0 ? (
-          <p>Aquest material encara no té moviments registrats.</p>
+          <p>Este material aún no tiene movimientos registrados.</p>
         ) : (
           movements.map((movement) => (
             <article className={`movement-history-row movement-${movement.movement_type}`} key={movement.id}>
               <div className="movement-history-detail">
                 <strong>{movementLabel(movement.movement_type)}</strong>
-                <p>{movement.note || 'Sense observacions.'}</p>
+                <p>{movement.note || 'Sin observaciones.'}</p>
               </div>
               <div className="movement-history-value">
                 <strong className={movement.quantity < 0 ? 'stock-low' : 'stock-positive'}>
@@ -804,10 +804,10 @@ function HistoryModal({
                   {movement.quantity} {product.unit}
                 </strong>
                 <time dateTime={movement.occurred_at}>
-                {new Intl.DateTimeFormat('ca-ES', {
-                  dateStyle: 'medium',
-                  timeStyle: 'short',
-                }).format(new Date(movement.occurred_at))}
+                  {new Intl.DateTimeFormat('es-ES', {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  }).format(new Date(movement.occurred_at))}
                 </time>
               </div>
             </article>
@@ -819,10 +819,10 @@ function HistoryModal({
 }
 function movementLabel(type: Movement['movement_type']) {
   return {
-    opening: 'Estoc inicial',
+    opening: 'Stock inicial',
     entry: 'Entrada',
-    adjustment: 'Ajust',
-    consumption: 'Consum en manteniment',
+    adjustment: 'Ajuste',
+    consumption: 'Consumo en mantenimiento',
   }[type]
 }
 function Modal({

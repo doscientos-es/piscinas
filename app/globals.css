@@ -8677,7 +8677,7 @@ textarea:focus-visible {
   }
 }
 
-/* Sistema visual final: superfícies serenes, espaiat coherent i jerarquia operativa. */
+/* Sistema visual final: superficies serenas, espaciado coherente y jerarquía operativa. */
 :root {
   --primary: #123a52;
   --primary-foreground: #ffffff;
@@ -8957,7 +8957,7 @@ body {
   }
 }
 
-/* Els diàlegs es mantenen centrats i operatius a qualsevol pantalla. */
+/* Los diálogos se mantienen centrados y operativos en cualquier pantalla. */
 .modal-backdrop {
   display: flex;
   align-items: center;

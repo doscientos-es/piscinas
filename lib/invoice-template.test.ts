@@ -46,6 +46,8 @@ describe('buildInvoiceHtml', () => {
     expect(document).toContain('<html lang="ca">')
     expect(document).toContain('Gestió i manteniment de piscines')
     expect(document).toContain('Pendent de cobrament')
+    expect(document).toContain("Factura generada des de l'aplicació")
+    expect(document).not.toContain('Concepte Blau')
     expect(document).not.toContain('Gestión y mantenimiento de piscinas')
   })
 })

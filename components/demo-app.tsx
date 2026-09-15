@@ -152,15 +152,15 @@ type ClientType = 'residential' | 'community' | 'hotel' | 'business'
 type BillingFrequency = 'monthly' | 'quarterly' | 'per_visit'
 type ClientInput = Omit<Client, 'id' | 'installations'>
 type InstallationInput = Omit<Installation, 'id'>
-const money = new Intl.NumberFormat('ca-ES', { style: 'currency', currency: 'EUR' })
+const money = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' })
 const titles: Record<View, string> = {
-  inicio: 'Resum operatiu',
-  agenda: 'Agenda de visites',
-  trabajos: 'Historial de feines',
-  facturacion: 'Facturació i cobraments',
-  clientes: 'Clients i instal·lacions',
-  inventario: 'Inventari de materials',
-  estadisticas: 'Estadístiques',
+  inicio: 'Resumen operativo',
+  agenda: 'Agenda de visitas',
+  trabajos: 'Historial de trabajos',
+  facturacion: 'Facturación y cobros',
+  clientes: 'Clientes e instalaciones',
+  inventario: 'Inventario de materiales',
+  estadisticas: 'Estadísticas',
   parte: 'Informe de visita',
 }
 
@@ -178,7 +178,7 @@ export function DemoApp({
   const [ready, setReady] = useState(false)
   const [signedIn, setSignedIn] = useState(false)
   const [role, setRole] = useState<AccountRole | null>(null)
-  const [accountName, setAccountName] = useState('El teu compte')
+  const [accountName, setAccountName] = useState('Tu cuenta')
   const [accountEmail, setAccountEmail] = useState('')
   const [clientSchemaReady, setClientSchemaReady] = useState(true)
   const [visits, setVisits] = useState<Visit[]>([])
@@ -201,7 +201,7 @@ export function DemoApp({
     const s = createClient()
     const { data: userData, error: userError } = await s.auth.getUser()
     if (userError || !userData.user) {
-      toast.error("No s'ha pogut identificar la sessió", {
+      toast.error('No se ha podido identificar la sesión', {
         description: userError?.message,
       })
       return
@@ -212,7 +212,7 @@ export function DemoApp({
       .eq('id', userData.user.id)
       .maybeSingle()
     if (profile.error || !profile.data) {
-      toast.error("No s'ha trobat el perfil d'accés", {
+      toast.error('No se ha encontrado el perfil de acceso', {
         description: profile.error?.message,
       })
       return
@@ -222,7 +222,7 @@ export function DemoApp({
     const metadataName = userData.user.user_metadata.full_name
     const fallbackName =
       typeof metadataName === 'string' ? metadataName.trim() : userData.user.email?.split('@')[0]
-    setAccountName(profile.data.full_name?.trim() || fallbackName || 'El teu compte')
+    setAccountName(profile.data.full_name?.trim() || fallbackName || 'Tu cuenta')
     setAccountEmail(userData.user.email ?? '')
 
     const invoicesRequest =
@@ -289,7 +289,7 @@ export function DemoApp({
         p.error?.message ?? '',
       )
     if (visitResponse.error) {
-      toast.error("No s'ha pogut carregar l'operativa", {
+      toast.error('No se ha podido cargar la operativa', {
         description: visitResponse.error.message,
       })
       return
@@ -306,7 +306,7 @@ export function DemoApp({
       techniciansResult.error ||
       (inventoryMigrationPending ? null : p.error)
     if (secondaryError) {
-      toast.error("Part de la informació no s'ha pogut carregar", {
+      toast.error('No se ha podido cargar parte de la información', {
         description: secondaryError.message,
       })
     }
@@ -324,7 +324,7 @@ export function DemoApp({
         void load()
       } else {
         setRole(null)
-        setAccountName('El teu compte')
+        setAccountName('Tu cuenta')
         setAccountEmail('')
       }
     })
@@ -347,9 +347,9 @@ export function DemoApp({
       void channel.unsubscribe()
     }
   }, [load, role])
-  if (!ready) return <main className="empty-state">S'està carregant la teva operativa…</main>
+  if (!ready) return <main className="empty-state">Cargando tu operativa…</main>
   if (!signedIn) return <AuthScreen />
-  if (!role) return <main className="empty-state">S'estan carregant els teus permisos…</main>
+  if (!role) return <main className="empty-state">Cargando tus permisos…</main>
   const isAdmin = role === 'admin'
   const activeView = canAccessAppView(role, view) ? view : 'agenda'
   const signOut = async () => {
@@ -360,7 +360,7 @@ export function DemoApp({
     const { error } = await createClient().auth.signOut()
 
     if (error) {
-      setSignOutError("No s'ha pogut tancar la sessió. Torna-ho a provar.")
+      setSignOutError('No se ha podido cerrar la sesión. Vuelve a intentarlo.')
       setIsSigningOut(false)
       return
     }
@@ -403,10 +403,10 @@ export function DemoApp({
       .update({ status: 'paid', paid_at: new Date().toISOString() })
       .eq('id', invoice.id)
     if (error) {
-      toast.error("No s'ha pogut registrar el cobrament", { description: error.message })
+      toast.error('No se ha podido registrar el cobro', { description: error.message })
       return
     }
-    toast.success('Factura marcada com a cobrada', { description: invoice.number ?? undefined })
+    toast.success('Factura marcada como cobrada', { description: invoice.number ?? undefined })
     await load()
   }
   const generateMonthlyInvoices = async (billingPeriod: string) => {
@@ -414,14 +414,14 @@ export function DemoApp({
       p_billing_period: billingPeriod,
     })
     if (error) {
-      toast.error("No s'han pogut actualitzar les factures", { description: error.message })
+      toast.error('No se han podido actualizar las facturas', { description: error.message })
       return
     }
     const generated = (data ?? []).filter((invoice: { created: boolean }) => invoice.created).length
-    toast.success('Factures actualitzades', {
+    toast.success('Facturas actualizadas', {
       description: generated
-        ? `${formatBillingPeriod(billingPeriod)}: ${generated} esborranys nous.`
-        : `Les factures de ${formatBillingPeriod(billingPeriod)} ja estaven actualitzades.`,
+        ? `${formatBillingPeriod(billingPeriod)}: ${generated} borradores nuevos.`
+        : `Las facturas de ${formatBillingPeriod(billingPeriod)} ya estaban actualizadas.`,
     })
     await load()
   }
@@ -439,7 +439,7 @@ export function DemoApp({
   const savePendingWork = async (input: PendingWorkInput, id?: string) => {
     const scheduledFor = new Date(input.scheduledFor)
     if (Number.isNaN(scheduledFor.getTime()))
-      throw new Error('Selecciona una data i una hora vàlides.')
+      throw new Error('Selecciona una fecha y una hora válidas.')
 
     const payload = {
       installation_id: input.installationId,
@@ -461,9 +461,9 @@ export function DemoApp({
         .maybeSingle()
     if (result.error) throw new Error(result.error.message)
     if (!result.data)
-      throw new Error('La feina ja no existeix o no tens permís per modificar-la.')
+      throw new Error('El trabajo ya no existe o no tienes permiso para modificarlo.')
 
-    toast.success(id ? 'Feina actualitzada' : 'Feina programada')
+    toast.success(id ? 'Trabajo actualizado' : 'Trabajo programado')
     await load()
   }
   const deletePendingWork = async (id: string) => {
@@ -475,9 +475,9 @@ export function DemoApp({
       .select('id')
       .maybeSingle()
     if (error) throw new Error(error.message)
-    if (!data) throw new Error('La feina ja no està pendent o no tens permís per eliminar-la.')
+    if (!data) throw new Error('El trabajo ya no está pendiente o no tienes permiso para eliminarlo.')
 
-    toast.success('Feina eliminada')
+    toast.success('Trabajo eliminado')
     await load()
   }
   const saveClient = async (client: ClientInput, id?: string) => {
@@ -509,22 +509,22 @@ export function DemoApp({
       : createClient().from('clients').insert(payload)
     const { error } = await query
     if (error) throw new Error(error.message)
-    toast.success(id ? 'Client actualitzat' : 'Client creat')
+    toast.success(id ? 'Cliente actualizado' : 'Cliente creado')
     await load()
   }
   const deleteClient = async (client: Client) => {
     if (
       !window.confirm(
-        `Voleu eliminar ${client.legal_name}? També se n'eliminaran les instal·lacions. Aquesta acció no es pot desfer.`,
+        `¿Quieres eliminar ${client.legal_name}? También se eliminarán sus instalaciones. Esta acción no se puede deshacer.`,
       )
     )
       return false
     const { error } = await createClient().from('clients').delete().eq('id', client.id)
     if (error) {
-      toast.error("No s'ha pogut eliminar el client", { description: error.message })
+      toast.error('No se ha podido eliminar el cliente', { description: error.message })
       return false
     }
-    toast.success('Client eliminat', { description: client.legal_name })
+    toast.success('Cliente eliminado', { description: client.legal_name })
     await load()
     return true
   }
@@ -548,17 +548,17 @@ export function DemoApp({
         .insert({ ...payload, client_id: clientId })
     const { error } = await query
     if (error) throw new Error(error.message)
-    toast.success(id ? 'Instal·lació actualitzada' : 'Instal·lació afegida')
+    toast.success(id ? 'Instalación actualizada' : 'Instalación añadida')
     await load()
   }
   const deleteInstallation = async (installation: Installation) => {
-    if (!window.confirm(`Voleu eliminar la instal·lació «${installation.name}»?`)) return
+    if (!window.confirm(`¿Quieres eliminar la instalación «${installation.name}»?`)) return
     const { error } = await createClient().from('installations').delete().eq('id', installation.id)
     if (error) {
-      toast.error("No s'ha pogut eliminar la instal·lació", { description: error.message })
+      toast.error('No se ha podido eliminar la instalación', { description: error.message })
       return
     }
-    toast.success('Instal·lació eliminada', { description: installation.name })
+    toast.success('Instalación eliminada', { description: installation.name })
     await load()
   }
   const accountInitials = accountName
@@ -584,7 +584,7 @@ export function DemoApp({
           {isAdmin && (
             <>
               <p className="mx-2 mb-1 mt-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400 max-[880px]:hidden">
-                Visió general
+                Vista general
               </p>
               <Nav
                 href="/"
@@ -605,36 +605,36 @@ export function DemoApp({
           />
           <Nav
             href="/trabajos"
-            label="Feines"
+            label="Trabajos"
             icon={<CheckCircle2 size={17} />}
             active={activeView === 'trabajos' || (activeView === 'parte' && backHref === '/trabajos')}
           />
           <Nav
             href="/inventario"
-            label="Inventari"
+            label="Inventario"
             icon={<Package size={17} />}
             active={activeView === 'inventario'}
           />
           {isAdmin && (
             <>
               <p className="mx-2 mb-1 mt-4 text-[10px] font-semibold uppercase tracking-wider text-slate-400 max-[880px]:hidden">
-                Gestió
+                Gestión
               </p>
               <Nav
                 href="/clientes"
-                label="Clients"
+                label="Clientes"
                 icon={<Users size={17} />}
                 active={activeView === 'clientes'}
               />
               <Nav
                 href="/facturacion"
-                label="Facturació"
+                label="Facturación"
                 icon={<FileText size={17} />}
                 active={activeView === 'facturacion'}
               />
               <Nav
                 href="/estadisticas"
-                label="Estadístiques"
+                label="Estadísticas"
                 icon={<LayoutDashboard size={17} />}
                 active={activeView === 'estadisticas'}
               />
@@ -647,14 +647,14 @@ export function DemoApp({
               className="w-full justify-start gap-3 px-2 text-left hover:bg-slate-50"
               type="button"
               variant="ghost"
-              aria-label={`Obre el menú de ${accountName}`}
+              aria-label={`Abrir el menú de ${accountName}`}
             >
               <span className="grid size-8 shrink-0 place-items-center rounded-full bg-violet-100 text-xs font-semibold text-violet-700" aria-hidden="true">
                 {accountInitials || 'CB'}
               </span>
               <span className="min-w-0 flex-1">
                 <strong className="block truncate text-sm font-medium text-slate-800">{accountName}</strong>
-                <span className="block truncate text-xs text-slate-500">{isAdmin ? 'Administració' : 'Operativa'}</span>
+                <span className="block truncate text-xs text-slate-500">{isAdmin ? 'Administración' : 'Operativa'}</span>
               </span>
               <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-slate-400" />
             </Button>
@@ -665,7 +665,7 @@ export function DemoApp({
                 </span>
                 <span className="min-w-0">
                   <strong className="block truncate text-sm font-medium text-slate-800">{accountName}</strong>
-                  <small className="block truncate text-xs text-slate-500">{accountEmail || 'Sessió activa'}</small>
+                  <small className="block truncate text-xs text-slate-500">{accountEmail || 'Sesión activa'}</small>
                 </span>
               </div>
               <div className="my-2 border-t border-slate-100" />
@@ -678,7 +678,7 @@ export function DemoApp({
                 disabled={isSigningOut}
               >
                 <LogOut size={16} aria-hidden="true" />
-                {isSigningOut ? "S'està tancant la sessió…" : 'Tanca la sessió'}
+                {isSigningOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
               </Button>
               {signOutError && <p className="px-2 pt-2 text-xs text-rose-600">{signOutError}</p>}
             </PopoverContent>
@@ -694,13 +694,13 @@ export function DemoApp({
             <div className="flex items-center gap-2">
               {activeView === 'inicio' && (
                 <LinkButton href="/agenda">
-                  Veure agenda
+                  Ver agenda
                 </LinkButton>
               )}
               {activeView === 'clientes' && isAdmin && (
                 <Button type="button" onClick={() => setEditingClient('new')}>
                   <Plus size={17} aria-hidden="true" />
-                  Client nou
+                  Cliente nuevo
                 </Button>
               )}
               {activeView === 'trabajos' && isAdmin && (
@@ -709,7 +709,7 @@ export function DemoApp({
                   onClick={() => setWorkCreationVersion((value) => value + 1)}
                 >
                   <Plus size={17} aria-hidden="true" />
-                  Feina nova
+                  Trabajo nuevo
                 </Button>
               )}
               {activeView === 'facturacion' && isAdmin && (
@@ -719,7 +719,7 @@ export function DemoApp({
                   onClick={() => void prepareMonthlyInvoices()}
                 >
                   <FileText size={17} aria-hidden="true" />
-                  {isPreparingBilling ? "S'estan actualitzant…" : 'Actualitza les factures'}
+                  {isPreparingBilling ? 'Actualizando…' : 'Actualizar facturas'}
                 </Button>
               )}
               {activeView === 'inventario' && isAdmin && (
@@ -729,7 +729,7 @@ export function DemoApp({
                   onClick={() => setProductCreationVersion((value) => value + 1)}
                 >
                   <Plus size={17} aria-hidden="true" />
-                  Material nou
+                  Material nuevo
                 </Button>
               )}
               {activeView === 'estadisticas' && isAdmin && (
@@ -740,7 +740,7 @@ export function DemoApp({
                   onClick={() => setStatisticsReload((value) => value + 1)}
                 >
                   <RefreshCw size={16} aria-hidden="true" />
-                  Actualitza
+                  Actualizar
                 </Button>
               )}
             </div>
@@ -836,7 +836,7 @@ export function DemoApp({
               setVisitToStart(null)
             }
           }}
-          title="Registra l'inici de la visita"
+          title="Registrar el inicio de la visita"
           description={
             visitToStart ? (
               <StartVisitConfirmation
@@ -846,9 +846,9 @@ export function DemoApp({
             ) : undefined
           }
           confirmLabel={
-            startingVisit ? "S'està registrant l'inici…" : "Confirma i registra l'inici"
+            startingVisit ? 'Registrando el inicio…' : 'Confirmar y registrar el inicio'
           }
-          cancelLabel="Cancel·la"
+          cancelLabel="Cancelar"
           pending={startingVisit}
           onConfirm={confirmVisitStart}
         />
@@ -867,25 +867,25 @@ function StartVisitConfirmation({
   return (
     <div className="start-confirmation">
       <p>
-        Confirmes que ets a <strong>{visit.installations?.address ?? "l'adreça assignada"}</strong>{' '}
-        per a {visit.installations?.clients?.legal_name ?? 'aquest client'}?
+        ¿Confirmas que estás en <strong>{visit.installations?.address ?? 'la dirección asignada'}</strong>{' '}
+        para {visit.installations?.clients?.legal_name ?? 'este cliente'}?
       </p>
       <p className="start-confirmation-schedule">Visita prevista: {formatDateTime(scheduledFor)}</p>
       {visit.planning_notes && (
         <aside className="start-confirmation-notes">
-          <strong>Notes de planificació</strong>
+          <strong>Notas de planificación</strong>
           <p>{visit.planning_notes}</p>
         </aside>
       )}
       <p className="start-confirmation-location">
-        En confirmar, es registrarà l'hora oficial d'inici de la visita.
+        Al confirmar, se registrará la hora oficial de inicio de la visita.
       </p>
       {error && <p className="start-confirmation-error">{error}</p>}
     </div>
   )
 }
 function formatDateTime(value: Date) {
-  return new Intl.DateTimeFormat('ca-ES', {
+  return new Intl.DateTimeFormat('es-ES', {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(value)
@@ -923,8 +923,8 @@ function Nav({
   return (
     <Link
       className={`flex h-9 items-center gap-3 rounded-md px-2.5 text-sm font-medium transition-colors max-[880px]:h-8 max-[880px]:shrink-0 max-[880px]:gap-2 max-[880px]:px-3 max-[880px]:text-xs ${active
-          ? 'bg-violet-50 text-violet-700'
-          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+        ? 'bg-violet-50 text-violet-700'
+        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
         }`}
       href={href}
       aria-current={active ? 'page' : undefined}
@@ -956,21 +956,21 @@ function VisitRow({
   return (
     <div className="grid grid-cols-[5.25rem_minmax(0,1fr)] items-center gap-x-4 gap-y-1 border-t border-slate-100 py-4 first:border-t-0 sm:grid-cols-[6.25rem_minmax(0,1fr)_auto]">
       <div className="row-span-2 self-start text-sm font-semibold tabular-nums text-slate-900">
-        {new Intl.DateTimeFormat('ca-ES', { hour: '2-digit', minute: '2-digit' }).format(scheduledFor)}
+        {new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(scheduledFor)}
         <span className="mt-0.5 block text-xs font-medium capitalize text-slate-500">
-          {new Intl.DateTimeFormat('ca-ES', { weekday: 'short', day: 'numeric', month: 'short' }).format(
+          {new Intl.DateTimeFormat('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }).format(
             scheduledFor,
           )}
         </span>
       </div>
       <div className="min-w-0">
-        <div className="truncate text-sm font-semibold text-slate-900">{x?.clients?.legal_name ?? 'Client'}</div>
+        <div className="truncate text-sm font-semibold text-slate-900">{x?.clients?.legal_name ?? 'Cliente'}</div>
         <div className="mt-0.5 truncate text-xs text-slate-500">
-          {x?.name ?? 'Instal·lació'} · {x?.address ?? ''}
+          {x?.name ?? 'Instalación'} · {x?.address ?? ''}
         </div>
         {isAdmin && (
           <div className="mt-1 text-xs text-slate-500">
-            Responsable: {visit.technician?.full_name ?? 'Sense assignar'}
+            Responsable: {visit.technician?.full_name ?? 'Sin asignar'}
           </div>
         )}
       </div>
@@ -994,7 +994,7 @@ function VisitRow({
       ) : null}
       {!isAdmin && visit.status === 'cancelled' ? (
         <span className="col-start-2 w-fit rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-200 sm:col-start-auto">
-          Cancel·lada
+          Cancelada
         </span>
       ) : null}
       {!isAdmin && visit.status === 'scheduled' ? (
@@ -1048,30 +1048,30 @@ function Overview({
     0,
   )
   const inProgressVisits = operationalVisits.filter((visit) => visit.status === 'in_progress')
-  const currentDate = new Intl.DateTimeFormat('ca-ES', {
+  const currentDate = new Intl.DateTimeFormat('es-ES', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   }).format(now)
   const attentionCount = unassignedVisits.length + overdueVisits.length + lowStock.length + overdueInvoices.length
   const daySummary = todayVisits.length
-    ? `${todayVisits.length} ${todayVisits.length === 1 ? 'visita prevista' : 'visites previstes'} per avui.`
+    ? `${todayVisits.length} ${todayVisits.length === 1 ? 'visita prevista' : 'visitas previstas'} para hoy.`
     : weeklyVisits.length
-      ? `No tens visites avui. Hi ha ${weeklyVisits.length} planificades durant els propers 7 dies.`
-      : 'No hi ha visites pendents de planificar.'
+      ? `No tienes visitas hoy. Hay ${weeklyVisits.length} planificadas durante los próximos 7 días.`
+      : 'No hay visitas pendientes de planificar.'
 
   return (
     <div className="overview-page">
       <section className="overview-hero" aria-labelledby="overview-title">
         <div className="overview-hero-copy">
           <span className="overview-eyebrow">Centre de control</span>
-          <h2 id="overview-title">Bon dia, {accountName}</h2>
+          <h2 id="overview-title">Buenos días, {accountName}</h2>
           <p>{daySummary}</p>
         </div>
         <div className="overview-hero-meta">
           <span className={`overview-health ${attentionCount ? 'needs-attention' : 'on-track'}`}>
             <span aria-hidden="true" />
-            {attentionCount ? `${attentionCount} per revisar` : 'Operativa al dia'}
+            {attentionCount ? `${attentionCount} por revisar` : 'Operativa al día'}
           </span>
           <time dateTime={now.toISOString()}>
             <CalendarDays size={14} aria-hidden="true" />
@@ -1080,34 +1080,34 @@ function Overview({
         </div>
       </section>
 
-      <section className="overview-metrics" aria-label="Indicadors operatius">
+      <section className="overview-metrics" aria-label="Indicadores operativos">
         <OverviewMetric
           href="/agenda"
           icon={<CalendarDays size={16} />}
-          label="Avui"
+          label="Hoy"
           value={String(todayVisits.length)}
-          detail={inProgressVisits.length ? `${inProgressVisits.length} en curs` : 'visites previstes'}
+          detail={inProgressVisits.length ? `${inProgressVisits.length} en curso` : 'visitas previstas'}
         />
         <OverviewMetric
           href="/agenda"
           icon={<ArrowRight size={16} />}
-          label="Propers 7 dies"
+          label="Próximos 7 días"
           value={String(weeklyVisits.length)}
-          detail="visites planificades"
+          detail="visitas planificadas"
         />
         <OverviewMetric
           href="/clientes"
           icon={<Users size={16} />}
           label="Cartera activa"
           value={String(activeClients.length)}
-          detail={`${activeInstallations} instal·lacions`}
+          detail={`${activeInstallations} instalaciones`}
         />
         <OverviewMetric
           href="/facturacion"
           icon={<CircleDollarSign size={16} />}
           label="Per cobrar"
           value={money.format(due.reduce((total, invoice) => total + Number(invoice.total), 0))}
-          detail={overdueInvoices.length ? `${overdueInvoices.length} vençudes` : `${due.length} pendents`}
+          detail={overdueInvoices.length ? `${overdueInvoices.length} vencidas` : `${due.length} pendientes`}
           tone={overdueInvoices.length ? 'danger' : 'default'}
         />
       </section>
@@ -1116,8 +1116,8 @@ function Overview({
         <section className="overview-panel overview-visits-panel" aria-labelledby="upcoming-visits-title">
           <div className="overview-panel-head">
             <div>
-              <span>{todayVisits.length ? 'Operativa d’avui' : 'Planificació'}</span>
-              <h3 id="upcoming-visits-title">{todayVisits.length ? "Agenda d'avui" : 'Properes visites'}</h3>
+              <span>{todayVisits.length ? 'Operativa de hoy' : 'Planificación'}</span>
+              <h3 id="upcoming-visits-title">{todayVisits.length ? 'Agenda de hoy' : 'Próximas visitas'}</h3>
             </div>
             <Link className="overview-panel-link" href="/agenda">
               Agenda <ArrowRight size={14} aria-hidden="true" />
@@ -1126,7 +1126,7 @@ function Overview({
           {displayedVisits.length ? (
             displayedVisits.slice(0, 3).map((visit) => <VisitRow key={visit.id} visit={visit} isAdmin={isAdmin} start={start} />)
           ) : (
-            <p className="overview-empty">No hi ha visites assignades o programades.</p>
+            <p className="overview-empty">No hay visitas asignadas o programadas.</p>
           )}
         </section>
 
@@ -1139,16 +1139,16 @@ function Overview({
             <span className="overview-alert-count">{attentionCount}</span>
           </div>
           <div className="overview-alerts">
-            {unassignedVisits.length > 0 && <OverviewAlert href="/agenda" icon={<AlertTriangle size={16} />} title={`${unassignedVisits.length} visites sense assignar`} detail="Assigna un tècnic abans de la visita." tone="warning" />}
-            {overdueVisits.length > 0 && <OverviewAlert href="/agenda" icon={<CalendarDays size={16} />} title={`${overdueVisits.length} visites pendents de tancar`} detail="Revisa els parts que ja han vençut." tone="danger" />}
-            {lowStock.length > 0 && <OverviewAlert href="/inventario?stock=low" icon={<Package size={16} />} title={`${lowStock.length} materials amb estoc baix`} detail="Consulta les existències i planifica la reposició." tone="warning" />}
-            {overdueInvoices.length > 0 && <OverviewAlert href="/facturacion" icon={<CircleDollarSign size={16} />} title={`${money.format(overdueInvoices.reduce((total, invoice) => total + Number(invoice.total), 0))} vençuts`} detail={`${overdueInvoices.length} factures pendents de cobrament.`} tone="danger" />}
+            {unassignedVisits.length > 0 && <OverviewAlert href="/agenda" icon={<AlertTriangle size={16} />} title={`${unassignedVisits.length} visitas sin asignar`} detail="Asigna un técnico antes de la visita." tone="warning" />}
+            {overdueVisits.length > 0 && <OverviewAlert href="/agenda" icon={<CalendarDays size={16} />} title={`${overdueVisits.length} visitas pendientes de cerrar`} detail="Revisa los partes que ya han vencido." tone="danger" />}
+            {lowStock.length > 0 && <OverviewAlert href="/inventario?stock=low" icon={<Package size={16} />} title={`${lowStock.length} materiales con stock bajo`} detail="Consulta las existencias y planifica la reposición." tone="warning" />}
+            {overdueInvoices.length > 0 && <OverviewAlert href="/facturacion" icon={<CircleDollarSign size={16} />} title={`${money.format(overdueInvoices.reduce((total, invoice) => total + Number(invoice.total), 0))} vencidos`} detail={`${overdueInvoices.length} facturas pendientes de cobro.`} tone="danger" />}
             {!attentionCount && (
               <div className="flex items-start gap-3 py-4 text-emerald-600">
                 <CheckCircle2 size={18} aria-hidden="true" className="mt-0.5 shrink-0" />
                 <span>
-                  <strong className="block text-sm font-semibold text-slate-900">Tot sota control</strong>
-                  <small className="mt-0.5 block text-xs leading-5 text-slate-500">No hi ha incidències operatives pendents.</small>
+                  <strong className="block text-sm font-semibold text-slate-900">Todo bajo control</strong>
+                  <small className="mt-0.5 block text-xs leading-5 text-slate-500">No hay incidencias operativas pendientes.</small>
                 </span>
               </div>
             )}
@@ -1278,18 +1278,18 @@ function Agenda({
     <>
       <section
         className={`calendar-shell calendar-${calendarView}`}
-        aria-label="Calendari de visites"
+        aria-label="Calendario de visitas"
       >
         <header className="calendar-toolbar">
           <div className="calendar-period">
-            <span>Calendari</span>
+            <span>Calendario</span>
             <h3>{calendarPeriodLabel(activeDate, calendarView)}</h3>
           </div>
           <div className="calendar-controls">
             {isAdmin && (
               <Button type="button" size="sm" onClick={() => createWork()}>
                 <Plus size={16} aria-hidden="true" />
-                Feina nova
+                Trabajo nuevo
               </Button>
             )}
             <div className="calendar-pagination">
@@ -1297,7 +1297,7 @@ function Agenda({
                 type="button"
                 className="calendar-icon-button"
                 onClick={previous}
-                aria-label="Període anterior"
+                aria-label="Período anterior"
               >
                 <ChevronLeft size={19} />
               </button>
@@ -1306,22 +1306,22 @@ function Agenda({
                 className="calendar-today"
                 onClick={() => setActiveDate(startOfDay(new Date()))}
               >
-                Avui
+                Hoy
               </button>
               <button
                 type="button"
                 className="calendar-icon-button"
                 onClick={next}
-                aria-label="Període següent"
+                aria-label="Período siguiente"
               >
                 <ChevronRight size={19} />
               </button>
             </div>
-            <div className="calendar-view-switch" role="tablist" aria-label="Vista de calendari">
+            <div className="calendar-view-switch" role="tablist" aria-label="Vista de calendario">
               {(
                 [
-                  ['day', 'Dia'],
-                  ['week', 'Setmana'],
+                  ['day', 'Día'],
+                  ['week', 'Semana'],
                   ['month', 'Mes'],
                 ] as [CalendarView, string][]
               ).map(([value, label]) => (
@@ -1405,10 +1405,10 @@ function Agenda({
         onOpenChange={(open) => {
           if (!open && !isDeleting) setDeletingVisit(null)
         }}
-        title="Elimina la feina programada?"
-        description="Aquesta acció no es pot desfer."
-        confirmLabel="Elimina la feina"
-        cancelLabel="Cancel·la"
+        title="¿Eliminar el trabajo programado?"
+        description="Esta acción no se puede deshacer."
+        confirmLabel="Eliminar trabajo"
+        cancelLabel="Cancelar"
         destructive
         pending={isDeleting}
         onConfirm={() => {
@@ -1416,7 +1416,7 @@ function Agenda({
           setIsDeleting(true)
           void onDeletePendingWork(deletingVisit.id)
             .catch((error: unknown) => {
-              setOperationError(error instanceof Error ? error.message : "No s'ha pogut eliminar la feina.")
+              setOperationError(error instanceof Error ? error.message : 'No se ha podido eliminar el trabajo.')
             })
             .finally(() => {
               setIsDeleting(false)
@@ -1464,8 +1464,8 @@ function VisitPreview({ visit, onClose, onStart }: { visit: Visit; onClose: () =
 
   return (
     <Modal
-      title={installation?.clients?.legal_name ?? 'Detalls de la visita'}
-      description="Revisa la informació abans de registrar l'inici."
+      title={installation?.clients?.legal_name ?? 'Detalles de la visita'}
+      description="Revisa la información antes de registrar el inicio."
       onClose={onClose}
       className="visit-preview-modal"
     >
@@ -1481,11 +1481,11 @@ function VisitPreview({ visit, onClose, onStart }: { visit: Visit; onClose: () =
           <div className="visit-preview-section-heading">
             <Building2 size={18} aria-hidden="true" />
             <div>
-              <strong>{installation?.name ?? 'Instal·lació'}</strong>
+              <strong>{installation?.name ?? 'Instalación'}</strong>
               {installation?.pool_type && <span>{installation.pool_type}</span>}
             </div>
           </div>
-          <address>{installation?.address ?? 'No hi ha cap adreça registrada.'}</address>
+          <address>{installation?.address ?? 'No hay ninguna dirección registrada.'}</address>
           {installation?.clients?.phone && (
             <a href={`tel:${installation.clients.phone}`} className="visit-preview-phone">
               <Phone size={15} aria-hidden="true" /> {installation.clients.phone}
@@ -1493,40 +1493,40 @@ function VisitPreview({ visit, onClose, onStart }: { visit: Visit; onClose: () =
           )}
         </section>
         {mapUrls && (
-          <section className="visit-preview-map" aria-label="Ubicació de la instal·lació">
+          <section className="visit-preview-map" aria-label="Ubicación de la instalación">
             <iframe
-              title={`Mapa de ${installation?.name ?? 'la instal·lació'}`}
+              title={`Mapa de ${installation?.name ?? 'la instalación'}`}
               src={mapUrls.embedUrl}
               loading="lazy"
               referrerPolicy="no-referrer"
             />
             <a href={mapUrls.directionsUrl} target="_blank" rel="noreferrer" className="visit-preview-map-link">
-              <MapPin size={16} aria-hidden="true" /> Obre la ruta a Google Maps
+              <MapPin size={16} aria-hidden="true" /> Abrir la ruta en Google Maps
             </a>
           </section>
         )}
         {visit.planning_notes && (
           <aside className="visit-preview-notes">
-            <strong>Indicacions de la visita</strong>
+            <strong>Indicaciones de la visita</strong>
             <p>{visit.planning_notes}</p>
           </aside>
         )}
         {installation?.instructions && (
           <aside className="visit-preview-notes">
-            <strong>Instruccions de la instal·lació</strong>
+            <strong>Instrucciones de la instalación</strong>
             <p>{installation.instructions}</p>
           </aside>
         )}
         {installation?.notes && (
           <aside className="visit-preview-notes subtle">
-            <strong>Notes de la instal·lació</strong>
+            <strong>Notas de la instalación</strong>
             <p>{installation.notes}</p>
           </aside>
         )}
       </div>
       <DialogFooter className="modal-foot visit-preview-footer">
-        <Button variant="outline" type="button" onClick={onClose}>Torna a l'agenda</Button>
-        <Button type="button" onClick={onStart}>Inicia la visita</Button>
+        <Button variant="outline" type="button" onClick={onClose}>Volver a la agenda</Button>
+        <Button type="button" onClick={onStart}>Iniciar la visita</Button>
       </DialogFooter>
     </Modal>
   )
@@ -1581,7 +1581,7 @@ function DayCalendar({
             />
           ))}
           {visits.length === 0 && (
-            <p className="calendar-empty">No hi ha visites previstes per a aquest dia.</p>
+            <p className="calendar-empty">No hay visitas previstas para este día.</p>
           )}
         </div>
       </div>
@@ -1635,7 +1635,7 @@ function WeekCalendar({
               />
             ))}
             {visitsForDay(visits, day).length === 0 && (
-              <span className="calendar-free">Lliure</span>
+              <span className="calendar-free">Libre</span>
             )}
           </div>
         ))}
@@ -1666,7 +1666,7 @@ function MonthCalendar({
   return (
     <div className="month-calendar">
       <div className="month-weekdays">
-        {['Dl.', 'Dt.', 'Dc.', 'Dj.', 'Dv.', 'Ds.', 'Dg.'].map((day) => (
+        {['Lun.', 'Mar.', 'Mié.', 'Jue.', 'Vie.', 'Sáb.', 'Dom.'].map((day) => (
           <span key={day}>{day}</span>
         ))}
       </div>
@@ -1694,7 +1694,7 @@ function MonthCalendar({
                   />
                 ))}
                 {dayVisits.length > 3 && (
-                  <span className="more-events">+{dayVisits.length - 3} més</span>
+                  <span className="more-events">+{dayVisits.length - 3} más</span>
                 )}
               </div>
             </div>
@@ -1730,13 +1730,13 @@ function CalendarEvent({
   const content = (
     <>
       <time>
-        {new Intl.DateTimeFormat('ca-ES', { hour: '2-digit', minute: '2-digit' }).format(scheduled)}
+        {new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(scheduled)}
       </time>
-      <strong>{visit.installations?.clients?.legal_name ?? 'Client'}</strong>
-      {!compact && <span>{visit.installations?.name ?? 'Instal·lació'}</span>}
+      <strong>{visit.installations?.clients?.legal_name ?? 'Cliente'}</strong>
+      {!compact && <span>{visit.installations?.name ?? 'Instalación'}</span>}
       {isAdmin && (
         <span className="event-assignee">
-          Responsable: {visit.technician?.full_name ?? 'Sense assignar'}
+          Responsable: {visit.technician?.full_name ?? 'Sin asignar'}
         </span>
       )}
     </>
@@ -1748,14 +1748,14 @@ function CalendarEvent({
         {content}
         <div className="calendar-event-actions">
           <button type="button" className="calendar-event-action" onClick={() => onEdit(visit)}>
-            <Pencil size={13} aria-hidden="true" /> Edita
+            <Pencil size={13} aria-hidden="true" /> Editar
           </button>
           <button
             type="button"
             className="calendar-event-action destructive"
             onClick={() => onDelete(visit)}
           >
-            <Trash2 size={13} aria-hidden="true" /> Elimina
+            <Trash2 size={13} aria-hidden="true" /> Eliminar
           </button>
         </div>
       </div>
@@ -1831,19 +1831,19 @@ function visitsForDay(visits: Visit[], date: Date) {
     .sort((left, right) => left.scheduled_for.localeCompare(right.scheduled_for))
 }
 function dayLabel(date: Date) {
-  return new Intl.DateTimeFormat('ca-ES', { weekday: 'short' }).format(date).replace('.', '')
+  return new Intl.DateTimeFormat('es-ES', { weekday: 'short' }).format(date).replace('.', '')
 }
 function calendarPeriodLabel(date: Date, view: CalendarView) {
   if (view === 'month')
-    return new Intl.DateTimeFormat('ca-ES', { month: 'long', year: 'numeric' }).format(date)
+    return new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(date)
   if (view === 'day')
-    return new Intl.DateTimeFormat('ca-ES', {
+    return new Intl.DateTimeFormat('es-ES', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
     }).format(date)
   const end = addDays(startOfWeek(date), 6)
-  return `${new Intl.DateTimeFormat('ca-ES', { day: 'numeric', month: 'short' }).format(startOfWeek(date))} — ${new Intl.DateTimeFormat('ca-ES', { day: 'numeric', month: 'short', year: 'numeric' }).format(end)}`
+  return `${new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' }).format(startOfWeek(date))} — ${new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }).format(end)}`
 }
 function Billing({
   invoices,
@@ -1870,42 +1870,42 @@ function Billing({
 
   return (
     <>
-      <section className="billing-summary" aria-label="Resum de facturació">
+      <section className="billing-summary" aria-label="Resumen de facturación">
         <div className="billing-summary-card">
           <FileText size={19} aria-hidden="true" />
           <div>
             <span>Facturat</span>
             <strong>{money.format(billedTotal)}</strong>
-            <small>{displayedInvoices.length} factures emeses</small>
+            <small>{displayedInvoices.length} facturas emitidas</small>
           </div>
         </div>
         <div className="billing-summary-card pending">
           <CircleDollarSign size={19} aria-hidden="true" />
           <div>
-            <span>Pendent de cobrament</span>
+            <span>Pendiente de cobro</span>
             <strong>{money.format(pendingTotal)}</strong>
-            <small>{pendingInvoices.length} per gestionar</small>
+            <small>{pendingInvoices.length} por gestionar</small>
           </div>
         </div>
         <div className="billing-summary-card paid">
           <CheckCircle2 size={19} aria-hidden="true" />
           <div>
-            <span>Cobrades</span>
+            <span>Cobradas</span>
             <strong>{paidInvoices.length}</strong>
-            <small>factures conciliades</small>
+            <small>facturas conciliadas</small>
           </div>
         </div>
       </section>
       <section className="billing-list-panel" aria-labelledby="invoice-list-title">
         <header className="billing-list-header">
           <div>
-            <span className="billing-list-kicker">Registre de factures</span>
+            <span className="billing-list-kicker">Registro de facturas</span>
             <h3 id="invoice-list-title">
-              {filteredClientName ? `Factures de ${filteredClientName}` : 'Totes les factures'}
+              {filteredClientName ? `Facturas de ${filteredClientName}` : 'Todas las facturas'}
             </h3>
           </div>
           <div className="billing-list-controls">
-            {clientId && <Link href={`/facturacion?mes=${billingPeriod}`}>Veure-les totes</Link>}
+            {clientId && <Link href={`/facturacion?mes=${billingPeriod}`}>Verlas todas</Link>}
             <select
               value={billingPeriod}
               onChange={(event) => updateSearchParams({ mes: event.target.value })}
@@ -1920,7 +1920,7 @@ function Billing({
           </div>
         </header>
         {displayedInvoices.length ? (
-          <div className="invoice-list" aria-label="Llista de factures">
+          <div className="invoice-list" aria-label="Lista de facturas">
             {displayedInvoices.map((invoice) => {
               const lines = getInvoiceLines(invoice)
               const isPaid = invoice.status === 'paid'
@@ -1936,12 +1936,12 @@ function Billing({
                       {isPaid ? <CheckCircle2 size={20} /> : <FileText size={20} />}
                     </div>
                     <div className="invoice-client">
-                      <span className="invoice-number">{invoice.number ?? 'Esborrany'}</span>
-                      <strong>{invoice.clients?.legal_name ?? 'Client sense assignar'}</strong>
+                      <span className="invoice-number">{invoice.number ?? 'Borrador'}</span>
+                      <strong>{invoice.clients?.legal_name ?? 'Cliente sin asignar'}</strong>
                       <div className="invoice-dates">
-                        <span>Període {formatBillingPeriod(invoice.billing_period)}</span>
-                        <span>Emesa {formatDate(invoice.issued_on)}</span>
-                        <span>Venç {formatDate(invoice.due_on)}</span>
+                        <span>Período {formatBillingPeriod(invoice.billing_period)}</span>
+                        <span>Emitida {formatDate(invoice.issued_on)}</span>
+                        <span>Vence {formatDate(invoice.due_on)}</span>
                       </div>
                     </div>
                   </div>
@@ -1951,7 +1951,7 @@ function Billing({
                       {lineCountLabel}
                     </span>
                     <strong>{lines[0]?.description}</strong>
-                    {lines.length > 1 && <small>+ {lines.length - 1} més</small>}
+                    {lines.length > 1 && <small>+ {lines.length - 1} más</small>}
                   </div>
                   <div className="invoice-amount">
                     <span>Total</span>
@@ -1966,10 +1966,10 @@ function Billing({
                         variant="ghost"
                         size="sm"
                         onClick={() => setPreviewedInvoice(invoice)}
-                        aria-label={`Veure la factura ${invoice.number ?? invoice.id}`}
+                        aria-label={`Ver la factura ${invoice.number ?? invoice.id}`}
                       >
                         <Eye size={16} aria-hidden="true" />
-                        <span>Veure</span>
+                        <span>Ver</span>
                       </Button>
                       <Button
                         className="invoice-action"
@@ -1977,10 +1977,10 @@ function Billing({
                         variant="ghost"
                         size="sm"
                         onClick={() => downloadInvoice(invoice)}
-                        aria-label={`Descarrega la factura ${invoice.number ?? invoice.id}`}
+                        aria-label={`Descargar la factura ${invoice.number ?? invoice.id}`}
                       >
                         <Download size={16} aria-hidden="true" />
-                        <span>Descarrega</span>
+                        <span>Descargar</span>
                       </Button>
                     </div>
                     {isPaid ? (
@@ -1996,7 +1996,7 @@ function Billing({
                         size="sm"
                         onClick={() => pay(invoice)}
                       >
-                        Marca com a cobrada
+                        Marcar como cobrada
                       </Button>
                     )}
                   </div>
@@ -2008,8 +2008,8 @@ function Billing({
           <div className="invoice-empty">
             <FileText size={24} aria-hidden="true" />
             <div>
-              <strong>Encara no hi ha factures</strong>
-              <p>Actualitza les factures del mes per crear els esborranys dels clients actius.</p>
+              <strong>Aún no hay facturas</strong>
+              <p>Actualiza las facturas del mes para crear los borradores de los clientes activos.</p>
             </div>
           </div>
         )}
@@ -2116,19 +2116,19 @@ function Clients({
     <>
       {!isAdmin && (
         <p className="access-note" role="status">
-          Només els administradors poden crear o modificar clients.
+          Solo los administradores pueden crear o modificar clientes.
         </p>
       )}
       <div className="client-toolbar">
         <label className="client-search">
           <Search size={17} aria-hidden="true" />
-          <span className="sr-only">Cerca clients</span>
+          <span className="sr-only">Buscar clientes</span>
           <input
             value={search}
             onChange={(event) => {
               updateFilters({ q: event.target.value })
             }}
-            placeholder="Cerca per nom"
+            placeholder="Buscar por nombre"
           />
         </label>
         <select
@@ -2137,9 +2137,9 @@ function Clients({
             updateFilters({ estado: event.target.value })
           }}
         >
-          <option value="all">Tots els estats</option>
-          <option value="active">Actius</option>
-          <option value="inactive">Inactius</option>
+          <option value="all">Todos los estados</option>
+          <option value="active">Activos</option>
+          <option value="inactive">Inactivos</option>
         </select>
         <select
           value={typeFilter}
@@ -2147,13 +2147,13 @@ function Clients({
             updateFilters({ tipo: event.target.value })
           }}
         >
-          <option value="all">Tots els tipus</option>
+          <option value="all">Todos los tipos</option>
           <option value="residential">Particular</option>
           <option value="community">Comunitat</option>
           <option value="hotel">Hotel</option>
           <option value="business">Empresa</option>
         </select>
-        <span>{total} clients</span>
+        <span>{total} clientes</span>
       </div>
       <div className="client-list" role="list">
         {visibleClients.map((client) => (
@@ -2166,7 +2166,7 @@ function Clients({
               <div>
                 <div className="client-name-row">
                   <h3>{client.legal_name}</h3>
-                  {!client.active && <span className="badge pending">Inactiu</span>}
+                  {!client.active && <span className="badge pending">Inactivo</span>}
                 </div>
                 <p>{client.trade_name || clientTypeLabel(client.client_type)}</p>
               </div>
@@ -2175,7 +2175,7 @@ function Clients({
             <div className="client-contact">
               <span className="client-contact-primary">
                 <UserRound size={15} aria-hidden="true" />
-                {client.contact_name || 'Sense contacte assignat'}
+                {client.contact_name || 'Sin contacto asignado'}
               </span>
               {(client.contact_email || client.contact_phone) && (
                 <span className="client-contact-secondary">
@@ -2198,10 +2198,10 @@ function Clients({
               <span className="client-details-primary">
                 <Building2 size={15} aria-hidden="true" />
                 {client.installations.length}{' '}
-                {client.installations.length === 1 ? 'instal·lació' : 'instal·lacions'}
+                {client.installations.length === 1 ? 'instalación' : 'instalaciones'}
               </span>
               <span className="client-details-secondary">
-                Cobrament {paymentLabel(client.payment_method)} · {client.payment_terms_days} dies
+                Cobro {paymentLabel(client.payment_method)} · {client.payment_terms_days} días
               </span>
             </div>
             <div className="client-card-actions">
@@ -2210,7 +2210,7 @@ function Clients({
                 type="button"
                 variant="ghost"
                 size="icon-sm"
-                aria-label={`Veure la fitxa de ${client.legal_name}`}
+                aria-label={`Ver la ficha de ${client.legal_name}`}
                 onClick={() => setSelectedClient(client)}
               >
                 <Eye size={16} aria-hidden="true" />
@@ -2222,10 +2222,10 @@ function Clients({
       {visibleClients.length === 0 && (
         <div className="empty-results">
           <Users size={25} aria-hidden="true" />
-          <p>No hi ha clients que coincideixin amb la cerca.</p>
+          <p>No hay clientes que coincidan con la búsqueda.</p>
         </div>
       )}
-      <nav className="pagination" aria-label="Paginació de clients">
+      <nav className="pagination" aria-label="Paginación de clientes">
         <Button
           type="button"
           variant="outline"
@@ -2235,7 +2235,7 @@ function Clients({
           Anterior
         </Button>
         <span>
-          Pàgina {page + 1} de {pageCount}
+          Página {page + 1} de {pageCount}
         </span>
         <Button
           type="button"
@@ -2243,7 +2243,7 @@ function Clients({
           disabled={page + 1 >= pageCount}
           onClick={() => updateSearchParams({ pagina: page + 2 })}
         >
-          Següent
+          Siguiente
         </Button>
       </nav>
       {editingClient && (
@@ -2297,11 +2297,11 @@ function Clients({
 }
 
 const clientTypeLabel = (type: ClientType) =>
-  ({ residential: 'Particular', community: 'Comunitat', hotel: 'Hotel', business: 'Empresa' })[type]
+  ({ residential: 'Particular', community: 'Comunidad', hotel: 'Hotel', business: 'Empresa' })[type]
 const paymentLabel = (method: string | null) =>
-  ({ direct_debit: 'domiciliat', transfer: 'per transferència', card: 'amb targeta' })[
+  ({ direct_debit: 'domiciliado', transfer: 'por transferencia', card: 'con tarjeta' })[
   method ?? ''
-  ] ?? 'sense definir'
+  ] ?? 'sin definir'
 const emptyClient: ClientInput = {
   legal_name: '',
   trade_name: null,
@@ -2359,34 +2359,34 @@ function ClientForm({
   }
   return (
     <Modal
-      title={client ? 'Edita el client' : 'Client nou'}
-      description="Els camps amb asterisc són obligatoris."
+      title={client ? 'Editar cliente' : 'Cliente nuevo'}
+      description="Los campos con asterisco son obligatorios."
       onClose={onClose}
       className="client-form-modal"
     >
       <form className="record-form" onSubmit={submit}>
-        <h3>Dades generals</h3>
+        <h3>Datos generales</h3>
         <div className="form-grid">
-          <Field label="Raó social" required>
+          <Field label="Razón social" required>
             <input
               required
               value={form.legal_name}
               onChange={(e) => update('legal_name', e.target.value)}
             />
           </Field>
-          <Field label="Nom comercial">
+          <Field label="Nombre comercial">
             <input
               value={form.trade_name ?? ''}
               onChange={(e) => update('trade_name', e.target.value)}
             />
           </Field>
-          <Field label="Tipus de client">
+          <Field label="Tipo de cliente">
             <select
               value={form.client_type}
               onChange={(e) => update('client_type', e.target.value as ClientType)}
             >
               <option value="residential">Particular</option>
-              <option value="community">Comunitat</option>
+              <option value="community">Comunidad</option>
               <option value="hotel">Hotel</option>
               <option value="business">Empresa</option>
             </select>
@@ -2395,59 +2395,59 @@ function ClientForm({
             <input value={form.tax_id ?? ''} onChange={(e) => update('tax_id', e.target.value)} />
           </Field>
         </div>
-        <h3>Contacte i facturació</h3>
+        <h3>Contacto y facturación</h3>
         <div className="form-grid">
-          <Field label="Persona de contacte">
+          <Field label="Persona de contacto">
             <input
               value={form.contact_name ?? ''}
               onChange={(e) => update('contact_name', e.target.value)}
             />
           </Field>
-          <Field label="Càrrec">
+          <Field label="Cargo">
             <input
               value={form.contact_role ?? ''}
               onChange={(e) => update('contact_role', e.target.value)}
             />
           </Field>
-          <Field label="Adreça electrònica de contacte">
+          <Field label="Correo electrónico de contacto">
             <input
               type="email"
               value={form.contact_email ?? ''}
               onChange={(e) => update('contact_email', e.target.value)}
             />
           </Field>
-          <Field label="Telèfon de contacte">
+          <Field label="Teléfono de contacto">
             <input
               type="tel"
               value={form.contact_phone ?? ''}
               onChange={(e) => update('contact_phone', e.target.value)}
             />
           </Field>
-          <Field label="Adreça electrònica de facturació">
+          <Field label="Correo electrónico de facturación">
             <input
               type="email"
               value={form.billing_email ?? ''}
               onChange={(e) => update('billing_email', e.target.value)}
             />
           </Field>
-          <Field label="Telèfon general">
+          <Field label="Teléfono general">
             <input
               type="tel"
               value={form.phone ?? ''}
               onChange={(e) => update('phone', e.target.value)}
             />
           </Field>
-          <Field label="Freqüència de cobrament">
+          <Field label="Frecuencia de cobro">
             <select
               value={form.billing_frequency}
               onChange={(e) => update('billing_frequency', e.target.value as BillingFrequency)}
             >
               <option value="monthly">Mensual</option>
               <option value="quarterly">Trimestral</option>
-              <option value="per_visit">Per visita</option>
+              <option value="per_visit">Por visita</option>
             </select>
           </Field>
-          <Field label="Termini de pagament (dies)">
+          <Field label="Plazo de pago (días)">
             <input
               type="number"
               min="0"
@@ -2456,25 +2456,25 @@ function ClientForm({
               onChange={(e) => update('payment_terms_days', Number(e.target.value))}
             />
           </Field>
-          <Field label="Mètode de pagament">
+          <Field label="Método de pago">
             <select
               value={form.payment_method ?? ''}
               onChange={(e) => update('payment_method', e.target.value || null)}
             >
-              <option value="">Sense definir</option>
-              <option value="direct_debit">Domiciliació</option>
-              <option value="transfer">Transferència</option>
-              <option value="card">Targeta</option>
+              <option value="">Sin definir</option>
+              <option value="direct_debit">Domiciliación</option>
+              <option value="transfer">Transferencia</option>
+              <option value="card">Tarjeta</option>
             </select>
           </Field>
-          <Field label="Adreça de facturació" className="form-span-2">
+          <Field label="Dirección de facturación" className="form-span-2">
             <input
               value={form.billing_address ?? ''}
               onChange={(e) => update('billing_address', e.target.value)}
             />
           </Field>
         </div>
-        <Field label="Notes internes">
+        <Field label="Notas internas">
           <textarea
             rows={3}
             value={form.notes ?? ''}
@@ -2487,14 +2487,14 @@ function ClientForm({
             checked={form.active}
             onChange={(e) => update('active', e.target.checked)}
           />
-          Client actiu
+          Cliente activo
         </label>
         <DialogFooter className="modal-foot">
           <Button variant="outline" type="button" onClick={onClose}>
-            Cancel·la
+            Cancelar
           </Button>
           <Button type="submit" disabled={saving}>
-            {saving ? "S'està desant…" : client ? 'Desa els canvis' : 'Crea el client'}
+            {saving ? 'Guardando…' : client ? 'Guardar cambios' : 'Crear cliente'}
           </Button>
         </DialogFooter>
       </form>
@@ -2535,14 +2535,14 @@ function ClientDetail({
               <div className="client-detail-actions">
                 <Button className="action-link" type="button" variant="ghost" size="sm" onClick={onEditClient}>
                   <Pencil size={15} aria-hidden="true" />
-                  Edita el client
+                  Editar cliente
                 </Button>
                 <Button
                   className="icon-action destructive"
                   type="button"
                   variant="destructive"
                   size="icon-sm"
-                  aria-label={`Elimina ${client.legal_name}`}
+                  aria-label={`Eliminar ${client.legal_name}`}
                   onClick={() => void onDeleteClient()}
                 >
                   <Trash2 size={15} aria-hidden="true" />
@@ -2553,7 +2553,7 @@ function ClientDetail({
           <div className="detail-list">
             <p>
               <UserRound size={16} />
-              {client.contact_name || 'Sense persona de contacte'}
+              {client.contact_name || 'Sin persona de contacto'}
               {client.contact_role ? ` · ${client.contact_role}` : ''}
             </p>
             {client.contact_email && (
@@ -2578,11 +2578,11 @@ function ClientDetail({
         </div>
         <div className="sheet-section">
           <div className="sheet-heading">
-            <h3>Instal·lacions</h3>
+            <h3>Instalaciones</h3>
             {isAdmin && (
               <Button className="action-link" type="button" variant="ghost" size="sm" onClick={onNewInstallation}>
                 <Plus size={15} />
-                Afegeix
+                Añadir
               </Button>
             )}
           </div>
@@ -2603,7 +2603,7 @@ function ClientDetail({
                       type="button"
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={`Edita ${installation.name}`}
+                      aria-label={`Editar ${installation.name}`}
                       onClick={() => onEditInstallation(installation)}
                     >
                       <Pencil size={15} />
@@ -2613,7 +2613,7 @@ function ClientDetail({
                       type="button"
                       variant="destructive"
                       size="icon-sm"
-                      aria-label={`Elimina ${installation.name}`}
+                      aria-label={`Eliminar ${installation.name}`}
                       onClick={() => void onDeleteInstallation(installation)}
                     >
                       <Trash2 size={15} />
@@ -2623,24 +2623,24 @@ function ClientDetail({
               </div>
             ))}
             {client.installations.length === 0 && (
-              <p className="empty-installations">No hi ha instal·lacions registrades.</p>
+              <p className="empty-installations">No hay instalaciones registradas.</p>
             )}
           </div>
         </div>
         <div className="sheet-section compact">
-          <h3>Facturació</h3>
+          <h3>Facturación</h3>
           <p>
             {paymentLabel(client.payment_method)} ·{' '}
             {client.billing_frequency === 'per_visit'
-              ? 'Per visita'
+              ? 'Por visita'
               : client.billing_frequency === 'quarterly'
                 ? 'Trimestral'
                 : 'Mensual'}{' '}
-            · pagament a {client.payment_terms_days} dies
+            · pago a {client.payment_terms_days} días
           </p>
           {isAdmin && (
             <Link className="client-invoices-link" href={`/facturacion?cliente=${client.id}`}>
-              Veure les factures d'aquest client
+              Ver las facturas de este cliente
             </Link>
           )}
         </div>
@@ -2717,18 +2717,18 @@ function ClientTimeTracking({ client }: { client: Client }) {
     <section className="sheet-section time-tracking">
       <div className="sheet-heading">
         <h3>Control horari</h3>
-        <span>Només administració</span>
+        <span>Solo administración</span>
       </div>
       <p className="time-tracking-intro">
-        Inicis registrats amb l'hora oficial del servidor i el punt comunicat pel dispositiu.
+        Inicios registrados con la hora oficial del servidor y el punto comunicado por el dispositivo.
       </p>
-      {loading && <p className="time-tracking-empty">S'estan carregant els registres…</p>}
+      {loading && <p className="time-tracking-empty">Cargando los registros…</p>}
       {error && (
-        <p className="time-tracking-error">No s'ha pogut carregar el control horari: {error}</p>
+        <p className="time-tracking-error">No se ha podido cargar el control horario: {error}</p>
       )}
       {!loading && !error && startedLogs.length === 0 && (
         <p className="time-tracking-empty">
-          Encara no hi ha inicis de visita amb la ubicació registrada.
+          Aún no hay inicios de visita con la ubicación registrada.
         </p>
       )}
       <div className="time-tracking-list">
@@ -2738,18 +2738,18 @@ function ClientTimeTracking({ client }: { client: Client }) {
               <div>
                 <strong>{formatDateTimeWithSeconds(new Date(intervention.started_at!))}</strong>
                 <span>
-                  {visit.installations?.name ?? 'Instal·lació'} · prevista{' '}
+                  {visit.installations?.name ?? 'Instalación'} · prevista{' '}
                   {formatDateTime(new Date(visit.scheduled_for))}
                 </span>
               </div>
               <span className="time-tracking-accuracy">
-                Precisió {Math.round(Number(intervention.start_location_accuracy_m ?? 0))} m
+                Precisión {Math.round(Number(intervention.start_location_accuracy_m ?? 0))} m
               </span>
             </div>
             <VisitStartMap
               latitude={Number(intervention.start_latitude)}
               longitude={Number(intervention.start_longitude)}
-              installationName={visit.installations?.name ?? 'Instal·lació'}
+              installationName={visit.installations?.name ?? 'Instalación'}
             />
           </article>
         ))}
@@ -2775,18 +2775,18 @@ function VisitStartMap({
     <div className="time-tracking-map">
       <Button type="button" variant="outline" size="sm" onClick={() => setMapOpen((open) => !open)}>
         <MapPin size={15} aria-hidden="true" />{' '}
-        {mapOpen ? 'Amaga el mapa' : 'Veure el punt al mapa'}
+        {mapOpen ? 'Ocultar el mapa' : 'Ver el punto en el mapa'}
       </Button>
       {mapOpen && (
         <>
           <iframe
-            title={`Punt d'inici de ${installationName}`}
+            title={`Punto de inicio de ${installationName}`}
             src={mapUrl}
             loading="lazy"
             referrerPolicy="no-referrer"
           />
           <a href={mapLink} target="_blank" rel="noreferrer">
-            Obre el mapa complet
+            Abrir el mapa completo
           </a>
         </>
       )}
@@ -2795,7 +2795,7 @@ function VisitStartMap({
 }
 
 function formatDateTimeWithSeconds(value: Date) {
-  return new Intl.DateTimeFormat('ca-ES', {
+  return new Intl.DateTimeFormat('es-ES', {
     dateStyle: 'medium',
     timeStyle: 'medium',
   }).format(value)
@@ -2819,7 +2819,7 @@ function InstallationForm({
     setForm((current) => ({ ...current, [key]: value }))
   const setCurrentLocation = () => {
     if (!navigator.geolocation) {
-      setLocationError('Aquest dispositiu no permet obtenir la ubicació.')
+      setLocationError('Este dispositivo no permite obtener la ubicación.')
       return
     }
     setLocationError(null)
@@ -2828,7 +2828,7 @@ function InstallationForm({
         update('location_latitude', Number(position.coords.latitude.toFixed(6)))
         update('location_longitude', Number(position.coords.longitude.toFixed(6)))
       },
-      () => setLocationError("No s'ha pogut obtenir la ubicació de la instal·lació."),
+      () => setLocationError('No se ha podido obtener la ubicación de la instalación.'),
       { enableHighAccuracy: true, maximumAge: 0, timeout: 20_000 },
     )
   }
@@ -2843,23 +2843,23 @@ function InstallationForm({
   }
   return (
     <Modal
-      title={installation ? 'Edita la instal·lació' : 'Instal·lació nova'}
-      description={`Client: ${clientName}`}
+      title={installation ? 'Editar instalación' : 'Instalación nueva'}
+      description={`Cliente: ${clientName}`}
       onClose={onClose}
     >
       <form className="record-form" onSubmit={submit}>
         <div className="form-grid">
-          <Field label="Nom" required>
+          <Field label="Nombre" required>
             <input required value={form.name} onChange={(e) => update('name', e.target.value)} />
           </Field>
-          <Field label="Tipus de piscina">
+          <Field label="Tipo de piscina">
             <input
               value={form.pool_type ?? ''}
               onChange={(e) => update('pool_type', e.target.value)}
-              placeholder="P. ex. comunitària"
+              placeholder="P. ej. comunitaria"
             />
           </Field>
-          <Field label="Adreça" required className="form-span-2">
+          <Field label="Dirección" required className="form-span-2">
             <input
               required
               value={form.address}
@@ -2867,7 +2867,7 @@ function InstallationForm({
             />
           </Field>
         </div>
-        <Field label="Instruccions per a la visita">
+        <Field label="Instrucciones para la visita">
           <textarea
             rows={3}
             value={form.instructions ?? ''}
@@ -2877,11 +2877,11 @@ function InstallationForm({
         <div className="installation-location-fields">
           <div className="sheet-heading">
             <div>
-              <h3>Ubicació de la instal·lació</h3>
-              <p>Opcional. Activa la comprovació de distància en iniciar una visita.</p>
+              <h3>Ubicación de la instalación</h3>
+              <p>Opcional. Activa la comprobación de distancia al iniciar una visita.</p>
             </div>
             <Button variant="outline" size="sm" type="button" onClick={setCurrentLocation}>
-              <MapPin size={15} aria-hidden="true" /> Fes servir la meva ubicació
+              <MapPin size={15} aria-hidden="true" /> Usar mi ubicación
             </Button>
           </div>
           <div className="form-grid">
@@ -2918,7 +2918,7 @@ function InstallationForm({
           </div>
           {locationError && <p className="installation-location-error">{locationError}</p>}
         </div>
-        <Field label="Notes internes">
+        <Field label="Notas internas">
           <textarea
             rows={3}
             value={form.notes ?? ''}
@@ -2927,14 +2927,14 @@ function InstallationForm({
         </Field>
         <DialogFooter className="modal-foot">
           <Button variant="outline" type="button" onClick={onClose}>
-            Cancel·la
+            Cancelar
           </Button>
           <Button type="submit" disabled={saving}>
             {saving
-              ? "S'està desant…"
+              ? 'Guardando…'
               : installation
-                ? 'Desa els canvis'
-                : 'Afegeix la instal·lació'}
+                ? 'Guardar cambios'
+                : 'Añadir instalación'}
           </Button>
         </DialogFooter>
       </form>
@@ -3016,31 +3016,31 @@ function AuthScreen() {
       return
     }
 
-    setFeedback({ kind: 'success', text: "Sessió iniciada. S'està carregant el tauler…" })
+    setFeedback({ kind: 'success', text: 'Sesión iniciada. Cargando el panel…' })
   }
 
   return (
     <main className="auth-page">
-      <section className="auth-brand-panel" aria-label="Gestió de piscines">
+      <section className="auth-brand-panel" aria-label="Gestión de piscinas">
         <div className="auth-brand-copy">
-          <span className="auth-kicker">Gestió del manteniment</span>
-          <h1>Tot el control de les teves piscines, en un sol lloc.</h1>
+          <span className="auth-kicker">Gestión del mantenimiento</span>
+          <h1>Todo el control de tus piscinas, en un solo lugar.</h1>
           <p>
-            Centralitza visites, clients i facturació amb dades protegides i sempre actualitzades.
+            Centraliza visitas, clientes y facturación con datos protegidos y siempre actualizados.
           </p>
         </div>
         <ul className="auth-benefits">
           <li>
             <CheckCircle2 size={18} aria-hidden="true" />
-            Agenda i informes de treball
+            Agenda e informes de trabajo
           </li>
           <li>
             <CheckCircle2 size={18} aria-hidden="true" />
-            Clients i instal·lacions connectats
+            Clientes e instalaciones conectados
           </li>
           <li>
             <CheckCircle2 size={18} aria-hidden="true" />
-            Facturació i cobraments al dia
+            Facturación y cobros al día
           </li>
         </ul>
       </section>
@@ -3049,14 +3049,14 @@ function AuthScreen() {
           <div className="auth-heading">
             <span className="auth-eyebrow">
               <LockKeyhole size={15} aria-hidden="true" />
-              Àrea privada
+              Área privada
             </span>
-            <h2>Benvingut de nou</h2>
-            <p>Accedeix per continuar amb la teva operativa diària.</p>
+            <h2>Bienvenido de nuevo</h2>
+            <p>Accede para continuar con tu operativa diaria.</p>
           </div>
           <form className="auth-form" onSubmit={submit} noValidate>
             <label className="auth-field">
-              <span>Adreça electrònica</span>
+              <span>Correo electrónico</span>
               <div className="auth-input">
                 <Mail size={18} aria-hidden="true" />
                 <input
@@ -3070,7 +3070,7 @@ function AuthScreen() {
               </div>
             </label>
             <label className="auth-field">
-              <span>Contrasenya</span>
+              <span>Contraseña</span>
               <div className="auth-input">
                 <LockKeyhole size={18} aria-hidden="true" />
                 <input
@@ -3078,7 +3078,7 @@ function AuthScreen() {
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   autoComplete="current-password"
-                  placeholder="Mínim 8 caràcters"
+                  placeholder="Mínimo 8 caracteres"
                 />
                 <Button
                   className="auth-password-toggle"
@@ -3086,7 +3086,7 @@ function AuthScreen() {
                   variant="ghost"
                   size="icon-sm"
                   onClick={() => setShowPassword((visible) => !visible)}
-                  aria-label={showPassword ? 'Amaga la contrasenya' : 'Mostra la contrasenya'}
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </Button>
@@ -3101,12 +3101,12 @@ function AuthScreen() {
               </p>
             )}
             <Button className="auth-submit" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "S'està comprovant…" : 'Entra al tauler'}
+              {isSubmitting ? 'Comprobando…' : 'Entrar al panel'}
               <ArrowRight size={18} aria-hidden="true" />
             </Button>
           </form>
           <p className="auth-switch">
-            Accés exclusiu per invitació. Si encara no tens compte, contacta amb l'administració.
+            Acceso exclusivo por invitación. Si aún no tienes cuenta, contacta con administración.
           </p>
         </div>
       </section>

@@ -1,8 +1,8 @@
-# Concepte Blau · Gestión de piscinas
+# Gestión de piscinas
 
-Demo local del MVP para operativa de técnicos, consumos y facturación.
+Demo white-label del MVP para operativa de técnicos, consumos y facturación.
 
-La identidad visual usa los azules del logotipo oficial publicado en [concepteblau.cat](https://concepteblau.cat/): azul marino `#052e5a` como color principal y cian `#00aeef` como accent. El logo se conserva localmente en `public/concepte-blau-logo.png`.
+La identidad visual mantiene una paleta azul marino y cian adaptable a cada cliente.
 
 ## Arranque
 

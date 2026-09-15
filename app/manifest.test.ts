@@ -7,13 +7,14 @@ describe('PWA manifest', () => {
     const result = manifest()
 
     expect(result).toMatchObject({
-      name: 'Gestió de piscines',
+      name: 'Gestión de piscinas',
+      short_name: 'Piscines',
       start_url: '/',
       scope: '/',
       display: 'standalone',
       theme_color: '#073964',
     })
-    expect(result.lang).toBe('ca')
+    expect(result.lang).toBe('es')
     expect(result.icons).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ src: '/pwa-icon.svg', purpose: 'any' }),

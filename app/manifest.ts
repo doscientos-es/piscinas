@@ -2,13 +2,13 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Gestió de piscines',
-    short_name: 'Piscines',
-    description: 'Gestió del manteniment, visites, clients i facturació de piscines.',
+    name: 'Gestión de piscinas',
+    short_name: 'Piscinas',
+    description: 'Gestión del mantenimiento, visitas, clientes y facturación de piscinas.',
     id: '/',
     start_url: '/',
     scope: '/',
-    lang: 'ca',
+    lang: 'es',
     display: 'standalone',
     background_color: '#f4f8fb',
     theme_color: '#073964',

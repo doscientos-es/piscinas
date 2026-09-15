@@ -56,8 +56,8 @@ type VisitDetail = {
   } | null
 }
 
-const money = new Intl.NumberFormat('ca-ES', { style: 'currency', currency: 'EUR' })
-const quantityFormat = new Intl.NumberFormat('ca-ES', { maximumFractionDigits: 3 })
+const money = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' })
+const quantityFormat = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 3 })
 
 export function VisitReport({
   visitId,
@@ -108,7 +108,7 @@ export function VisitReport({
     if (loadError) {
       setError(loadError.message)
     } else if (!visitResult.data) {
-      setError('No tens accés a aquesta visita o ja no existeix.')
+      setError('No tienes acceso a esta visita o ya no existe.')
     } else {
       const detail = visitResult.data as unknown as VisitDetail
       const initialReportState = getInitialVisitReportState(detail.interventions)
@@ -183,36 +183,36 @@ export function VisitReport({
       setError(completionError.message)
       return
     }
-    toast.success('Informe completat', {
-      description: 'La visita i els consums han quedat registrats.',
+    toast.success('Informe completado', {
+      description: 'La visita y los consumos se han registrado.',
     })
     await onVisitCompleted?.()
     router.replace(backHref)
   }
 
-  if (loading) return <div className="report-loading">S'està carregant l'informe…</div>
+  if (loading) return <div className="report-loading">Cargando el informe…</div>
   if (!visit || !intervention)
-    return <div className="report-loading">{error ?? "No s'ha trobat l'informe."}</div>
+    return <div className="report-loading">{error ?? 'No se ha encontrado el informe.'}</div>
 
   const installation = visit.installations
   return (
     <section className="report-page">
       <Link className="back-link" href={backHref}>
-        <ArrowLeft size={17} /> {backHref === '/trabajos' ? 'Torna a Feines' : "Torna a l'agenda"}
+        <ArrowLeft size={17} /> {backHref === '/trabajos' ? 'Volver a Trabajos' : 'Volver a la agenda'}
       </Link>
       <div className="report-heading">
         <div>
           <span className="eyebrow">Informe de visita</span>
-          <h2>{installation?.clients?.legal_name ?? 'Client'}</h2>
+          <h2>{installation?.clients?.legal_name ?? 'Cliente'}</h2>
           <p>
-            {installation?.name ?? 'Instal·lació'} · {installation?.address ?? 'Sense adreça'}
+            {installation?.name ?? 'Instalación'} · {installation?.address ?? 'Sin dirección'}
           </p>
         </div>
         <div className="report-started">
           <Clock3 size={17} />
           <span>Iniciada</span>
           <strong>
-            {new Intl.DateTimeFormat('ca-ES', { hour: '2-digit', minute: '2-digit' }).format(
+            {new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(
               new Date(intervention.started_at ?? visit.scheduled_for),
             )}
           </strong>
@@ -221,18 +221,18 @@ export function VisitReport({
 
       {installation?.instructions && (
         <aside className="visit-instructions">
-          <strong>Indicacions d'accés</strong>
+          <strong>Indicaciones de acceso</strong>
           <p>{installation.instructions}</p>
         </aside>
       )}
       {visit.planning_notes && (
         <aside className="visit-instructions visit-planning-notes">
-          <strong>Notes de planificació</strong>
+          <strong>Notas de planificación</strong>
           <p>{visit.planning_notes}</p>
         </aside>
       )}
       <VisitLocationMap
-        installationName={installation?.name ?? 'Instal·lació'}
+        installationName={installation?.name ?? 'Instalación'}
         address={installation?.address ?? ''}
         latitude={installation?.location_latitude ?? null}
         longitude={installation?.location_longitude ?? null}
@@ -254,21 +254,21 @@ export function VisitReport({
           startLongitude={intervention.start_longitude}
           startAccuracy={intervention.start_location_accuracy_m}
           startLocationRecordedAt={intervention.start_location_recorded_at}
-          installationName={installation?.name ?? 'Instal·lació'}
+          installationName={installation?.name ?? 'Instalación'}
         />
       ) : readOnly ? (
         <section className="closed-report">
           <Clock3 size={22} />
           <div>
-            <h3>Visita en curs</h3>
-            <p>L'informe estarà disponible per supervisar-lo quan el tècnic tanqui la feina.</p>
+            <h3>Visita en curso</h3>
+            <p>El informe estará disponible para supervisarlo cuando el técnico cierre el trabajo.</p>
           </div>
         </section>
       ) : (
         <form className="report-form" onSubmit={submit}>
           <fieldset className="visit-checklist">
-            <legend>Feines realitzades</legend>
-            <p>Marca només les feines que has fet en aquesta visita.</p>
+            <legend>Trabajos realizados</legend>
+            <p>Marca solo los trabajos que has realizado en esta visita.</p>
             <div className="visit-checklist-options">
               {standardVisitChecks.map((check) => (
                 <label
@@ -289,12 +289,12 @@ export function VisitReport({
           </fieldset>
           <label className="report-field">
             <span>
-              Notes o incidències <em>Opcional</em>
+              Notas o incidencias <em>Opcional</em>
             </span>
             <textarea
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              placeholder="P. ex.: He detectat una avaria o l'aigua estava tèrbola."
+              placeholder="P. ej.: He detectado una avería o el agua estaba turbia."
               rows={3}
             />
           </label>
@@ -303,7 +303,7 @@ export function VisitReport({
             <div className="section-heading">
               <div>
                 <h3>Productes utilitzats</h3>
-                <p>Afegeix només el material utilitzat durant aquesta visita.</p>
+                <p>Añade solo el material utilizado durante esta visita.</p>
               </div>
             </div>
             <AutocompleteCombobox
@@ -311,11 +311,11 @@ export function VisitReport({
               label="Afegeix un producte"
               description={
                 availableProducts.length
-                  ? 'Cerca pel nom o la referència i selecciona’l per afegir-lo.'
-                  : 'Ja has afegit tots els productes disponibles.'
+                  ? 'Busca por nombre o referencia y selecciónalo para añadirlo.'
+                  : 'Ya has añadido todos los productos disponibles.'
               }
-              placeholder="Cerca un producte o referència"
-              aria-label="Cerca i afegeix un producte"
+              placeholder="Buscar un producto o referencia"
+              aria-label="Buscar y añadir un producto"
               items={availableProducts}
               inputValue={productSearch}
               selectedKey={null}
@@ -330,7 +330,7 @@ export function VisitReport({
                 <div className="product-combobox-option">
                   <span>
                     <strong>{product.name}</strong>
-                    <small>{product.reference ?? 'Sense referència'}</small>
+                    <small>{product.reference ?? 'Sin referencia'}</small>
                   </span>
                   <em>
                     {quantityFormat.format(product.stock_quantity)} {product.unit} disponibles
@@ -339,7 +339,7 @@ export function VisitReport({
               )}
               emptyState={
                 <p className="product-combobox-empty">
-                  No hi ha coincidències entre els materials amb estoc.
+                  No hay coincidencias entre los materiales con stock.
                 </p>
               }
             />
@@ -354,16 +354,16 @@ export function VisitReport({
                         <span>
                           {product
                             ? `${product.reference ? `${product.reference} · ` : ''}${quantityFormat.format(product.stock_quantity)} ${product.unit} disponibles`
-                            : 'Producte no disponible'}
+                            : 'Producto no disponible'}
                         </span>
                       </div>
                       <label className="usage-quantity">
-                        <span>Quantitat {product && <small>en {product.unit}</small>}</span>
+                        <span>Cantidad {product && <small>en {product.unit}</small>}</span>
                         <QuantityInput
                           className="usage-quantity-input"
-                          aria-label={`Quantitat de ${product?.name ?? 'producte'}`}
-                          decrementAriaLabel={`Redueix la quantitat de ${product?.name ?? 'producte'}`}
-                          incrementAriaLabel={`Augmenta la quantitat de ${product?.name ?? 'producte'}`}
+                          aria-label={`Cantidad de ${product?.name ?? 'producto'}`}
+                          decrementAriaLabel={`Reducir la cantidad de ${product?.name ?? 'producto'}`}
+                          incrementAriaLabel={`Aumentar la cantidad de ${product?.name ?? 'producto'}`}
                           minValue={0.001}
                           maxValue={product ? Number(product.stock_quantity) : undefined}
                           step={0.001}
@@ -377,7 +377,7 @@ export function VisitReport({
                         variant="destructive"
                         size="icon-sm"
                         onClick={() => removeUsage(index)}
-                        aria-label={`Elimina ${product?.name ?? 'producte'}`}
+                        aria-label={`Eliminar ${product?.name ?? 'producto'}`}
                       >
                         <Trash2 size={17} />
                       </Button>
@@ -387,22 +387,22 @@ export function VisitReport({
               </div>
             ) : (
               <p className="products-empty">
-                Sense productes afegits. Si la feina està inclosa a la quota, pots tancar la visita
-                directament.
+                Sin productos añadidos. Si el trabajo está incluido en la cuota, puedes cerrar la visita
+                directamente.
               </p>
             )}
           </section>
 
           <div className="report-actions">
             <LinkButton variant="outline" href="/agenda">
-              Torna sense desar
+              Volver sin guardar
             </LinkButton>
             <Button type="submit" disabled={saving}>
               {saving ? (
-                "S'està desant…"
+                'Guardando…'
               ) : (
                 <>
-                  <CheckCircle2 size={17} /> Tanca la visita
+                  <CheckCircle2 size={17} /> Cerrar la visita
                 </>
               )}
             </Button>
@@ -435,17 +435,17 @@ function VisitLocationMap({
   return (
     <section className="visit-destination-map">
       <div>
-        <strong><MapPin size={17} aria-hidden="true" /> Ubicació de la visita</strong>
-        <span>{address || 'Adreça no disponible'}</span>
+        <strong><MapPin size={17} aria-hidden="true" /> Ubicación de la visita</strong>
+        <span>{address || 'Dirección no disponible'}</span>
       </div>
       <iframe
-        title={`Ubicació de ${installationName}`}
+        title={`Ubicación de ${installationName}`}
         src={embedUrl}
         loading="lazy"
         referrerPolicy="no-referrer"
       />
       <a href={directionsUrl} target="_blank" rel="noreferrer">
-        Obre la ruta a Google Maps
+        Abrir la ruta en Google Maps
       </a>
     </section>
   )
@@ -501,31 +501,31 @@ function ClosedReport({
       <header className="closed-report-heading">
         <CheckCircle2 size={24} aria-hidden="true" />
         <div>
-          <span className="eyebrow">Visita finalitzada</span>
-          <h3>Informe tancat</h3>
+          <span className="eyebrow">Visita finalizada</span>
+          <h3>Informe cerrado</h3>
           <p>
-            Tancat per <strong>{technicianName ?? 'Tècnic no disponible'}</strong>
+            Cerrado por <strong>{technicianName ?? 'Técnico no disponible'}</strong>
           </p>
         </div>
       </header>
 
       <dl className="closed-report-summary">
         <div>
-          <dt>Inici</dt>
-          <dd>{startedAt ? formatDateTime(new Date(startedAt)) : 'No registrat'}</dd>
+          <dt>Inicio</dt>
+          <dd>{startedAt ? formatDateTime(new Date(startedAt)) : 'No registrado'}</dd>
         </div>
         <div>
           <dt>Final</dt>
-          <dd>{completedAt ? formatDateTime(new Date(completedAt)) : 'No registrat'}</dd>
+          <dd>{completedAt ? formatDateTime(new Date(completedAt)) : 'No registrado'}</dd>
         </div>
         <div>
-          <dt>Durada</dt>
+          <dt>Duración</dt>
           <dd>{formatDuration(startedAt, completedAt) ?? 'No disponible'}</dd>
         </div>
       </dl>
 
       <section className="closed-report-section">
-        <h4>Feines realitzades</h4>
+        <h4>Trabajos realizados</h4>
         {completedChecks.length ? (
           <ul className="closed-report-checks">
             {completedChecks.map((check) => (
@@ -535,13 +535,13 @@ function ClosedReport({
             ))}
           </ul>
         ) : (
-          <p>No s'han marcat feines en aquest informe.</p>
+          <p>No se han marcado trabajos en este informe.</p>
         )}
       </section>
 
       {details && (
         <section className="closed-report-section">
-          <h4>Notes i incidències</h4>
+          <h4>Notas e incidencias</h4>
           <p>{details}</p>
         </section>
       )}
@@ -561,7 +561,7 @@ function ClosedReport({
             ))}
           </ul>
         ) : (
-          <p>Sense productes addicionals facturables.</p>
+          <p>Sin productos adicionales facturables.</p>
         )}
       </section>
 
@@ -570,25 +570,25 @@ function ClosedReport({
           <div className="closed-report-location-heading">
             <div>
               <h4>
-                <MapPin size={17} aria-hidden="true" /> Inici registrat
+                <MapPin size={17} aria-hidden="true" /> Inicio registrado
               </h4>
               <p>
                 {startLocationRecordedAt
                   ? `Registrat el ${formatDateTime(new Date(startLocationRecordedAt))}`
-                  : 'Ubicació comunicada pel dispositiu'}
+                  : 'Ubicación comunicada por el dispositivo'}
                 {startAccuracy !== null &&
-                  ` · Precisió aproximada de ${Math.round(Number(startAccuracy))} m`}
+                  ` · Precisión aproximada de ${Math.round(Number(startAccuracy))} m`}
               </p>
             </div>
           </div>
           <iframe
-            title={`Punt d'inici de ${installationName}`}
+            title={`Punto de inicio de ${installationName}`}
             src={mapUrl}
             loading="lazy"
             referrerPolicy="no-referrer"
           />
           <a href={mapLink} target="_blank" rel="noreferrer">
-            Obre el mapa complet
+            Abrir el mapa completo
           </a>
         </section>
       )}
@@ -597,7 +597,7 @@ function ClosedReport({
 }
 
 function formatDateTime(value: Date) {
-  return new Intl.DateTimeFormat('ca-ES', {
+  return new Intl.DateTimeFormat('es-ES', {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(value)

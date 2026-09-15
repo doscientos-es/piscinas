@@ -14,16 +14,16 @@ export function PwaInstallPrompt() {
   if (!visible) return null
 
   return (
-    <aside className="pwa-install-prompt" aria-label="Instal·la l'aplicació">
+    <aside className="pwa-install-prompt" aria-label="Instalar la aplicación">
       <div className="pwa-install-icon" aria-hidden="true">
         {isIos ? <Share2 size={20} /> : <Download size={20} />}
       </div>
       <div className="pwa-install-content">
-        <strong>{isIos ? "Afegeix l'aplicació a l'inici" : "Instal·la l'aplicació"}</strong>
+        <strong>{isIos ? 'Añade la aplicación al inicio' : 'Instala la aplicación'}</strong>
         <p>
           {isIos
-            ? 'A Safari, toca Compartir i selecciona «Afegeix a la pantalla d’inici».'
-            : 'Obre-la com una aplicació per consultar la teva operativa més de pressa.'}
+            ? 'En Safari, toca Compartir y selecciona «Añadir a la pantalla de inicio».'
+            : 'Ábrela como una aplicación para consultar tu operativa más rápidamente.'}
         </p>
       </div>
       <div className="pwa-install-actions">
@@ -34,14 +34,14 @@ export function PwaInstallPrompt() {
             disabled={pending}
             onClick={() => void install()}
           >
-            {pending ? "S'està obrint…" : 'Instal·la'}
+            {pending ? 'Abriendo…' : 'Instalar'}
           </button>
         )}
         <button
           type="button"
           className="pwa-install-dismiss"
           onClick={dismiss}
-          aria-label="Descarta l'avís d'instal·lació"
+          aria-label="Descartar el aviso de instalación"
         >
           <X size={18} aria-hidden="true" />
         </button>

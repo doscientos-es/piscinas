@@ -15,15 +15,15 @@ const geist = Geist({
 })
 
 export const metadata: Metadata = {
-  title: { default: 'Gestió de piscines', template: '%s · Gestió de piscines' },
-  description: 'Gestió del manteniment, visites, clients i facturació de piscines.',
+  title: { default: 'Gestión de piscinas', template: '%s · Gestión de piscinas' },
+  description: 'Gestión del mantenimiento, visitas, clientes y facturación de piscinas.',
 }
 
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#f7f8fc' }
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="ca" className={geist.variable}>
+    <html lang="es" className={geist.variable}>
       <body>
         <PersistentApp />
         <div hidden>{children}</div>

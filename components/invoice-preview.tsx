@@ -28,57 +28,57 @@ export function InvoicePreview({
       <DialogContent className="invoice-preview" showCloseButton>
         <DialogHeader className="invoice-preview-header">
           <div className="invoice-preview-title">
-            <span className="eyebrow">Vista prèvia de la factura</span>
-            <DialogTitle>{invoice.number ?? 'Esborrany'}</DialogTitle>
+            <span className="eyebrow">Vista previa de la factura</span>
+            <DialogTitle>{invoice.number ?? 'Borrador'}</DialogTitle>
           </div>
-          <div className="invoice-preview-actions" aria-label="Accions de la factura">
+          <div className="invoice-preview-actions" aria-label="Acciones de la factura">
             <Button variant="outline" type="button" onClick={() => onDownload(invoice)}>
               <Download size={16} aria-hidden="true" />
-              Descarrega
+              Descargar
             </Button>
             <Button type="button" onClick={() => printInvoice(invoice)}>
               <Printer size={16} aria-hidden="true" />
-              Imprimeix
+              Imprimir
             </Button>
           </div>
         </DialogHeader>
         <article className="invoice-paper">
           <div className="invoice-paper-header">
             <div>
-              <strong>Gestió de piscines</strong>
-              <span>Operativa de manteniment</span>
+              <strong>Gestión de piscinas</strong>
+              <span>Operativa de mantenimiento</span>
             </div>
             <div>
               <span>FACTURA</span>
-              <strong>{invoice.number ?? 'Esborrany'}</strong>
-              <small>Emesa: {formatDate(invoice.issued_on)}</small>
+              <strong>{invoice.number ?? 'Borrador'}</strong>
+              <small>Emitida: {formatDate(invoice.issued_on)}</small>
             </div>
           </div>
           <div className="invoice-party">
             <div>
               <span>Factura a</span>
-              <strong>{client?.legal_name ?? 'Client sense assignar'}</strong>
+              <strong>{client?.legal_name ?? 'Cliente sin asignar'}</strong>
               <p>
-                {client?.tax_id ?? 'NIF pendent'}
+                {client?.tax_id ?? 'NIF pendiente'}
                 <br />
-                {client?.billing_address ?? 'Adreça de facturació pendent'}
+                {client?.billing_address ?? 'Dirección de facturación pendiente'}
                 <br />
-                {client?.billing_email ?? 'Adreça electrònica de facturació pendent'}
+                {client?.billing_email ?? 'Correo electrónico de facturación pendiente'}
               </p>
             </div>
             <div>
-              <span>Venciment</span>
+              <span>Vencimiento</span>
               <strong>{formatDate(invoice.due_on)}</strong>
               <span className={`invoice-status ${invoice.status === 'paid' ? 'paid' : 'pending'}`}>
-                {invoice.status === 'paid' ? 'Cobrada' : 'Pendent de cobrament'}
+                {invoice.status === 'paid' ? 'Cobrada' : 'Pendiente de cobro'}
               </span>
             </div>
           </div>
           <div className="invoice-lines">
             <div className="invoice-line-head">
-              <span>Concepte</span>
-              <span>Quant.</span>
-              <span>Preu</span>
+              <span>Concepto</span>
+              <span>Cant.</span>
+              <span>Precio</span>
               <span>IVA</span>
               <span>Import</span>
             </div>
@@ -94,7 +94,7 @@ export function InvoicePreview({
           </div>
           <div className="invoice-totals">
             <span>
-              Base imposable <strong>{formatMoney(invoice.subtotal)}</strong>
+              Base imponible <strong>{formatMoney(invoice.subtotal)}</strong>
             </span>
             <span>
               IVA <strong>{formatMoney(invoice.vat_total)}</strong>
@@ -104,8 +104,8 @@ export function InvoicePreview({
             </span>
           </div>
           <p className="invoice-note">
-            Revisa els imports, el venciment i les dades de facturació abans d'enviar la factura al
-            client.
+            Revisa los importes, el vencimiento y los datos de facturación antes de enviar la factura
+            al cliente.
           </p>
         </article>
       </DialogContent>
